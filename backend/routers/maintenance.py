@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from backend.utils.auth import get_current_user
+from utils.auth import get_current_user
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 

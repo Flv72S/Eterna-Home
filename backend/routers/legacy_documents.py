@@ -3,12 +3,12 @@ from fastapi import APIRouter, Depends, Form, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 
-from backend.db.session import get_db
-from backend.utils.auth import get_current_user
-from backend.config.cloud_config import settings
-from backend.utils.minio import get_minio_client, upload_file_to_minio
-from backend.models.legacy_documents import LegacyDocument
-from backend.schemas.legacy_documents import LegacyDocument as LegacyDocumentSchema
+from db.session import get_db
+from utils.auth import get_current_user
+from config.cloud_config import settings
+from utils.minio import get_minio_client, upload_file_to_minio
+from models.legacy_documents import LegacyDocument
+from schemas.legacy_documents import LegacyDocument as LegacyDocumentSchema
 
 router = APIRouter(prefix="/legacy-documents", tags=["Legacy Documents"])
 
