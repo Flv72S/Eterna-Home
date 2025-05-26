@@ -5,6 +5,7 @@ from routers import house as house_router
 from routers import node as node_router
 from routers import document as document_router
 from routers import auth as auth_router
+from routers import maintenance as maintenance_router
 
 app = FastAPI(title="Eterna Home Backend API")
 
@@ -12,6 +13,7 @@ app.include_router(auth_router.router)
 app.include_router(house_router.router)
 app.include_router(node_router.router)
 app.include_router(document_router.router)
+app.include_router(maintenance_router.router)
 
 @app.get("/")
 async def root():
