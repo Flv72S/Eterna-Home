@@ -16,4 +16,5 @@ class Node(Base):
 
     house = relationship("House", back_populates="nodes")
     documents = relationship("Document", back_populates="node", cascade="all, delete-orphan")
-    audio_logs = relationship("AudioLog", back_populates="node", cascade="all, delete-orphan") 
+    audio_logs = relationship("AudioLog", back_populates="node", cascade="all, delete-orphan")
+    legacy_documents = relationship("LegacyDocument", back_populates="node", cascade="all, delete-orphan") 

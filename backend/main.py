@@ -7,6 +7,12 @@ from routers import document as document_router
 from routers import auth as auth_router
 from routers import maintenance as maintenance_router
 from routers import legacy_documents as legacy_documents_router
+from config.logging_config import setup_logging
+import logging
+
+# Configurazione del logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Eterna Home Backend API")
 
@@ -23,5 +29,9 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created/checked.") 
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/checked successfully.")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {str(e)}")
+        raise 

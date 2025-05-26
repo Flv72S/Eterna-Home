@@ -11,4 +11,5 @@ class House(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     owner = relationship("User", back_populates="houses")
-    nodes = relationship("Node", back_populates="house", cascade="all, delete-orphan") 
+    nodes = relationship("Node", back_populates="house", cascade="all, delete-orphan")
+    legacy_documents = relationship("LegacyDocument", back_populates="house", cascade="all, delete-orphan") 

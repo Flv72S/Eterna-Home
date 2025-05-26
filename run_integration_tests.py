@@ -3,33 +3,85 @@ import json
 import os
 import uuid
 import io
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+from datetime import datetime
 
-# Configuration
+# Configurazione
 BASE_URL = "http://localhost:8000"
 TEST_EMAIL = "integration_test@example.com"
 TEST_PASSWORD = "testpassword"
-TEST_HOUSE_NAME = "Test House"
-TEST_NODE_LOCATION = "Test Location"
-TEST_NODE_TYPE = "Test Type"
+TEST_HOUSE_NAME = "Casa di Test"
+TEST_NODE_LOCATION = "Posizione di Test"
+TEST_NODE_TYPE = "Tipo di Test"
 
-def print_test_result(test_name: str, success: bool, message: str = ""):
-    """Print test result in a formatted way"""
-    status = "SUCCESS" if success else "FAILED"
-    print(f"Test {test_name}: {status}")
-    if message:
-        print(f"Message: {message}")
+@dataclass
+class TestResult:
+    """Classe per memorizzare i risultati dei test"""
+    name: str
+    success: bool
+    message: str
+    timestamp: datetime = datetime.now()
+
+class TestResources:
+    """Classe per tracciare e pulire le risorse di test"""
+    def __init__(self):
+        self.house_id: Optional[int] = None
+        self.node_id: Optional[int] = None
+        self.document_id: Optional[int] = None
+        self.temp_files: list[str] = []
+
+    def cleanup(self, access_token: str) -> None:
+        """Pulisce tutte le risorse di test"""
+        headers = get_headers(access_token)
+        
+        # Pulisce il documento se esiste
+        if self.document_id:
+            try:
+                requests.delete(f"{BASE_URL}/legacy-documents/{self.document_id}", headers=headers)
+            except Exception as e:
+                print(f"Attenzione: Impossibile eliminare il documento {self.document_id}: {e}")
+
+        # Pulisce il nodo se esiste
+        if self.node_id:
+            try:
+                requests.delete(f"{BASE_URL}/nodes/{self.node_id}", headers=headers)
+            except Exception as e:
+                print(f"Attenzione: Impossibile eliminare il nodo {self.node_id}: {e}")
+
+        # Pulisce la casa se esiste
+        if self.house_id:
+            try:
+                requests.delete(f"{BASE_URL}/houses/{self.house_id}", headers=headers)
+            except Exception as e:
+                print(f"Attenzione: Impossibile eliminare la casa {self.house_id}: {e}")
+
+        # Pulisce i file temporanei
+        for file_path in self.temp_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Attenzione: Impossibile eliminare il file temporaneo {file_path}: {e}")
+
+def print_test_result(result: TestResult) -> None:
+    """Stampa il risultato del test in modo formattato"""
+    status = "SUCCESSO" if result.success else "FALLITO"
+    print(f"\nTest {result.name}: {status}")
+    print(f"Orario: {result.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+    if result.message:
+        print(f"Messaggio: {result.message}")
     print("-" * 50)
 
-def get_headers(access_token: str = None) -> Dict[str, str]:
-    """Get headers with optional authorization"""
+def get_headers(access_token: Optional[str] = None) -> Dict[str, str]:
+    """Ottiene gli header con autorizzazione opzionale"""
     headers = {"Content-Type": "application/json"}
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
     return headers
 
-def test_signup() -> bool:
-    """Test user registration"""
+def test_signup() -> TestResult:
+    """Test di registrazione utente"""
     try:
         response = requests.post(
             f"{BASE_URL}/auth/signup",
@@ -40,19 +92,23 @@ def test_signup() -> bool:
             headers=get_headers()
         )
         
-        if response.status_code in [200, 400]:  # 400 if user already exists
-            print_test_result("Signup", True, 
-                            "User created" if response.status_code == 200 else "User already exists")
-            return True
+        if response.status_code in [200, 400]:  # 400 se l'utente esiste già
+            return TestResult(
+                "Registrazione",
+                True,
+                "Utente creato" if response.status_code == 200 else "Utente già esistente"
+            )
         else:
-            print_test_result("Signup", False, f"Unexpected status code: {response.status_code}")
-            return False
+            return TestResult(
+                "Registrazione",
+                False,
+                f"Codice di stato inatteso: {response.status_code}"
+            )
     except Exception as e:
-        print_test_result("Signup", False, str(e))
-        return False
+        return TestResult("Registrazione", False, str(e))
 
-def test_login() -> tuple[bool, str]:
-    """Test user login and return access token"""
+def test_login() -> Tuple[TestResult, Optional[str]]:
+    """Test di login utente e ottenimento token"""
     try:
         response = requests.post(
             f"{BASE_URL}/auth/login",
@@ -65,17 +121,14 @@ def test_login() -> tuple[bool, str]:
         
         if response.status_code == 200:
             access_token = response.json()["access_token"]
-            print_test_result("Login", True)
-            return True, access_token
+            return TestResult("Login", True, "Token di accesso ottenuto con successo"), access_token
         else:
-            print_test_result("Login", False, f"Unexpected status code: {response.status_code}")
-            return False, None
+            return TestResult("Login", False, f"Codice di stato inatteso: {response.status_code}"), None
     except Exception as e:
-        print_test_result("Login", False, str(e))
-        return False, None
+        return TestResult("Login", False, str(e)), None
 
-def test_create_house(access_token: str) -> tuple[bool, int]:
-    """Test house creation and return house ID"""
+def test_create_house(access_token: str, resources: TestResources) -> TestResult:
+    """Test di creazione casa e restituzione ID"""
     try:
         response = requests.post(
             f"{BASE_URL}/houses/",
@@ -84,23 +137,20 @@ def test_create_house(access_token: str) -> tuple[bool, int]:
         )
         
         if response.status_code == 200:
-            house_id = response.json()["id"]
-            print_test_result("Create House", True)
-            return True, house_id
+            resources.house_id = response.json()["id"]
+            return TestResult("Creazione Casa", True, f"Casa creata con ID: {resources.house_id}")
         else:
-            print_test_result("Create House", False, f"Unexpected status code: {response.status_code}")
-            return False, None
+            return TestResult("Creazione Casa", False, f"Codice di stato inatteso: {response.status_code}")
     except Exception as e:
-        print_test_result("Create House", False, str(e))
-        return False, None
+        return TestResult("Creazione Casa", False, str(e))
 
-def test_create_node(access_token: str, house_id: int) -> tuple[bool, int]:
-    """Test node creation and return node ID"""
+def test_create_node(access_token: str, resources: TestResources) -> TestResult:
+    """Test di creazione nodo e restituzione ID"""
     try:
         response = requests.post(
             f"{BASE_URL}/nodes/",
             json={
-                "house_id": house_id,
+                "house_id": resources.house_id,
                 "location": TEST_NODE_LOCATION,
                 "type": TEST_NODE_TYPE
             },
@@ -108,18 +158,15 @@ def test_create_node(access_token: str, house_id: int) -> tuple[bool, int]:
         )
         
         if response.status_code == 200:
-            node_id = response.json()["id"]
-            print_test_result("Create Node", True)
-            return True, node_id
+            resources.node_id = response.json()["id"]
+            return TestResult("Creazione Nodo", True, f"Nodo creato con ID: {resources.node_id}")
         else:
-            print_test_result("Create Node", False, f"Unexpected status code: {response.status_code}")
-            return False, None
+            return TestResult("Creazione Nodo", False, f"Codice di stato inatteso: {response.status_code}")
     except Exception as e:
-        print_test_result("Create Node", False, str(e))
-        return False, None
+        return TestResult("Creazione Nodo", False, str(e))
 
-def test_protected_endpoint(access_token: str) -> bool:
-    """Test protected endpoint access"""
+def test_protected_endpoint(access_token: str) -> TestResult:
+    """Test di accesso all'endpoint protetto"""
     try:
         response = requests.get(
             f"{BASE_URL}/maintenance/test-maintenance",
@@ -127,30 +174,29 @@ def test_protected_endpoint(access_token: str) -> bool:
         )
         
         if response.status_code == 200:
-            print_test_result("Protected Endpoint", True)
-            return True
+            return TestResult("Endpoint Protetto", True, "Accesso all'endpoint protetto riuscito")
         else:
-            print_test_result("Protected Endpoint", False, f"Unexpected status code: {response.status_code}")
-            return False
+            return TestResult("Endpoint Protetto", False, f"Codice di stato inatteso: {response.status_code}")
     except Exception as e:
-        print_test_result("Protected Endpoint", False, str(e))
-        return False
+        return TestResult("Endpoint Protetto", False, str(e))
 
-def test_upload_legacy_document(access_token: str, house_id: int, node_id: int) -> tuple[bool, int]:
-    """Test legacy document upload and return document ID"""
+def test_upload_legacy_document(access_token: str, resources: TestResources) -> TestResult:
+    """Test di caricamento documento legacy e restituzione ID"""
     try:
-        # Create temporary test file
-        temp_file_path = "temp_test_document.txt"
-        with open(temp_file_path, "w") as f:
-            f.write("This is a test document content")
+        # Crea file di test temporaneo
+        temp_file_path = f"temp_test_document_{uuid.uuid4()}.txt"
+        resources.temp_files.append(temp_file_path)
         
-        # Prepare multipart form data
+        with open(temp_file_path, "w") as f:
+            f.write("Questo è il contenuto del documento di test")
+        
+        # Prepara i dati del form multipart
         files = {
             'file': ('temp_test_document.txt', open(temp_file_path, 'rb'), 'text/plain')
         }
         data = {
-            'house_id': str(house_id),
-            'node_id': str(node_id),
+            'house_id': str(resources.house_id),
+            'node_id': str(resources.node_id),
             'type': 'TXT',
             'version': '1.0'
         }
@@ -162,84 +208,123 @@ def test_upload_legacy_document(access_token: str, house_id: int, node_id: int) 
             headers={"Authorization": f"Bearer {access_token}"}
         )
         
-        # Clean up temporary file
-        os.remove(temp_file_path)
-        
         if response.status_code == 200:
-            doc_id = response.json()["id"]
-            print_test_result("Upload Legacy Document", True)
-            return True, doc_id
+            resources.document_id = response.json()["id"]
+            return TestResult(
+                "Caricamento Documento Legacy",
+                True,
+                f"Documento caricato con successo con ID: {resources.document_id}"
+            )
         else:
-            print_test_result("Upload Legacy Document", False, f"Unexpected status code: {response.status_code}")
-            return False, None
+            return TestResult(
+                "Caricamento Documento Legacy",
+                False,
+                f"Codice di stato inatteso: {response.status_code}"
+            )
     except Exception as e:
-        print_test_result("Upload Legacy Document", False, str(e))
-        return False, None
+        return TestResult("Caricamento Documento Legacy", False, str(e))
 
-def test_get_legacy_documents(access_token: str, node_id: int) -> bool:
-    """Test retrieving legacy documents"""
+def test_get_legacy_documents(access_token: str, resources: TestResources) -> TestResult:
+    """Test di recupero documenti legacy"""
     try:
         response = requests.get(
-            f"{BASE_URL}/legacy-documents/{node_id}",
+            f"{BASE_URL}/legacy-documents/{resources.node_id}",
             headers=get_headers(access_token)
         )
         
         if response.status_code == 200:
             documents = response.json()
             success = len(documents) > 0
-            print_test_result("Get Legacy Documents", success, 
-                            f"Found {len(documents)} documents" if success else "No documents found")
-            return success
+            return TestResult(
+                "Recupero Documenti Legacy",
+                success,
+                f"Trovati {len(documents)} documenti" if success else "Nessun documento trovato"
+            )
         else:
-            print_test_result("Get Legacy Documents", False, f"Unexpected status code: {response.status_code}")
-            return False
+            return TestResult(
+                "Recupero Documenti Legacy",
+                False,
+                f"Codice di stato inatteso: {response.status_code}"
+            )
     except Exception as e:
-        print_test_result("Get Legacy Documents", False, str(e))
-        return False
+        return TestResult("Recupero Documenti Legacy", False, str(e))
 
 def main():
-    """Main test execution function"""
-    print("Starting Integration Tests...")
+    """Funzione principale di esecuzione dei test"""
+    print("Avvio Test di Integrazione...")
     print("=" * 50)
     
-    # Test signup
-    if not test_signup():
-        print("Signup failed, aborting tests")
-        return
+    resources = TestResources()
+    test_results: list[TestResult] = []
     
-    # Test login
-    login_success, access_token = test_login()
-    if not login_success:
-        print("Login failed, aborting tests")
-        return
+    try:
+        # Test di registrazione
+        signup_result = test_signup()
+        print_test_result(signup_result)
+        test_results.append(signup_result)
+        if not signup_result.success:
+            print("Registrazione fallita, interruzione dei test")
+            return
+        
+        # Test di login
+        login_result, access_token = test_login()
+        print_test_result(login_result)
+        test_results.append(login_result)
+        if not login_result.success:
+            print("Login fallito, interruzione dei test")
+            return
+        
+        # Test di creazione casa
+        house_result = test_create_house(access_token, resources)
+        print_test_result(house_result)
+        test_results.append(house_result)
+        if not house_result.success:
+            print("Creazione casa fallita, interruzione dei test")
+            return
+        
+        # Test di creazione nodo
+        node_result = test_create_node(access_token, resources)
+        print_test_result(node_result)
+        test_results.append(node_result)
+        if not node_result.success:
+            print("Creazione nodo fallita, interruzione dei test")
+            return
+        
+        # Test endpoint protetto
+        protected_result = test_protected_endpoint(access_token)
+        print_test_result(protected_result)
+        test_results.append(protected_result)
+        
+        # Test caricamento documento legacy
+        upload_result = test_upload_legacy_document(access_token, resources)
+        print_test_result(upload_result)
+        test_results.append(upload_result)
+        if not upload_result.success:
+            print("Caricamento documento fallito, interruzione dei test")
+            return
+        
+        # Test recupero documenti legacy
+        get_docs_result = test_get_legacy_documents(access_token, resources)
+        print_test_result(get_docs_result)
+        test_results.append(get_docs_result)
+        
+        # Stampa riepilogo
+        print("\nRiepilogo Test:")
+        print("=" * 50)
+        success_count = sum(1 for r in test_results if r.success)
+        print(f"Totale Test: {len(test_results)}")
+        print(f"Test Riusciti: {success_count}")
+        print(f"Test Falliti: {len(test_results) - success_count}")
+        print("=" * 50)
+        
+    finally:
+        # Pulizia risorse
+        if 'access_token' in locals():
+            print("\nPulizia risorse di test...")
+            resources.cleanup(access_token)
+            print("Pulizia completata")
     
-    # Test house creation
-    house_success, house_id = test_create_house(access_token)
-    if not house_success:
-        print("House creation failed, aborting tests")
-        return
-    
-    # Test node creation
-    node_success, node_id = test_create_node(access_token, house_id)
-    if not node_success:
-        print("Node creation failed, aborting tests")
-        return
-    
-    # Test protected endpoint
-    if not test_protected_endpoint(access_token):
-        print("Protected endpoint test failed, continuing with other tests")
-    
-    # Test legacy document upload
-    upload_success, doc_id = test_upload_legacy_document(access_token, house_id, node_id)
-    if not upload_success:
-        print("Document upload failed, aborting tests")
-        return
-    
-    # Test legacy document retrieval
-    if not test_get_legacy_documents(access_token, node_id):
-        print("Document retrieval failed")
-    
-    print("\nIntegration Tests Completed!")
+    print("\nTest di Integrazione Completati!")
     print("=" * 50)
 
 if __name__ == "__main__":

@@ -1,12 +1,18 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./eterna_home.db"
+# Carica le variabili d'ambiente dal file .env
+load_dotenv()
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# Usa l'URL del database da .env
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+print(f"Database URL: {SQLALCHEMY_DATABASE_URL}")  # Debug print
+
+# Crea l'engine per PostgreSQL
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
