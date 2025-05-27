@@ -13,6 +13,9 @@ from routers import voice_interfaces as voice_interfaces_router
 from config.logging_config import setup_logging
 import logging
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
 
 # Configurazione del logging
 setup_logging()
@@ -60,10 +63,17 @@ async def startup_event():
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created/checked successfully.")
+        redis_client = redis.from_url("redis://localhost", encoding="utf-8", decode_responses=True)
+        await FastAPILimiter.init(redis_client)
     except Exception as e:
         logger.error(f"Error creating database tables: {str(e)}")
         raise
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info("Applicazione terminata") 
+    logger.info("Applicazione terminata")
+
+# Esempio di rate limiting su un endpoint
+@app.get("/rate-limited", dependencies=[RateLimiter(times=5, seconds=60)])
+async def rate_limited():
+    return {"message": "This endpoint is rate limited to 5 requests per minute."} 

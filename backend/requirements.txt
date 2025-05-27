@@ -12,4 +12,5 @@ minio>=7.0.0
 email-validator
 requests>=2.32.3
 pytest>=8.0.2
-pytest-mock>=3.12.0 
+pytest-mock>=3.12.0
+fastapi-limiter>=0.1.5 
