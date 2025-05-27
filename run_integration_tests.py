@@ -9,11 +9,14 @@ from datetime import datetime
 
 # Configurazione
 BASE_URL = "http://localhost:8000"
-TEST_EMAIL = "integration_test@example.com"
-TEST_PASSWORD = "testpassword"
+TEST_EMAIL = "integration_test_user@example.com"
+TEST_PASSWORD = "securepassword123"
 TEST_HOUSE_NAME = "Casa di Test"
+TEST_HOUSE_ADDRESS = "Via Roma 123, Milano"
+TEST_NODE_NAME = "Nodo di Test"
 TEST_NODE_LOCATION = "Posizione di Test"
 TEST_NODE_TYPE = "Tipo di Test"
+TEMP_FILE_NAME = "temp_test_document.txt"
 
 @dataclass
 class TestResult:
@@ -132,7 +135,10 @@ def test_create_house(access_token: str, resources: TestResources) -> TestResult
     try:
         response = requests.post(
             f"{BASE_URL}/houses/",
-            json={"name": TEST_HOUSE_NAME},
+            json={
+                "name": TEST_HOUSE_NAME,
+                "address": TEST_HOUSE_ADDRESS
+            },
             headers=get_headers(access_token)
         )
         
@@ -150,6 +156,7 @@ def test_create_node(access_token: str, resources: TestResources) -> TestResult:
         response = requests.post(
             f"{BASE_URL}/nodes/",
             json={
+                "name": TEST_NODE_NAME,
                 "house_id": resources.house_id,
                 "location": TEST_NODE_LOCATION,
                 "type": TEST_NODE_TYPE
@@ -202,7 +209,7 @@ def test_upload_legacy_document(access_token: str, resources: TestResources) -> 
         }
         
         response = requests.post(
-            f"{BASE_URL}/legacy-documents",
+            f"{BASE_URL}/legacy-documents/",
             files=files,
             data=data,
             headers={"Authorization": f"Bearer {access_token}"}

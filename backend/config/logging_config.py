@@ -12,7 +12,7 @@ def setup_logging():
     # Configura il logger root
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s\n%(pathname)s:%(lineno)d',
         handlers=[
             logging.StreamHandler(sys.stdout),
             logging.FileHandler(
@@ -23,13 +23,15 @@ def setup_logging():
     )
 
     # Configura il logger per SQLAlchemy
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
     
     # Configura il logger per FastAPI
-    logging.getLogger('fastapi').setLevel(logging.INFO)
+    logging.getLogger('fastapi').setLevel(logging.DEBUG)
     
     # Configura il logger per Uvicorn
-    logging.getLogger('uvicorn').setLevel(logging.INFO)
+    logging.getLogger('uvicorn').setLevel(logging.DEBUG)
+    logging.getLogger('uvicorn.access').setLevel(logging.DEBUG)
+    logging.getLogger('uvicorn.error').setLevel(logging.DEBUG)
     
     # Configura il logger per il nostro codice
     logger = logging.getLogger('main')
@@ -41,6 +43,16 @@ def setup_logging():
         encoding='utf-8'
     )
     file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n%(pathname)s:%(lineno)d\n%(message)s'
     ))
-    logger.addHandler(file_handler) 
+    logger.addHandler(file_handler)
+
+    # Configura il logger per MinIO
+    logging.getLogger('minio').setLevel(logging.DEBUG)
+    
+    # Configura il logger per il nostro codice
+    logging.getLogger('routers').setLevel(logging.DEBUG)
+    logging.getLogger('utils').setLevel(logging.DEBUG)
+    
+    # Configura il logger per il traceback
+    logging.getLogger('traceback').setLevel(logging.DEBUG) 
