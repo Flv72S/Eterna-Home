@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -85,4 +85,12 @@ def create_user(db: Session, email: str, hashed_password: str) -> User:
     except Exception as e:
         logger.error(f"Errore durante la creazione dell'utente nel database: {str(e)}", exc_info=True)
         db.rollback()
-        raise 
+        raise
+
+async def role_required(roles: List[str], current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    return current_user 
