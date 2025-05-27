@@ -278,3 +278,76 @@ backend/
 
 - I backup sono configurati per essere eseguiti giornalmente
 - La retention dei backup è impostata a 30 giorni 
+
+# Eterna Home Backend
+
+## Descrizione
+Backend per l'applicazione Eterna Home, sviluppato con FastAPI e PostgreSQL.
+
+## Funzionalità Implementate
+
+### 1. Autenticazione e Gestione Utenti
+- **JWT Authentication**: Implementata con `python-jose` e `passlib`.
+- **Gestione Ruoli (RBAC)**: Sistema di ruoli per utenti (user, admin, maintenance_manager).
+- **Rate Limiting**: Protezione degli endpoint con `fastapi-limiter` (es. 5 richieste al minuto).
+
+### 2. Gestione Documenti
+- **Upload e Download**: Supporto per file PDF, immagini e documenti BIM.
+- **Storage MinIO**: Integrazione con MinIO per lo storage dei file.
+- **Documenti Legacy**: Supporto per documenti legacy con OCR.
+
+### 3. Gestione Manutenzione
+- **Task di Manutenzione**: Creazione, assegnazione e monitoraggio dei task.
+- **AI Maintenance**: Integrazione con AI per la gestione predittiva della manutenzione.
+- **Voice Interfaces**: Endpoint per l'elaborazione dei comandi vocali.
+
+### 4. Logging e Monitoraggio
+- **Logging Centralizzato**: Configurazione robusta per log su console e file.
+- **Middleware per Logging**: Tracciamento delle richieste HTTP.
+
+## Requisiti
+- Python 3.8+
+- PostgreSQL
+- Redis (per rate limiting)
+- MinIO (per storage file)
+
+## Installazione
+1. Clona il repository:
+   ```bash
+   git clone https://github.com/yourusername/eterna-home.git
+   cd eterna-home
+   ```
+
+2. Installa le dipendenze:
+   ```bash
+   pip install -r backend/requirements.txt
+   ```
+
+3. Configura le variabili d'ambiente:
+   ```bash
+   cp .env.example .env
+   # Modifica .env con le tue configurazioni
+   ```
+
+4. Avvia il server:
+   ```bash
+   uvicorn backend.main:app --reload
+   ```
+
+## API Endpoints
+- **Autenticazione**: `POST /auth/login`, `POST /auth/register`
+- **Utenti**: `GET /users/me`, `GET /users/admin-only` (solo admin)
+- **Documenti**: `POST /documents/upload`, `GET /documents/{id}`
+- **Manutenzione**: `POST /maintenance/tasks`, `GET /maintenance/tasks`
+- **Voice Interfaces**: `POST /voice-interfaces/command`
+- **Rate Limiting**: `GET /rate-limited` (5 richieste al minuto)
+
+## Contribuire
+1. Fork il repository
+2. Crea un branch per la tua feature (`git checkout -b feature/nome-feature`)
+3. Commit le tue modifiche (`git commit -m 'feat: Aggiunta nuova feature'`)
+4. Push al branch (`git push origin feature/nome-feature`)
+5. Apri una Pull Request
+
+## Licenza
+MIT 
