@@ -32,9 +32,10 @@ def test_register_user():
     """Test registrazione utente"""
     global test_token
     response = requests.post(f"{BASE_URL}/auth/register", json=TEST_USER)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Registrazione fallita con status code {response.status_code}"
     data = response.json()
-    assert "access_token" in data
+    assert "access_token" in data, "Token di accesso non presente nella risposta"
+    assert len(data["access_token"]) > 0, "Token di accesso vuoto"
     test_token = data["access_token"]
     print(f"✅ Test registrazione utente completato. Token: {test_token[:10]}...")
 
@@ -42,9 +43,10 @@ def test_login():
     """Test login utente"""
     global test_token
     response = requests.post(f"{BASE_URL}/auth/login", json=TEST_USER)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Login fallito con status code {response.status_code}"
     data = response.json()
-    assert "access_token" in data
+    assert "access_token" in data, "Token di accesso non presente nella risposta"
+    assert len(data["access_token"]) > 0, "Token di accesso vuoto"
     test_token = data["access_token"]
     print(f"✅ Test login completato. Token: {test_token[:10]}...")
 
@@ -53,9 +55,13 @@ def test_create_house():
     global test_house_id
     headers = {"Authorization": f"Bearer {test_token}"}
     response = requests.post(f"{BASE_URL}/houses/", json=TEST_HOUSE, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Creazione casa fallita con status code {response.status_code}"
     data = response.json()
-    assert "id" in data
+    assert "id" in data, "ID casa non presente nella risposta"
+    assert len(data["id"]) > 0, "ID casa vuoto"
+    assert data["name"] == TEST_HOUSE["name"], "Nome casa non corrisponde"
+    assert data["address"] == TEST_HOUSE["address"], "Indirizzo casa non corrisponde"
+    assert data["city"] == TEST_HOUSE["city"], "Città casa non corrisponde"
     test_house_id = data["id"]
     print(f"✅ Test creazione casa completato. ID: {test_house_id}")
 
@@ -65,9 +71,14 @@ def test_create_node():
     headers = {"Authorization": f"Bearer {test_token}"}
     node_data = {**TEST_NODE, "house_id": test_house_id}
     response = requests.post(f"{BASE_URL}/nodes/", json=node_data, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Creazione nodo fallita con status code {response.status_code}"
     data = response.json()
-    assert "id" in data
+    assert "id" in data, "ID nodo non presente nella risposta"
+    assert len(data["id"]) > 0, "ID nodo vuoto"
+    assert data["name"] == TEST_NODE["name"], "Nome nodo non corrisponde"
+    assert data["type"] == TEST_NODE["type"], "Tipo nodo non corrisponde"
+    assert data["location"] == TEST_NODE["location"], "Posizione nodo non corrisponde"
+    assert data["house_id"] == test_house_id, "ID casa non corrisponde"
     test_node_id = data["id"]
     print(f"✅ Test creazione nodo completato. ID: {test_node_id}")
 
@@ -78,8 +89,9 @@ def test_upload_legacy_document():
     
     # Crea un file di test
     test_file_path = "test_document.txt"
+    test_content = "Test document content"
     with open(test_file_path, "w") as f:
-        f.write("Test document content")
+        f.write(test_content)
     
     # Prepara i dati per l'upload
     files = {
@@ -103,10 +115,15 @@ def test_upload_legacy_document():
     os.remove(test_file_path)
     
     # Verifica la risposta
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Upload documento fallito con status code {response.status_code}"
     data = response.json()
-    assert "id" in data
-    assert "file_url" in data
+    assert "id" in data, "ID documento non presente nella risposta"
+    assert len(data["id"]) > 0, "ID documento vuoto"
+    assert "file_url" in data, "URL file non presente nella risposta"
+    assert len(data["file_url"]) > 0, "URL file vuoto"
+    assert data["node_id"] == test_node_id, "ID nodo non corrisponde"
+    assert data["document_type"] == "manual", "Tipo documento non corrisponde"
+    assert data["description"] == "Test document", "Descrizione non corrisponde"
     test_legacy_document_id = data["id"]
     print(f"✅ Test upload documento legacy completato. ID: {test_legacy_document_id}")
     print(f"   File URL: {data['file_url']}")
@@ -118,11 +135,24 @@ def test_get_legacy_documents():
         f"{BASE_URL}/legacy-documents/{test_node_id}",
         headers=headers
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Recupero documenti fallito con status code {response.status_code}"
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
-    assert any(doc["id"] == test_legacy_document_id for doc in data)
+    assert isinstance(data, list), "La risposta non è una lista"
+    assert len(data) > 0, "Nessun documento trovato"
+    
+    # Verifica che il documento caricato sia presente
+    found_document = False
+    for doc in data:
+        if doc["id"] == test_legacy_document_id:
+            found_document = True
+            assert doc["node_id"] == test_node_id, "ID nodo non corrisponde"
+            assert doc["document_type"] == "manual", "Tipo documento non corrisponde"
+            assert doc["description"] == "Test document", "Descrizione non corrisponde"
+            assert "file_url" in doc, "URL file non presente"
+            assert len(doc["file_url"]) > 0, "URL file vuoto"
+            break
+    
+    assert found_document, f"Documento con ID {test_legacy_document_id} non trovato nella lista"
     print(f"✅ Test recupero documenti legacy completato. Trovati {len(data)} documenti")
 
 def run_all_tests():
