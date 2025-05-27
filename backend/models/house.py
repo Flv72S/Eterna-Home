@@ -12,4 +12,5 @@ class House(Base):
 
     owner = relationship("User", back_populates="houses")
     nodes = relationship("Node", back_populates="house", cascade="all, delete-orphan")
-    legacy_documents = relationship("LegacyDocument", back_populates="house", cascade="all, delete-orphan") 
+    legacy_documents = relationship("LegacyDocument", back_populates="house", cascade="all, delete-orphan")
+    bim_files = relationship("BIM", back_populates="house", cascade="all, delete-orphan") 
