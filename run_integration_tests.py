@@ -143,7 +143,18 @@ def test_create_house(access_token: str, resources: TestResources) -> TestResult
         )
         
         if response.status_code == 200:
-            resources.house_id = response.json()["id"]
+            response_data = response.json()
+            house_id = response_data.get("id")
+            
+            # Verifica che l'ID non sia vuoto
+            if not house_id:
+                return TestResult("Creazione Casa", False, "ID casa non presente nella risposta")
+            
+            # Verifica che i dati restituiti corrispondano a quelli inviati
+            if response_data.get("name") != TEST_HOUSE_NAME or response_data.get("address") != TEST_HOUSE_ADDRESS:
+                return TestResult("Creazione Casa", False, "Dati casa non corrispondenti")
+            
+            resources.house_id = house_id
             return TestResult("Creazione Casa", True, f"Casa creata con ID: {resources.house_id}")
         else:
             return TestResult("Creazione Casa", False, f"Codice di stato inatteso: {response.status_code}")
@@ -165,7 +176,21 @@ def test_create_node(access_token: str, resources: TestResources) -> TestResult:
         )
         
         if response.status_code == 200:
-            resources.node_id = response.json()["id"]
+            response_data = response.json()
+            node_id = response_data.get("id")
+            
+            # Verifica che l'ID non sia vuoto
+            if not node_id:
+                return TestResult("Creazione Nodo", False, "ID nodo non presente nella risposta")
+            
+            # Verifica che i dati restituiti corrispondano a quelli inviati
+            if (response_data.get("name") != TEST_NODE_NAME or 
+                response_data.get("house_id") != resources.house_id or
+                response_data.get("location") != TEST_NODE_LOCATION or
+                response_data.get("type") != TEST_NODE_TYPE):
+                return TestResult("Creazione Nodo", False, "Dati nodo non corrispondenti")
+            
+            resources.node_id = node_id
             return TestResult("Creazione Nodo", True, f"Nodo creato con ID: {resources.node_id}")
         else:
             return TestResult("Creazione Nodo", False, f"Codice di stato inatteso: {response.status_code}")
@@ -205,7 +230,8 @@ def test_upload_legacy_document(access_token: str, resources: TestResources) -> 
             'house_id': str(resources.house_id),
             'node_id': str(resources.node_id),
             'type': 'TXT',
-            'version': '1.0'
+            'version': '1.0',
+            'description': 'Documento di test'
         }
         
         response = requests.post(
@@ -216,7 +242,25 @@ def test_upload_legacy_document(access_token: str, resources: TestResources) -> 
         )
         
         if response.status_code == 200:
-            resources.document_id = response.json()["id"]
+            response_data = response.json()
+            document_id = response_data.get("id")
+            file_url = response_data.get("file_url")
+            
+            # Verifica che l'ID e l'URL del file non siano vuoti
+            if not document_id:
+                return TestResult("Caricamento Documento Legacy", False, "ID documento non presente nella risposta")
+            if not file_url:
+                return TestResult("Caricamento Documento Legacy", False, "URL file non presente nella risposta")
+            
+            # Verifica che i dati restituiti corrispondano a quelli inviati
+            if (response_data.get("house_id") != resources.house_id or
+                response_data.get("node_id") != resources.node_id or
+                response_data.get("type") != 'TXT' or
+                response_data.get("version") != '1.0' or
+                response_data.get("description") != 'Documento di test'):
+                return TestResult("Caricamento Documento Legacy", False, "Dati documento non corrispondenti")
+            
+            resources.document_id = document_id
             return TestResult(
                 "Caricamento Documento Legacy",
                 True,
@@ -241,11 +285,39 @@ def test_get_legacy_documents(access_token: str, resources: TestResources) -> Te
         
         if response.status_code == 200:
             documents = response.json()
-            success = len(documents) > 0
+            
+            # Verifica che la risposta sia una lista
+            if not isinstance(documents, list):
+                return TestResult("Recupero Documenti Legacy", False, "La risposta non è una lista")
+            
+            # Verifica che ci sia almeno un documento
+            if len(documents) == 0:
+                return TestResult("Recupero Documenti Legacy", False, "Nessun documento trovato")
+            
+            # Cerca il documento appena caricato
+            found_document = None
+            for doc in documents:
+                if doc.get("id") == resources.document_id:
+                    found_document = doc
+                    break
+            
+            if not found_document:
+                return TestResult("Recupero Documenti Legacy", False, "Documento caricato non trovato nella lista")
+            
+            # Verifica che il documento trovato abbia tutti i campi necessari
+            required_fields = ["id", "file_url", "type", "version", "description"]
+            missing_fields = [field for field in required_fields if field not in found_document]
+            if missing_fields:
+                return TestResult(
+                    "Recupero Documenti Legacy",
+                    False,
+                    f"Campi mancanti nel documento: {', '.join(missing_fields)}"
+                )
+            
             return TestResult(
                 "Recupero Documenti Legacy",
-                success,
-                f"Trovati {len(documents)} documenti" if success else "Nessun documento trovato"
+                True,
+                f"Trovati {len(documents)} documenti, incluso il documento caricato"
             )
         else:
             return TestResult(
