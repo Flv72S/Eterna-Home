@@ -73,10 +73,14 @@ async def get_current_user(
         raise credentials_exception
     return user
 
-def create_user(db: Session, email: str, hashed_password: str) -> User:
+def create_user(db: Session, email: str, hashed_password: str, full_name: str) -> User:
     logger.debug(f"Creo l'utente nel database: {email}")
     try:
-        db_user = User(email=email, hashed_password=hashed_password)
+        db_user = User(
+            email=email,
+            hashed_password=hashed_password,
+            full_name=full_name
+        )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)

@@ -133,6 +133,32 @@ backend/
 └── requirements.txt   # Dipendenze Python
 ```
 
+## Modelli e Relazioni
+
+### User
+- Relazioni:
+  - `houses`: One-to-Many con House
+  - `maintenance_tasks`: One-to-Many con Maintenance
+  - `annotations`: One-to-Many con Annotation
+  - `bim_files`: One-to-Many con BIM
+
+### House
+- Relazioni:
+  - `owner`: Many-to-One con User
+  - `nodes`: One-to-Many con Node
+  - `legacy_documents`: One-to-Many con LegacyDocument
+  - `bim_files`: One-to-Many con BIM
+
+### Node
+- Relazioni:
+  - `house`: Many-to-One con House
+  - `documents`: One-to-Many con Document
+  - `audio_logs`: One-to-Many con AudioLog
+  - `legacy_documents`: One-to-Many con LegacyDocument
+  - `bim_files`: One-to-Many con BIM
+  - `annotations`: One-to-Many con Annotation
+  - `maintenance_tasks`: One-to-Many con MaintenanceTask
+
 ## Endpoint Principali
 
 * **Autenticazione**:
@@ -173,6 +199,11 @@ backend/
 4. **Rate Limiting non funziona**
    * Verifica che Redis sia in esecuzione
    * Controlla la connessione Redis nel file `main.py`
+
+5. **Errori di relazione tra modelli**
+   * Verifica che i nomi delle classi nelle relazioni corrispondano ai nomi effettivi dei modelli
+   * Controlla che tutte le relazioni siano definite correttamente in entrambi i modelli
+   * Assicurati che i modelli siano importati correttamente
 
 ## Manutenzione
 

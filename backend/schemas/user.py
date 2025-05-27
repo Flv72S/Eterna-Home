@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field
 class UserBase(BaseModel):
     email: EmailStr
     role: str = Field(default="user")
+    full_name: str
 
 class UserCreate(UserBase):
     password: str

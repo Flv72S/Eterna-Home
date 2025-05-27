@@ -12,7 +12,8 @@ from ..utils.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_user
 )
 
 logger = logging.getLogger(__name__)
@@ -37,29 +38,21 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         hashed_password = get_password_hash(user_data.password)
         logger.debug("Password hashata con successo")
         
-        db_user = User(
-            email=user_data.email,
-            hashed_password=hashed_password,
-            is_active=1
-        )
-        logger.debug(f"User object created: {db_user.__dict__}")
-        
         try:
-            db.add(db_user)
-            logger.debug("User added to session")
-            db.commit()
-            logger.debug("Changes committed to database")
-            db.refresh(db_user)
-            logger.debug(f"User refreshed from database: {db_user.__dict__}")
+            db_user = create_user(
+                db=db,
+                email=user_data.email,
+                hashed_password=hashed_password,
+                full_name=user_data.full_name
+            )
             logger.info(f"Successfully created user with email: {user_data.email}")
             return db_user
         except Exception as db_error:
-            db.rollback()
             logger.error(f"Database error during user creation: {str(db_error)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error creating user in database"
+                detail=f"Error creating user in database: {str(db_error)}\n{traceback.format_exc()}"
             )
             
     except HTTPException:
@@ -68,7 +61,7 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         logger.error(f"Errore inaspettato durante la registrazione: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during signup"
+            detail=f"An unexpected error occurred during signup: {str(e)}\n{traceback.format_exc()}"
         )
 
 @router.post("/login", response_model=Token)

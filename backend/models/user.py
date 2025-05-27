@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 from backend.db.session import Base
+from backend.models.annotation import Annotation  # Importo il modello Annotation
 
 class User(Base):
     __tablename__ = "users"
@@ -15,4 +16,5 @@ class User(Base):
 
     houses = relationship("House", back_populates="owner", cascade="all, delete-orphan")
     maintenance_tasks = relationship("Maintenance", back_populates="assigned_to")
-    annotations = relationship("Annotation", back_populates="user", cascade="all, delete-orphan") 
+    annotations = relationship(Annotation, back_populates="user", cascade="all, delete-orphan")
+    bim_files = relationship("BIM", back_populates="user", cascade="all, delete-orphan") 
