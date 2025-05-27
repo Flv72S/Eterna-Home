@@ -11,6 +11,11 @@ TEST_USER = {
     "email": f"test_{datetime.now().strftime('%Y%m%d%H%M%S')}@example.com",
     "password": "testpassword123"
 }
+TEST_ADMIN = {
+    "email": f"admin_{datetime.now().strftime('%Y%m%d%H%M%S')}@example.com",
+    "password": "adminpassword123",
+    "role": "admin"
+}
 TEST_HOUSE = {
     "name": "Test House",
     "address": "123 Test Street",
@@ -24,6 +29,7 @@ TEST_NODE = {
 
 # Variabili globali per i test
 test_token = None
+test_admin_token = None
 test_house_id = None
 test_node_id = None
 test_legacy_document_id = None
@@ -39,6 +45,17 @@ def test_register_user():
     test_token = data["access_token"]
     print(f"✅ Test registrazione utente completato. Token: {test_token[:10]}...")
 
+def test_register_admin():
+    """Test registrazione utente admin"""
+    global test_admin_token
+    response = requests.post(f"{BASE_URL}/auth/register", json=TEST_ADMIN)
+    assert response.status_code == 200, f"Registrazione admin fallita con status code {response.status_code}"
+    data = response.json()
+    assert "access_token" in data, "Token di accesso non presente nella risposta"
+    assert len(data["access_token"]) > 0, "Token di accesso vuoto"
+    test_admin_token = data["access_token"]
+    print(f"✅ Test registrazione admin completato. Token: {test_admin_token[:10]}...")
+
 def test_login():
     """Test login utente"""
     global test_token
@@ -49,6 +66,17 @@ def test_login():
     assert len(data["access_token"]) > 0, "Token di accesso vuoto"
     test_token = data["access_token"]
     print(f"✅ Test login completato. Token: {test_token[:10]}...")
+
+def test_admin_login():
+    """Test login admin"""
+    global test_admin_token
+    response = requests.post(f"{BASE_URL}/auth/login", json=TEST_ADMIN)
+    assert response.status_code == 200, f"Login admin fallito con status code {response.status_code}"
+    data = response.json()
+    assert "access_token" in data, "Token di accesso non presente nella risposta"
+    assert len(data["access_token"]) > 0, "Token di accesso vuoto"
+    test_admin_token = data["access_token"]
+    print(f"✅ Test login admin completato. Token: {test_admin_token[:10]}...")
 
 def test_create_house():
     """Test creazione casa"""
@@ -155,17 +183,41 @@ def test_get_legacy_documents():
     assert found_document, f"Documento con ID {test_legacy_document_id} non trovato nella lista"
     print(f"✅ Test recupero documenti legacy completato. Trovati {len(data)} documenti")
 
+def test_admin_access_allowed():
+    """Test accesso consentito per admin"""
+    headers = {"Authorization": f"Bearer {test_admin_token}"}
+    response = requests.get(f"{BASE_URL}/admin-only", headers=headers)
+    assert response.status_code == 200, f"Accesso admin fallito con status code {response.status_code}"
+    data = response.json()
+    assert "message" in data, "Messaggio non presente nella risposta"
+    assert data["message"] == "Hello admin", "Messaggio non corrisponde"
+    print("✅ Test accesso admin completato con successo")
+
+def test_admin_access_denied():
+    """Test accesso negato per utente non admin"""
+    headers = {"Authorization": f"Bearer {test_token}"}
+    response = requests.get(f"{BASE_URL}/admin-only", headers=headers)
+    assert response.status_code == 403, f"Accesso non admin non bloccato con status code {response.status_code}"
+    data = response.json()
+    assert "detail" in data, "Dettaglio errore non presente nella risposta"
+    assert data["detail"] == "Not enough permissions", "Messaggio di errore non corrisponde"
+    print("✅ Test accesso negato completato con successo")
+
 def run_all_tests():
     """Esegue tutti i test in sequenza"""
     print("🚀 Inizio test di integrazione...")
     
     try:
         test_register_user()
+        test_register_admin()
         test_login()
+        test_admin_login()
         test_create_house()
         test_create_node()
         test_upload_legacy_document()
         test_get_legacy_documents()
+        test_admin_access_allowed()
+        test_admin_access_denied()
         print("✨ Tutti i test completati con successo!")
     except AssertionError as e:
         print(f"❌ Test fallito: {str(e)}")
