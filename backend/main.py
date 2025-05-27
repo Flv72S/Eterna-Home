@@ -9,6 +9,7 @@ from routers import maintenance as maintenance_router
 from routers import legacy_documents as legacy_documents_router
 from routers import ai_maintenance as ai_maintenance_router
 from routers import bim_files as bim_files_router
+from routers import voice_interfaces as voice_interfaces_router
 from config.logging_config import setup_logging
 import logging
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +49,7 @@ app.include_router(maintenance_router.router)
 app.include_router(legacy_documents_router.router)
 app.include_router(ai_maintenance_router.router)
 app.include_router(bim_files_router.router)
+app.include_router(voice_interfaces_router.router)
 
 @app.get("/")
 async def root():
