@@ -1,19 +1,24 @@
 from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
+
+from ..models.node import NodeType, NodeStatus
 
 class NodeBase(BaseModel):
     name: str
-    type: str
-    status: str = "active"
+    type: NodeType
+    status: NodeStatus
+    house_id: int
+    location_x: Optional[float] = None
+    location_y: Optional[float] = None
+    location_z: Optional[float] = None
 
 class NodeCreate(NodeBase):
-    house_id: int
+    pass
 
 class Node(NodeBase):
     id: int
-    house_id: int
-    created_at: datetime
-    updated_at: datetime
+    last_seen: Optional[datetime] = None
 
     class Config:
         from_attributes = True 

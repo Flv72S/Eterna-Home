@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
+import datetime
 from backend.db.session import Base
 
 class House(Base):
@@ -10,6 +11,8 @@ class House(Base):
     name = Column(String(255), nullable=False)
     address = Column(String(255), nullable=False)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     owner = relationship("User", back_populates="houses")
     nodes = relationship("Node", back_populates="house", cascade="all, delete-orphan")

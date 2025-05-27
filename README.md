@@ -205,6 +205,50 @@ backend/
    * Controlla che tutte le relazioni siano definite correttamente in entrambi i modelli
    * Assicurati che i modelli siano importati correttamente
 
+## Test Eseguiti
+
+### Test di Integrazione
+
+1. **Test Registrazione Utente**
+   - Endpoint: `POST /auth/signup`
+   - Dati di test: `email=integration_test_user@example.com, full_name=Test User`
+   - Risultato: SUCCESSO
+   - Verifica: Utente creato correttamente con ID assegnato
+
+2. **Test Login Utente**
+   - Endpoint: `POST /auth/login`
+   - Dati di test: `username=integration_test_user@example.com`
+   - Risultato: SUCCESSO
+   - Verifica: Token JWT generato correttamente
+
+3. **Test Creazione Casa**
+   - Endpoint: `POST /houses/`
+   - Dati di test: `name=Casa di Test, address=Via Roma 123, Milano`
+   - Risultato: SUCCESSO
+   - Verifica: Casa creata con ID assegnato e timestamp corretti
+
+4. **Test Creazione Nodo**
+   - Endpoint: `POST /nodes/`
+   - Dati di test: `name=Nodo Test, type=sensor, status=active`
+   - Risultato: SUCCESSO
+   - Verifica: Nodo creato con ID assegnato e associato alla casa
+
+### Schema Database
+- Verificata la corretta creazione delle tabelle:
+  - `users`
+  - `houses`
+  - `nodes`
+  - `maintenance`
+  - `maintenance_tasks`
+  - `bim_files`
+  - `legacy_documents`
+
+### Miglioramenti Implementati
+1. Aggiunta gestione timestamp (`created_at`, `updated_at`) per le tabelle
+2. Implementato sistema di logging dettagliato per i test
+3. Aggiunta gestione errori e rollback automatico in caso di fallimento
+4. Ottimizzata la gestione delle relazioni tra tabelle
+
 ## Manutenzione
 
 * I file vengono salvati in MinIO nei bucket:  

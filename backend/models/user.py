@@ -10,8 +10,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Integer, default=1)
-    role = Column(String(50), default="user")  # user, admin, maintenance_manager
+    is_active = Column(Integer, nullable=False, default=1)
+    role = Column(String(50), nullable=False, default="user")  # user, admin, maintenance_manager
     full_name = Column(String(255), nullable=False)
 
     houses = relationship("House", back_populates="owner", cascade="all, delete-orphan")

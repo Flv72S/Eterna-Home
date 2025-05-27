@@ -1,7 +1,19 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Enum
 from sqlalchemy.orm import relationship
 from backend.db.session import Base
 import datetime
+import enum
+
+class NodeType(str, enum.Enum):
+    SENSOR = "sensor"
+    ACTUATOR = "actuator"
+    CONTROLLER = "controller"
+
+class NodeStatus(str, enum.Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    MAINTENANCE = "maintenance"
+    ERROR = "error"
 
 class Node(Base):
     __tablename__ = "nodes"
@@ -9,8 +21,8 @@ class Node(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    type = Column(String(50), nullable=False)  # sensor, actuator, controller
-    status = Column(String(50), default="active")  # active, inactive, maintenance
+    type = Column(Enum(NodeType), nullable=False)
+    status = Column(Enum(NodeStatus), nullable=False, default=NodeStatus.INACTIVE)
     last_seen = Column(DateTime, nullable=True)
     house_id = Column(Integer, ForeignKey("houses.id"), nullable=False)
     location_x = Column(Float, nullable=True)
