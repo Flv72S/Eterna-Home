@@ -11,4 +11,5 @@ class User(Base):
     is_active = Column(Integer, default=1)
 
     houses = relationship("House", back_populates="owner")
-    maintenance_tasks = relationship("Maintenance", back_populates="assigned_to") 
+    maintenance_tasks = relationship("Maintenance", back_populates="assigned_to")
+    annotations = relationship("Annotation", back_populates="user", cascade="all, delete-orphan") 
