@@ -20,6 +20,7 @@ class CloudSettings(BaseSettings):
     MINIO_BUCKET_MANUALS: str = "eterna-manuals"
     MINIO_BUCKET_AUDIO: str = "eterna-audio"
     MINIO_BUCKET_LEGACY: str = "eterna-legacy"
+    MINIO_BUCKET_BIM: str = "eterna-bim"
     
     # Configurazioni Scalabilità
     MINIO_POOL_SIZE: int = 10  # Dimensione del pool di connessioni
