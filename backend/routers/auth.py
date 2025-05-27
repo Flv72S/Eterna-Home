@@ -5,10 +5,10 @@ from datetime import timedelta
 import logging
 import traceback
 
-from db.session import get_db
-from models.user import User
-from schemas.user import UserCreate, User as UserSchema, Token
-from utils.auth import (
+from ..db.session import get_db
+from ..models.user import User
+from ..schemas.user import UserCreate, User as UserSchema, Token
+from ..utils.auth import (
     verify_password,
     get_password_hash,
     create_access_token,

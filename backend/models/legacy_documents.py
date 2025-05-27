@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
-from db.session import Base
+from backend.db.session import Base
 
 class LegacyDocument(Base):
     __tablename__ = "legacy_documents"

@@ -1,16 +1,16 @@
-from fastapi import FastAPI, Request
-from db.session import engine, Base
-from models import user, house, node, document, audio_log
-from routers import house as house_router
-from routers import node as node_router
-from routers import document as document_router
-from routers import auth as auth_router
-from routers import maintenance as maintenance_router
-from routers import legacy_documents as legacy_documents_router
-from routers import ai_maintenance as ai_maintenance_router
-from routers import bim_files as bim_files_router
-from routers import voice_interfaces as voice_interfaces_router
-from config.logging_config import setup_logging
+from fastapi import FastAPI, Request, Depends
+from .db.session import engine, Base
+from .models import user, house, node, document, audio_log, maintenance
+from .routers import house as house_router
+from .routers import node as node_router
+from .routers import document as document_router
+from .routers import auth as auth_router
+from .routers import maintenance as maintenance_router
+from .routers import legacy_documents as legacy_documents_router
+from .routers import ai_maintenance as ai_maintenance_router
+from .routers import bim_files as bim_files_router
+from .routers import voice_interfaces as voice_interfaces_router
+from .config.logging_config import setup_logging
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
@@ -74,6 +74,6 @@ async def shutdown_event():
     logger.info("Applicazione terminata")
 
 # Esempio di rate limiting su un endpoint
-@app.get("/rate-limited", dependencies=[RateLimiter(times=5, seconds=60)])
+@app.get("/rate-limited", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def rate_limited():
     return {"message": "This endpoint is rate limited to 5 requests per minute."} 

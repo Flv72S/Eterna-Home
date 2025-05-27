@@ -9,9 +9,9 @@ import os
 from dotenv import load_dotenv
 import logging
 
-from db.session import get_db
-from models.user import User
-from config.settings import settings
+from backend.db.session import get_db
+from backend.models.user import User
+from backend.config.settings import settings
 
 # Carica le variabili d'ambiente
 load_dotenv()

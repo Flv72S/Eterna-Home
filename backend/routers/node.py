@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-
-from db.session import get_db
-from models.node import Node
-from models.house import House
-from models.user import User
-from schemas.node import Node as NodeSchema, NodeCreate
-from utils.auth import get_current_user
+from backend.models.node import Node
+from backend.models.house import House
+from backend.models.user import User
+from backend.schemas.node import NodeCreate, Node as NodeSchema
+from backend.db.session import get_db
+from backend.utils.auth import get_current_user, role_required
 
 router = APIRouter(prefix="/nodes", tags=["nodes"])
 

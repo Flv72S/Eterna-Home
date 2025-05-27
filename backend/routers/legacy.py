@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 
-from ..database import get_db
-from ..models.user import User
-from ..schemas.legacy import LegacyDocumentResponse
-from ..utils.minio import upload_file_to_minio
-from ..utils.auth import get_current_user
-from ..config import settings
-from ..utils.logger import logger
+from backend.database import get_db
+from backend.models.user import User
+from backend.schemas.legacy import LegacyDocumentResponse
+from backend.utils.minio import upload_file_to_minio
+from backend.utils.auth import get_current_user
+from backend.config import settings
+from backend.utils.logger import logger
 
 router = APIRouter()
 

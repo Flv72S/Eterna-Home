@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from backend.db.session import get_db
 from backend.models.user import User
-from backend.routers.auth import get_current_user
+from backend.utils.auth import get_current_user
 from backend.config.cloud_config import settings
 from backend.utils.minio import get_minio_client, upload_file_to_minio
 from datetime import datetime

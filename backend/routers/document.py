@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 import os
 
-from db.session import get_db
-from models.document import Document
-from models.node import Node
-from models.house import House
-from models.user import User
-from schemas.document import Document as DocumentSchema, DocumentCreate
-from utils.auth import get_current_user
-from utils.minio import upload_file, get_file_url
+from backend.db.session import get_db
+from backend.models.document import Document
+from backend.models.node import Node
+from backend.models.house import House
+from backend.models.user import User
+from backend.schemas.document import DocumentCreate, Document as DocumentSchema
+from backend.utils.auth import get_current_user
+from backend.utils.minio import upload_file, get_file_url
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 

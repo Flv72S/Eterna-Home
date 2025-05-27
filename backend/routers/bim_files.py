@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from backend.db.session import get_db
-from backend.schemas.bim import BIM
+from backend.schemas.bim import BIMCreate, BIM as BIMSchema
 from backend.models.bim import BIM as BIMModel
 from backend.models.user import User
-from backend.routers.auth import get_current_user
+from backend.utils.auth import get_current_user
 from backend.config.cloud_config import settings
 from backend.utils.minio import get_minio_client, upload_file_to_minio
 from datetime import datetime
@@ -16,7 +16,7 @@ router = APIRouter(
     tags=["BIM Files"]
 )
 
-@router.post("/upload", response_model=BIM)
+@router.post("/upload", response_model=BIMSchema)
 async def upload_bim_file(
     house_id: int = Form(...),
     node_id: Optional[int] = Form(None),
@@ -55,7 +55,7 @@ async def upload_bim_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{house_id}", response_model=List[BIM])
+@router.get("/{house_id}", response_model=List[BIMSchema])
 async def list_bim_files(
     house_id: int,
     db: Session = Depends(get_db),

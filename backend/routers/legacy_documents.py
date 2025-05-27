@@ -7,16 +7,20 @@ from sqlalchemy.orm import Session
 from typing import List
 from minio.error import S3Error
 import io
+import os
+from datetime import datetime
+import shutil
+from pathlib import Path
 
-from db.session import get_db
-from utils.auth import get_current_user
-from config.cloud_config import settings
-from utils.minio import get_minio_client, upload_file_to_minio
-from models.legacy_documents import LegacyDocument
-from models.user import User
-from models.node import Node
-from models.house import House
-from schemas.legacy_documents import LegacyDocument as LegacyDocumentSchema
+from backend.db.session import get_db
+from backend.utils.auth import get_current_user
+from backend.config.settings import settings
+from backend.utils.minio import get_minio_client, upload_file_to_minio
+from backend.models.legacy_documents import LegacyDocument
+from backend.models.user import User
+from backend.models.node import Node
+from backend.models.house import House
+from backend.schemas.legacy_documents import LegacyDocumentCreate, LegacyDocument as LegacyDocumentSchema
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/legacy-documents", tags=["Legacy Documents"])

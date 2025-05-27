@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime
 from minio import Minio
 from minio.error import S3Error
-from config.cloud_config import settings
+from backend.config.cloud_config import settings
 import io
 
 logger = logging.getLogger(__name__)

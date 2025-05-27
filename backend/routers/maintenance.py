@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends
-from utils.auth import get_current_user
-from models.user import User
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from backend.models.user import User
+from backend.schemas.maintenance import MaintenanceTaskCreate, MaintenanceTask
+from backend.db.session import get_db
+from backend.utils.auth import get_current_user
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
  

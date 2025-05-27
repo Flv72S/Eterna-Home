@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from db.session import get_db
-from models.house import House
-from models.user import User
-from schemas.house import House as HouseSchema, HouseCreate
-from utils.auth import get_current_user
+from backend.db.session import get_db
+from backend.models.house import House
+from backend.models.user import User
+from backend.schemas.house import HouseCreate, House as HouseSchema
+from backend.utils.auth import get_current_user
 
 router = APIRouter(prefix="/houses", tags=["houses"])
 

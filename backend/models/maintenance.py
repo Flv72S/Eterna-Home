@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from backend.db.session import Base
@@ -19,3 +19,18 @@ class Maintenance(Base):
     
     # Relazioni
     assigned_to = relationship("User", back_populates="maintenance_tasks") 
+
+class MaintenanceTask(Base):
+    __tablename__ = "maintenance_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(100), nullable=False)
+    description = Column(Text)
+    status = Column(String(20), default="pending")
+    priority = Column(String(20), default="medium")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    node_id = Column(Integer, ForeignKey("nodes.id"))
+    
+    # Relazioni
+    node = relationship("Node", back_populates="maintenance_tasks") 

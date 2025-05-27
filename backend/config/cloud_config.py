@@ -1,5 +1,6 @@
 import os
 from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 class CloudSettings(BaseSettings):
     # Configurazioni Database
@@ -40,8 +41,13 @@ class CloudSettings(BaseSettings):
     MINIO_CACHE_TTL: int = 3600  # Durata della cache in secondi
     
     class Config:
-        env_file = ".env"  # File per il caricamento delle variabili d'ambiente
+        env_file = ".env"
         env_file_encoding = "utf-8"
+        case_sensitive = True
+
+@lru_cache()
+def get_settings():
+    return CloudSettings()
 
 # Crea un'istanza singleton
-settings = CloudSettings() 
+settings = get_settings() 

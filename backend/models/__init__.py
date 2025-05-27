@@ -1,7 +1,7 @@
 # Questo file è intenzionalmente vuoto per rendere la directory un pacchetto Python
-from .user import User
-from .house import House
-from .node import Node
-from .document import Document
-from .audio_log import AudioLog
-from .legacy_documents import LegacyDocument 
+from backend.models.user import User
+from backend.models.house import House
+from backend.models.node import Node
+from backend.models.document import Document
+from backend.models.audio_log import AudioLog
+from backend.models.legacy_documents import LegacyDocument 

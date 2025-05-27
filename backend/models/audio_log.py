@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from db.session import Base
+from backend.db.session import Base
 import datetime
 
 class AudioLog(Base):
