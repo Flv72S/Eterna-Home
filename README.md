@@ -1,6 +1,141 @@
-# Eterna-Home
+# Eterna Home
 
-Sistema di gestione documenti legacy per Eterna-Home.
+Sistema di gestione per case intelligenti che permette di monitorare e controllare vari aspetti della casa attraverso nodi IoT.
+
+## Componenti Principali
+
+### Backend (FastAPI)
+- **Autenticazione**: Sistema di login con JWT
+- **Gestione Case**: CRUD per le case degli utenti
+- **Gestione Nodi**: CRUD per i nodi IoT associati alle case
+- **Documenti Legacy**: Sistema di upload e gestione documenti con MinIO
+- **Log Audio**: Sistema di registrazione e gestione log audio
+- **Manutenzione**: Sistema di gestione manutenzioni
+
+### Frontend (React)
+- **Dashboard**: Visualizzazione stato generale della casa
+- **Gestione Nodi**: Configurazione e monitoraggio nodi
+- **Documenti**: Visualizzazione e gestione documenti
+- **Log Audio**: Ascolto e gestione log audio
+- **Manutenzioni**: Pianificazione e monitoraggio manutenzioni
+
+## Funzionalità Implementate
+
+### 1. Sistema di Autenticazione
+- Login/Logout con JWT
+- Protezione delle rotte
+- Gestione utenti
+
+### 2. Gestione Case
+- Creazione case
+- Assegnazione proprietari
+- Visualizzazione dettagli
+
+### 3. Gestione Nodi
+- Creazione nodi
+- Assegnazione a case
+- Monitoraggio stato
+- Configurazione parametri
+
+### 4. Documenti Legacy
+- Upload file su MinIO
+- Gestione metadati
+- Visualizzazione documenti
+- Download file
+
+### 5. Log Audio
+- Registrazione audio
+- Storage su MinIO
+- Visualizzazione e ascolto
+- Gestione metadati
+
+### 6. Manutenzioni
+- Pianificazione interventi
+- Assegnazione tecnici
+- Monitoraggio stato
+- Storico interventi
+
+## Tecnologie Utilizzate
+
+### Backend
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- MinIO
+- JWT
+- Python-Multipart
+
+### Frontend
+- React
+- Material-UI
+- Axios
+- React Router
+
+### Testing
+- Pytest
+- Integration Tests
+- Manual Tests
+
+## Setup e Installazione
+
+### Prerequisiti
+- Python 3.8+
+- Node.js 14+
+- PostgreSQL
+- MinIO Server
+
+### Backend
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn main:app --reload
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### MinIO
+```bash
+# Avvia MinIO server
+minio server /data
+```
+
+## Testing
+
+### Test di Integrazione
+```bash
+python run_integration_tests.py
+```
+
+### Test Manuali
+```bash
+python test_manual_upload.py
+```
+
+## Note di Sviluppo
+
+### Gestione File
+Il sistema gestisce correttamente sia file binari che file di testo, con supporto per:
+- Upload multipart
+- Conversione automatica tra bytes e file-like objects
+- Storage su MinIO
+- Gestione metadati
+
+### Sicurezza
+- Autenticazione JWT
+- Validazione input
+- Protezione rotte
+- Gestione sicura file
+
+### Performance
+- Upload asincrono
+- Gestione efficiente file
+- Caching quando appropriato
+- Query ottimizzate
 
 ## Infrastruttura
 
