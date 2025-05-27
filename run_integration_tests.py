@@ -3,20 +3,30 @@ import json
 import os
 import uuid
 import io
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from dataclasses import dataclass
 from datetime import datetime
+import logging
+from fastapi import status
+
+# Configurazione logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configurazione
 BASE_URL = "http://localhost:8000"
-TEST_EMAIL = "integration_test_user@example.com"
-TEST_PASSWORD = "securepassword123"
+TEST_EMAIL = "new_test_user@example.com"
+TEST_PASSWORD = "newsecurepassword123"
 TEST_HOUSE_NAME = "Casa di Test"
 TEST_HOUSE_ADDRESS = "Via Roma 123, Milano"
 TEST_NODE_NAME = "Nodo di Test"
 TEST_NODE_LOCATION = "Posizione di Test"
 TEST_NODE_TYPE = "Tipo di Test"
 TEMP_FILE_NAME = "temp_test_document.txt"
+
+# Definizione credenziali amministratore
+ADMIN_TEST_EMAIL = "admin_test@example.com"
+ADMIN_TEST_PASSWORD = "adminsecurepassword"
 
 @dataclass
 class TestResult:
@@ -32,7 +42,7 @@ class TestResources:
         self.house_id: Optional[int] = None
         self.node_id: Optional[int] = None
         self.document_id: Optional[int] = None
-        self.temp_files: list[str] = []
+        self.temp_files: List[str] = []
 
     def cleanup(self, access_token: str) -> None:
         """Pulisce tutte le risorse di test"""
@@ -43,21 +53,21 @@ class TestResources:
             try:
                 requests.delete(f"{BASE_URL}/legacy-documents/{self.document_id}", headers=headers)
             except Exception as e:
-                print(f"Attenzione: Impossibile eliminare il documento {self.document_id}: {e}")
+                logger.error(f"Attenzione: Impossibile eliminare il documento {self.document_id}: {e}")
 
         # Pulisce il nodo se esiste
         if self.node_id:
             try:
                 requests.delete(f"{BASE_URL}/nodes/{self.node_id}", headers=headers)
             except Exception as e:
-                print(f"Attenzione: Impossibile eliminare il nodo {self.node_id}: {e}")
+                logger.error(f"Attenzione: Impossibile eliminare il nodo {self.node_id}: {e}")
 
         # Pulisce la casa se esiste
         if self.house_id:
             try:
                 requests.delete(f"{BASE_URL}/houses/{self.house_id}", headers=headers)
             except Exception as e:
-                print(f"Attenzione: Impossibile eliminare la casa {self.house_id}: {e}")
+                logger.error(f"Attenzione: Impossibile eliminare la casa {self.house_id}: {e}")
 
         # Pulisce i file temporanei
         for file_path in self.temp_files:
@@ -65,16 +75,16 @@ class TestResources:
                 if os.path.exists(file_path):
                     os.remove(file_path)
             except Exception as e:
-                print(f"Attenzione: Impossibile eliminare il file temporaneo {file_path}: {e}")
+                logger.error(f"Attenzione: Impossibile eliminare il file temporaneo {file_path}: {e}")
 
 def print_test_result(result: TestResult) -> None:
     """Stampa il risultato del test in modo formattato"""
     status = "SUCCESSO" if result.success else "FALLITO"
-    print(f"\nTest {result.name}: {status}")
-    print(f"Orario: {result.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"\nTest {result.name}: {status}")
+    logger.info(f"Orario: {result.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
     if result.message:
-        print(f"Messaggio: {result.message}")
-    print("-" * 50)
+        logger.info(f"Messaggio: {result.message}")
+    logger.info("-" * 50)
 
 def get_headers(access_token: Optional[str] = None) -> Dict[str, str]:
     """Ottiene gli header con autorizzazione opzionale"""
@@ -328,13 +338,75 @@ def test_get_legacy_documents(access_token: str, resources: TestResources) -> Te
     except Exception as e:
         return TestResult("Recupero Documenti Legacy", False, str(e))
 
+def test_register_admin_user():
+    """Test per la registrazione di un utente amministratore"""
+    logger.info("Avvio Test Registrazione Utente Amministratore...")
+    logger.info("=" * 50)
+
+    try:
+        # Registrazione utente amministratore
+        logger.info("\nRegistrazione utente amministratore...")
+        signup_data = {
+            "email": ADMIN_TEST_EMAIL,
+            "full_name": "Admin Test User",
+            "password": ADMIN_TEST_PASSWORD,
+            "role": "admin"
+        }
+        response = requests.post(f"{BASE_URL}/auth/signup", json=signup_data)
+        logger.info(f"Codice di stato ricevuto: {response.status_code}")
+        logger.info(f"Risposta completa: {response.text}")
+
+        if response.status_code == 200:
+            logger.info("Utente amministratore registrato con successo")
+            return True
+        elif response.status_code in [400, 409]:
+            logger.info("Utente amministratore già registrato")
+            return True
+        else:
+            logger.error("Registrazione utente amministratore fallita")
+            return False
+
+    except Exception as e:
+        logger.error(f"Errore durante il test: {str(e)}")
+        return False
+
+def test_admin_access_denied(access_token: str) -> TestResult:
+    """Test che verifica che un utente 'user' non possa accedere all'endpoint admin-only"""
+    try:
+        response = requests.get(
+            f"{BASE_URL}/users/admin-only",
+            headers=get_headers(access_token)
+        )
+        if response.status_code == status.HTTP_403_FORBIDDEN:
+            expected = {"detail": "Not enough permissions"}
+            if response.json() == expected:
+                return TestResult(
+                    "Accesso Negato Endpoint Admin",
+                    True,
+                    "Accesso negato come previsto con 403 e messaggio corretto"
+                )
+            else:
+                return TestResult(
+                    "Accesso Negato Endpoint Admin",
+                    False,
+                    f"Messaggio di errore inatteso: {response.json()}"
+                )
+        else:
+            return TestResult(
+                "Accesso Negato Endpoint Admin",
+                False,
+                f"Codice di stato inatteso: {response.status_code}"
+            )
+    except Exception as e:
+        return TestResult("Accesso Negato Endpoint Admin", False, str(e))
+
 def main():
     """Funzione principale di esecuzione dei test"""
-    print("Avvio Test di Integrazione...")
-    print("=" * 50)
+    logger.info("Avvio Test di Integrazione...")
+    logger.info("=" * 50)
     
     resources = TestResources()
-    test_results: list[TestResult] = []
+    test_results: List[TestResult] = []
     
     try:
         # Test di registrazione
@@ -342,7 +414,7 @@ def main():
         print_test_result(signup_result)
         test_results.append(signup_result)
         if not signup_result.success:
-            print("Registrazione fallita, interruzione dei test")
+            logger.error("Registrazione fallita, interruzione dei test")
             return
         
         # Test di login
@@ -350,7 +422,7 @@ def main():
         print_test_result(login_result)
         test_results.append(login_result)
         if not login_result.success:
-            print("Login fallito, interruzione dei test")
+            logger.error("Login fallito, interruzione dei test")
             return
         
         # Test di creazione casa
@@ -358,7 +430,7 @@ def main():
         print_test_result(house_result)
         test_results.append(house_result)
         if not house_result.success:
-            print("Creazione casa fallita, interruzione dei test")
+            logger.error("Creazione casa fallita, interruzione dei test")
             return
         
         # Test di creazione nodo
@@ -366,7 +438,7 @@ def main():
         print_test_result(node_result)
         test_results.append(node_result)
         if not node_result.success:
-            print("Creazione nodo fallita, interruzione dei test")
+            logger.error("Creazione nodo fallita, interruzione dei test")
             return
         
         # Test endpoint protetto
@@ -379,7 +451,7 @@ def main():
         print_test_result(upload_result)
         test_results.append(upload_result)
         if not upload_result.success:
-            print("Caricamento documento fallito, interruzione dei test")
+            logger.error("Caricamento documento fallito, interruzione dei test")
             return
         
         # Test recupero documenti legacy
@@ -387,24 +459,38 @@ def main():
         print_test_result(get_docs_result)
         test_results.append(get_docs_result)
         
+        # Test accesso negato endpoint admin
+        admin_denied_result = test_admin_access_denied(access_token)
+        print_test_result(admin_denied_result)
+        test_results.append(admin_denied_result)
+        
         # Stampa riepilogo
-        print("\nRiepilogo Test:")
-        print("=" * 50)
+        logger.info("\nRiepilogo Test:")
+        logger.info("=" * 50)
         success_count = sum(1 for r in test_results if r.success)
-        print(f"Totale Test: {len(test_results)}")
-        print(f"Test Riusciti: {success_count}")
-        print(f"Test Falliti: {len(test_results) - success_count}")
-        print("=" * 50)
+        logger.info(f"Totale Test: {len(test_results)}")
+        logger.info(f"Test Riusciti: {success_count}")
+        logger.info(f"Test Falliti: {len(test_results) - success_count}")
+        logger.info("=" * 50)
         
     finally:
         # Pulizia risorse
         if 'access_token' in locals():
-            print("\nPulizia risorse di test...")
+            logger.info("\nPulizia risorse di test...")
             resources.cleanup(access_token)
-            print("Pulizia completata")
+            logger.info("Pulizia completata")
     
-    print("\nTest di Integrazione Completati!")
-    print("=" * 50)
+    logger.info("\nTest di Integrazione Completati!")
+    logger.info("=" * 50)
 
 if __name__ == "__main__":
+    test_register_admin_user()
+    # Test di login con le nuove credenziali
+    login_result, access_token = test_login()
+    if not login_result.success:
+        logger.error("Login fallito, interruzione dei test")
+        exit(1)
+    resources = TestResources()
+    test_upload_legacy_document(access_token, resources)
+    test_get_legacy_documents(access_token, resources)
     main() 
