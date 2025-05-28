@@ -10,6 +10,7 @@ class LegacyDocument(Base):
     node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
     type = Column(String, nullable=False)  # es. 'PDF', 'JPG'
     file_url = Column(String, nullable=False)
+    filename = Column(String, nullable=False)  # Nome originale del file
     version = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
 

@@ -79,7 +79,8 @@ async def create_legacy_document(
             node_id=node_id,
             type=type,
             version=version,
-            file_url=file_url
+            file_url=file_url,
+            filename=file.filename
         )
         
         db.add(db_document)
@@ -120,6 +121,22 @@ async def get_legacy_documents(
         return documents
     except HTTPException:
         raise
+    except Exception as e:
+        error_msg = f"Errore durante il recupero dei documenti: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/", response_model=List[LegacyDocumentSchema])
+async def get_all_legacy_documents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Recupera tutti i documenti legacy delle case dell'utente
+        documents = db.query(LegacyDocument).join(House).filter(
+            House.owner_id == current_user.id
+        ).all()
+        return documents
     except Exception as e:
         error_msg = f"Errore durante il recupero dei documenti: {str(e)}\n{traceback.format_exc()}"
         logger.error(error_msg)

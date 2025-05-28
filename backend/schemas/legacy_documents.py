@@ -15,6 +15,7 @@ class LegacyDocumentCreate(LegacyDocumentBase):
 class LegacyDocument(LegacyDocumentBase):
     id: int
     file_url: str
+    filename: str
     created_at: datetime
 
     class Config:

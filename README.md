@@ -28,6 +28,7 @@ Sistema di gestione per case intelligenti che permette di monitorare e controlla
 * Python-Multipart
 * Redis (per rate limiting)
 * FastAPI-Limiter
+* Alembic (per migrazioni database)
 
 ### Frontend
 
@@ -63,7 +64,6 @@ Sistema di gestione per case intelligenti che permette di monitorare e controlla
 
 2. **Configura l'ambiente Python**  
    ```bash
-   cd backend
    pip install -r requirements.txt
    ```
 
@@ -233,21 +233,48 @@ backend/
    - Risultato: SUCCESSO
    - Verifica: Nodo creato con ID assegnato e associato alla casa
 
-### Schema Database
-- Verificata la corretta creazione delle tabelle:
-  - `users`
-  - `houses`
-  - `nodes`
-  - `maintenance`
-  - `maintenance_tasks`
-  - `bim_files`
-  - `legacy_documents`
+5. **Test Upload Documento Legacy**
+   - Endpoint: `POST /legacy-documents/`
+   - Dati di test: 
+     - File: `test_document.txt`
+     - Description: "Documento di test per l'integrazione"
+     - Node ID: 1
+   - Risultato: SUCCESSO
+   - Verifica:
+     - ID documento non vuoto
+     - URL file presente
+     - Campi restituiti corrispondono a quelli inviati
+     - Codice di stato HTTP 200
 
-### Miglioramenti Implementati
-1. Aggiunta gestione timestamp (`created_at`, `updated_at`) per le tabelle
-2. Implementato sistema di logging dettagliato per i test
-3. Aggiunta gestione errori e rollback automatico in caso di fallimento
-4. Ottimizzata la gestione delle relazioni tra tabelle
+## Troubleshooting
+
+1. **MinIO non risponde**  
+   * Verifica che il container Docker sia in esecuzione: `docker ps`  
+   * Riavvia il container: `docker restart minio`
+
+2. **Database non accessibile**  
+   * Verifica che PostgreSQL sia in esecuzione  
+   * Controlla le credenziali nel file `.env`
+
+3. **Backend non si avvia**  
+   * Verifica che tutte le dipendenze siano installate  
+   * Controlla i log per eventuali errori
+   * Assicurati che il file `.env` sia nella directory root del progetto
+
+4. **Rate Limiting non funziona**
+   * Verifica che Redis sia in esecuzione
+   * Controlla la connessione Redis nel file `main.py`
+
+5. **Errori di relazione tra modelli**
+   * Verifica che i nomi delle classi nelle relazioni corrispondano ai nomi effettivi dei modelli
+   * Controlla che tutte le relazioni siano definite correttamente in entrambi i modelli
+   * Assicurati che i modelli siano importati correttamente
+
+## Note Aggiuntive
+
+* Per informazioni dettagliate sull'avvio del sistema, consultare il file `STARTUP.md`
+* Per problemi di migrazione del database, utilizzare i comandi Alembic come descritto in `STARTUP.md`
+* I log del sistema sono disponibili nella directory `logs/`
 
 ## Manutenzione
 

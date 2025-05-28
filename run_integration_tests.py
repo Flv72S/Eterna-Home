@@ -20,8 +20,12 @@ TEST_PASSWORD = "newsecurepassword123"
 TEST_HOUSE_NAME = "Casa di Test"
 TEST_HOUSE_ADDRESS = "Via Roma 123, Milano"
 TEST_NODE_NAME = "Nodo di Test"
-TEST_NODE_LOCATION = "Posizione di Test"
-TEST_NODE_TYPE = "Tipo di Test"
+# TEST_NODE_LOCATION = "Posizione di Test"
+TEST_NODE_LOCATION_X = 10.0  # O un altro valore numerico
+TEST_NODE_LOCATION_Y = 20.0  # O un altro valore numerico
+TEST_NODE_LOCATION_Z = 30.0  # O un altro valore numerico
+TEST_NODE_TYPE = "sensor"
+TEST_NODE_STATUS = "active"
 TEMP_FILE_NAME = "temp_test_document.txt"
 
 # Definizione credenziali amministratore
@@ -100,22 +104,37 @@ def test_signup() -> TestResult:
             f"{BASE_URL}/auth/signup",
             json={
                 "email": TEST_EMAIL,
-                "password": TEST_PASSWORD
+                "password": TEST_PASSWORD,
+                "full_name": "Test User"
             },
             headers=get_headers()
         )
-        
-        if response.status_code in [200, 400]:  # 400 se l'utente esiste già
+
+        # Includi il log del corpo della risposta per tutti i casi non-successo/non-già-esistente
+        if response.status_code not in [200, 400]:
+            logger.error(f"Registrazione fallita. Status code: {response.status_code}")
+            logger.error(f"Response body: {response.text}")
+
+        if response.status_code == 200:
             return TestResult(
                 "Registrazione",
                 True,
-                "Utente creato" if response.status_code == 200 else "Utente già esistente"
+                "Utente creato con successo."
+            )
+        elif response.status_code == 400:
+            # Per chiarezza, puoi anche loggare il dettaglio qui se vuoi:
+            error_detail = response.json().get("detail", "Dettaglio errore non disponibile.")
+            return TestResult(
+                "Registrazione",
+                True,  # Lo consideriamo un successo perché l'obiettivo del test è proseguire al login
+                f"Utente già esistente o errore di validazione: {error_detail}"
             )
         else:
+            # Se è un 422 o qualsiasi altro codice di stato inatteso
             return TestResult(
                 "Registrazione",
                 False,
-                f"Codice di stato inatteso: {response.status_code}"
+                f"Codice di stato inatteso: {response.status_code}. Dettaglio: {response.text}"
             )
     except Exception as e:
         return TestResult("Registrazione", False, str(e))
@@ -131,11 +150,13 @@ def test_login() -> Tuple[TestResult, Optional[str]]:
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
-        
         if response.status_code == 200:
             access_token = response.json()["access_token"]
             return TestResult("Login", True, "Token di accesso ottenuto con successo"), access_token
         else:
+            # Stampa dettagliata per debug
+            logger.error(f"Login fallito. Status code: {response.status_code}")
+            logger.error(f"Response body: {response.text}")
             return TestResult("Login", False, f"Codice di stato inatteso: {response.status_code}"), None
     except Exception as e:
         return TestResult("Login", False, str(e)), None
@@ -179,31 +200,51 @@ def test_create_node(access_token: str, resources: TestResources) -> TestResult:
             json={
                 "name": TEST_NODE_NAME,
                 "house_id": resources.house_id,
-                "location": TEST_NODE_LOCATION,
-                "type": TEST_NODE_TYPE
+                "location_x": TEST_NODE_LOCATION_X,
+                "location_y": TEST_NODE_LOCATION_Y,
+                "location_z": TEST_NODE_LOCATION_Z,
+                "type": TEST_NODE_TYPE,
+                "status": TEST_NODE_STATUS
             },
             headers=get_headers(access_token)
         )
-        
+
+        # Includi il log del corpo della risposta per tutti i casi non-successo
+        if response.status_code != 200:
+            logger.error(f"Creazione nodo fallita. Status code: {response.status_code}")
+            logger.error(f"Response body: {response.text}")
+
         if response.status_code == 200:
             response_data = response.json()
             node_id = response_data.get("id")
-            
+
+            # Log dettagliato dei dati ricevuti
+            logger.info(f"Dati inviati: name={TEST_NODE_NAME}, house_id={resources.house_id}, location_x={TEST_NODE_LOCATION_X}, location_y={TEST_NODE_LOCATION_Y}, location_z={TEST_NODE_LOCATION_Z}, type={TEST_NODE_TYPE}, status={TEST_NODE_STATUS}")
+            logger.info(f"Dati ricevuti: {json.dumps(response_data, indent=2)}")
+
             # Verifica che l'ID non sia vuoto
             if not node_id:
                 return TestResult("Creazione Nodo", False, "ID nodo non presente nella risposta")
-            
+
             # Verifica che i dati restituiti corrispondano a quelli inviati
-            if (response_data.get("name") != TEST_NODE_NAME or 
+            if (response_data.get("name") != TEST_NODE_NAME or
                 response_data.get("house_id") != resources.house_id or
-                response_data.get("location") != TEST_NODE_LOCATION or
-                response_data.get("type") != TEST_NODE_TYPE):
+                response_data.get("location_x") != TEST_NODE_LOCATION_X or
+                response_data.get("location_y") != TEST_NODE_LOCATION_Y or
+                response_data.get("location_z") != TEST_NODE_LOCATION_Z or
+                response_data.get("type") != TEST_NODE_TYPE or
+                response_data.get("status") != TEST_NODE_STATUS):
                 return TestResult("Creazione Nodo", False, "Dati nodo non corrispondenti")
-            
+
             resources.node_id = node_id
             return TestResult("Creazione Nodo", True, f"Nodo creato con ID: {resources.node_id}")
         else:
-            return TestResult("Creazione Nodo", False, f"Codice di stato inatteso: {response.status_code}")
+            # Se è un 422 o qualsiasi altro codice di stato inatteso
+            return TestResult(
+                "Creazione Nodo",
+                False,
+                f"Codice di stato inatteso: {response.status_code}. Dettaglio: {response.text}"
+            )
     except Exception as e:
         return TestResult("Creazione Nodo", False, str(e))
 
@@ -268,6 +309,8 @@ def test_upload_legacy_document(access_token: str, resources: TestResources) -> 
                 response_data.get("type") != 'TXT' or
                 response_data.get("version") != '1.0' or
                 response_data.get("description") != 'Documento di test'):
+                logger.error(f"Dati documento legacy ricevuti: {response_data}")
+                logger.error(f"Dati attesi: house_id={resources.house_id}, node_id={resources.node_id}, type='TXT', version='1.0', description='Documento di test'")
                 return TestResult("Caricamento Documento Legacy", False, "Dati documento non corrispondenti")
             
             resources.document_id = document_id
@@ -277,6 +320,8 @@ def test_upload_legacy_document(access_token: str, resources: TestResources) -> 
                 f"Documento caricato con successo con ID: {resources.document_id}"
             )
         else:
+            logger.error(f"Caricamento documento fallito. Status code: {response.status_code}")
+            logger.error(f"Response body: {response.text}")
             return TestResult(
                 "Caricamento Documento Legacy",
                 False,
@@ -400,11 +445,60 @@ def test_admin_access_denied(access_token: str) -> TestResult:
     except Exception as e:
         return TestResult("Accesso Negato Endpoint Admin", False, str(e))
 
+def admin_login() -> Tuple[TestResult, Optional[str]]:
+    """Effettua il login come admin e restituisce il token JWT"""
+    try:
+        response = requests.post(
+            f"{BASE_URL}/auth/login",
+            data={
+                "username": ADMIN_TEST_EMAIL,
+                "password": ADMIN_TEST_PASSWORD
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        if response.status_code == 200:
+            access_token = response.json()["access_token"]
+            return TestResult("Login Admin", True, "Token admin ottenuto con successo"), access_token
+        else:
+            return TestResult("Login Admin", False, f"Codice di stato inatteso: {response.status_code}"), None
+    except Exception as e:
+        return TestResult("Login Admin", False, str(e)), None
+
+def test_admin_access_allowed(admin_access_token: str) -> TestResult:
+    """Test che verifica che un utente admin possa accedere all'endpoint admin-only"""
+    try:
+        response = requests.get(
+            f"{BASE_URL}/users/admin-only",
+            headers=get_headers(admin_access_token)
+        )
+        if response.status_code == 200:
+            expected = {"message": "This endpoint is only accessible to admins."}
+            if response.json() == expected:
+                return TestResult(
+                    "Accesso Consentito Endpoint Admin",
+                    True,
+                    "Accesso admin consentito come previsto con 200 e messaggio corretto"
+                )
+            else:
+                return TestResult(
+                    "Accesso Consentito Endpoint Admin",
+                    False,
+                    f"Messaggio di risposta inatteso: {response.json()}"
+                )
+        else:
+            return TestResult(
+                "Accesso Consentito Endpoint Admin",
+                False,
+                f"Codice di stato inatteso: {response.status_code}"
+            )
+    except Exception as e:
+        return TestResult("Accesso Consentito Endpoint Admin", False, str(e))
+
 def main():
     """Funzione principale di esecuzione dei test"""
     logger.info("Avvio Test di Integrazione...")
     logger.info("=" * 50)
-    
+    logger.info("Debug: Inizio esecuzione dei test di integrazione")
     resources = TestResources()
     test_results: List[TestResult] = []
     
@@ -464,6 +558,17 @@ def main():
         print_test_result(admin_denied_result)
         test_results.append(admin_denied_result)
         
+        # Login admin e test accesso consentito endpoint admin
+        admin_login_result, admin_access_token = admin_login()
+        print_test_result(admin_login_result)
+        test_results.append(admin_login_result)
+        if admin_access_token:
+            admin_allowed_result = test_admin_access_allowed(admin_access_token)
+            print_test_result(admin_allowed_result)
+            test_results.append(admin_allowed_result)
+        else:
+            logger.error("Token admin non ottenuto, test accesso consentito endpoint admin saltato")
+        
         # Stampa riepilogo
         logger.info("\nRiepilogo Test:")
         logger.info("=" * 50)
@@ -484,13 +589,4 @@ def main():
     logger.info("=" * 50)
 
 if __name__ == "__main__":
-    test_register_admin_user()
-    # Test di login con le nuove credenziali
-    login_result, access_token = test_login()
-    if not login_result.success:
-        logger.error("Login fallito, interruzione dei test")
-        exit(1)
-    resources = TestResources()
-    test_upload_legacy_document(access_token, resources)
-    test_get_legacy_documents(access_token, resources)
     main() 

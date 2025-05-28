@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
+import os
 
 # Configurazione del logging
 setup_logging()
@@ -63,10 +64,20 @@ async def startup_event():
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created/checked successfully.")
-        redis_client = redis.from_url("redis://localhost", encoding="utf-8", decode_responses=True)
-        await FastAPILimiter.init(redis_client)
+        
+        # Inizializza Redis solo se non siamo in modalità sviluppo
+        if os.getenv("ENVIRONMENT") != "development":
+            try:
+                redis_client = redis.from_url("redis://localhost", encoding="utf-8", decode_responses=True)
+                await FastAPILimiter.init(redis_client)
+                logger.info("Redis initialized successfully.")
+            except Exception as e:
+                logger.warning(f"Redis initialization failed: {str(e)}")
+                logger.warning("Rate limiting will be disabled.")
+        else:
+            logger.info("Running in development mode - Redis rate limiting disabled.")
     except Exception as e:
-        logger.error(f"Error creating database tables: {str(e)}")
+        logger.error(f"Error during startup: {str(e)}")
         raise
 
 @app.on_event("shutdown")

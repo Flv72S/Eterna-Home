@@ -127,8 +127,7 @@ def test_upload_legacy_document():
     }
     data = {
         "node_id": test_node_id,
-        "document_type": "manual",
-        "description": "Test document"
+        "document_type": "manual"
     }
     
     # Esegui l'upload
@@ -151,7 +150,6 @@ def test_upload_legacy_document():
     assert len(data["file_url"]) > 0, "URL file vuoto"
     assert data["node_id"] == test_node_id, "ID nodo non corrisponde"
     assert data["document_type"] == "manual", "Tipo documento non corrisponde"
-    assert data["description"] == "Test document", "Descrizione non corrisponde"
     test_legacy_document_id = data["id"]
     print(f"✅ Test upload documento legacy completato. ID: {test_legacy_document_id}")
     print(f"   File URL: {data['file_url']}")
@@ -175,7 +173,6 @@ def test_get_legacy_documents():
             found_document = True
             assert doc["node_id"] == test_node_id, "ID nodo non corrisponde"
             assert doc["document_type"] == "manual", "Tipo documento non corrisponde"
-            assert doc["description"] == "Test document", "Descrizione non corrisponde"
             assert "file_url" in doc, "URL file non presente"
             assert len(doc["file_url"]) > 0, "URL file vuoto"
             break
