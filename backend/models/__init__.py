@@ -1,7 +1,29 @@
-# Questo file è intenzionalmente vuoto per rendere la directory un pacchetto Python
-from backend.models.user import User
-from backend.models.house import House
-from backend.models.node import Node
-from backend.models.document import Document
-from backend.models.audio_log import AudioLog
-from backend.models.legacy_documents import LegacyDocument 
+"""
+Models package initialization.
+This package contains all the SQLModel models for the application.
+"""
+
+from .user import User
+from .house import House
+from .node import Node
+from .document import Document
+from .audio_log import AudioLog
+from .maintenance import Maintenance, MaintenanceTask
+from .legacy_documents import LegacyDocument
+from .bim import BIM
+from .annotation import Annotation
+from .versioning import Versioning
+
+__all__ = [
+    "User",
+    "House",
+    "Node",
+    "Document",
+    "AudioLog",
+    "Maintenance",
+    "MaintenanceTask",
+    "LegacyDocument",
+    "BIM",
+    "Annotation",
+    "Versioning"
+] 

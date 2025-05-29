@@ -1,19 +1,23 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
-from sqlalchemy.orm import relationship
-from backend.db.session import Base
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, Relationship, SQLModel
+from datetime import datetime
 
-class Annotation(Base):
-    __tablename__ = "annotation"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    node_id = Column(Integer, ForeignKey('nodes.id'), nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    text_content = Column(String, nullable=True)
-    image_url = Column(String, nullable=True)
-    audio_url = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=func.now())
-    type = Column(String, nullable=False)  # text, image, audio, voice_log
-    
-    # Relazioni
-    node = relationship("Node", back_populates="annotations")
-    user = relationship("User", back_populates="annotations") 
+if TYPE_CHECKING:
+    from backend.models.user import User
+    from backend.models.node import Node
+
+class Annotation(SQLModel, table=True):
+    __tablename__ = "annotations"
+    __table_args__ = {'extend_existing': True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    content: str = Field(max_length=1000, nullable=False)
+    node_id: int = Field(foreign_key="nodes.id", nullable=False)
+    user_id: int = Field(foreign_key="users.id", nullable=False)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # Relationships
+    node: "Node" = Relationship(back_populates="annotations")
+    user: "User" = Relationship(back_populates="annotations") 

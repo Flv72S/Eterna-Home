@@ -1,5 +1,6 @@
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 import os
 from datetime import datetime
 
@@ -10,17 +11,32 @@ def setup_logging():
         os.makedirs(log_dir)
 
     # Configura il logger root
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s\n%(pathname)s:%(lineno)d',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(
-                os.path.join(log_dir, f'app_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
-                encoding='utf-8'
-            )
-        ]
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # Handler per il file
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, f'app_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
+        maxBytes=10485760,  # 10MB
+        backupCount=5
     )
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    file_handler.setFormatter(file_formatter)
+
+    # Handler per la console
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter(
+        '%(levelname)s: %(message)s'
+    )
+    console_handler.setFormatter(console_formatter)
+
+    # Aggiungi gli handler al logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
     # Configura il logger per SQLAlchemy
     logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)

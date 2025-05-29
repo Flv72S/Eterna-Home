@@ -1,28 +1,33 @@
 from fastapi import FastAPI, Request, Depends
-from .db.session import engine, Base
-from .models import user, house, node, document, audio_log, maintenance
-from .routers import house as house_router
-from .routers import node as node_router
-from .routers import document as document_router
-from .routers import auth as auth_router
-from .routers import maintenance as maintenance_router
-from .routers import legacy_documents as legacy_documents_router
-from .routers import ai_maintenance as ai_maintenance_router
-from .routers import bim_files as bim_files_router
-from .routers import voice_interfaces as voice_interfaces_router
-from .config.logging_config import setup_logging
+from backend.db.session import engine
+from sqlmodel import SQLModel
+from backend.models import user, house, node, document, audio_log, maintenance
+from backend.routers import houses as houses_router
+from backend.routers import node as node_router
+from backend.routers import document as document_router
+from backend.routers import auth as auth_router
+from backend.routers import maintenance as maintenance_router
+from backend.routers import legacy_documents as legacy_documents_router
+from backend.routers import ai_maintenance as ai_maintenance_router
+from backend.routers import bim_files as bim_files_router
+from backend.routers import voice_interfaces as voice_interfaces_router
+from backend.config.logging_config import setup_logging
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
 import os
+from backend.core.config import settings
 
 # Configurazione del logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Eterna Home Backend API")
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
 
 # Configura CORS
 app.add_middleware(
@@ -45,8 +50,9 @@ async def log_requests(request: Request, call_next):
         logger.error(f"Errore durante l'elaborazione della richiesta: {str(e)}")
         raise
 
+# Includi tutti i router nell'applicazione
 app.include_router(auth_router.router)
-app.include_router(house_router.router)
+app.include_router(houses_router.router)
 app.include_router(node_router.router)
 app.include_router(document_router.router)
 app.include_router(maintenance_router.router)
@@ -60,11 +66,9 @@ async def root():
     return {"message": "Eterna Home Backend is running!"}
 
 @app.on_event("startup")
-async def startup_event():
+async def on_startup():
+    SQLModel.metadata.create_all(engine)
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/checked successfully.")
-        
         # Inizializza Redis solo se non siamo in modalità sviluppo
         if os.getenv("ENVIRONMENT") != "development":
             try:

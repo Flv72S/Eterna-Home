@@ -1,27 +1,27 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, func
-from sqlalchemy.orm import relationship
-from backend.db.session import Base
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, Relationship, SQLModel
+from datetime import datetime
 
-class BIM(Base):
+if TYPE_CHECKING:
+    from backend.models.user import User
+    from backend.models.house import House
+
+class BIM(SQLModel, table=True):
     __tablename__ = "bim_files"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String(255), nullable=False)
-    file_path = Column(String(512), nullable=False)
-    file_type = Column(String(50))
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    house_id = Column(Integer, ForeignKey('houses.id'), nullable=False)
-    node_id = Column(Integer, ForeignKey('nodes.id'), nullable=True)
-    bim_file_url = Column(String, nullable=False)
-    version = Column(String, nullable=False)
-    format = Column(String, nullable=False)  # IFC, RVT, DWG
-    size_mb = Column(Float, nullable=False)
-    uploaded_at = Column(DateTime, default=func.now())
-    description = Column(String, nullable=True)
-    
-    # Relazioni
-    user = relationship("User", back_populates="bim_files")
-    house = relationship("House", back_populates="bim_files")
-    node = relationship("Node", back_populates="bim_files") 
+    __table_args__ = {'extend_existing': True}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(max_length=255, nullable=False)
+    description: Optional[str] = Field(default=None)
+    file_path: str = Field(max_length=255, nullable=False)
+    file_type: str = Field(max_length=50, nullable=False)
+    version: str = Field(max_length=50, nullable=False)
+    house_id: int = Field(foreign_key="houses.id", nullable=False)
+    user_id: int = Field(foreign_key="users.id", nullable=False)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # Relationships
+    house: "House" = Relationship(back_populates="bim_files")
+    user: "User" = Relationship(back_populates="bim_files") 

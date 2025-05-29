@@ -1,36 +1,47 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Text
-from sqlalchemy.orm import relationship
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, Relationship, SQLModel
 from datetime import datetime
-from backend.db.session import Base
 
-class Maintenance(Base):
+if TYPE_CHECKING:
+    from backend.models.user import User
+    from backend.models.house import House
+    from backend.models.node import Node
+
+class Maintenance(SQLModel, table=True):
     __tablename__ = "maintenance"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    description = Column(String, nullable=True)
-    status = Column(String, nullable=False, default='pending')  # pending, in_progress, completed, cancelled
-    scheduled_date = Column(DateTime, nullable=True)
-    completed_date = Column(DateTime, nullable=True)
-    assigned_to_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
-    cost = Column(Float, nullable=True)
-    notes = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relazioni
-    assigned_to = relationship("User", back_populates="maintenance_tasks") 
+    __table_args__ = {'extend_existing': True}
 
-class MaintenanceTask(Base):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(max_length=255, nullable=False)
+    description: Optional[str] = Field(default=None)
+    status: str = Field(max_length=50, nullable=False)  # pending, in_progress, completed, cancelled
+    priority: str = Field(max_length=50, nullable=False)  # low, medium, high, critical
+    house_id: int = Field(foreign_key="houses.id", nullable=False)
+    node_id: Optional[int] = Field(foreign_key="nodes.id", default=None)
+    assigned_to_id: Optional[int] = Field(foreign_key="users.id", default=None)
+    scheduled_date: Optional[datetime] = Field(default=None)
+    completed_date: Optional[datetime] = Field(default=None)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # Relationships
+    house: "House" = Relationship(back_populates="maintenance_tasks")
+    node: Optional["Node"] = Relationship(back_populates="maintenance_tasks")
+    assigned_to: Optional["User"] = Relationship(back_populates="maintenance_tasks")
+
+class MaintenanceTask(SQLModel, table=True):
     __tablename__ = "maintenance_tasks"
+    __table_args__ = {'extend_existing': True}
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(100), nullable=False)
-    description = Column(Text)
-    status = Column(String(20), default="pending")
-    priority = Column(String(20), default="medium")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    node_id = Column(Integer, ForeignKey("nodes.id"))
-    
-    # Relazioni
-    node = relationship("Node", back_populates="maintenance_tasks") 
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(max_length=100, nullable=False)
+    description: str = Field(max_length=255, nullable=False)
+    status: str = Field(max_length=20, default="pending")
+    priority: str = Field(max_length=20, default="medium")
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    node_id: Optional[int] = Field(foreign_key="nodes.id", nullable=False)
+
+    # Relationships
+    node: Optional["Node"] = Relationship(back_populates="maintenance_tasks") 

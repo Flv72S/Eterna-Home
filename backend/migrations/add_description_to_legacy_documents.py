@@ -1,8 +1,8 @@
-"""add description to legacy documents
+"""Add description to legacy_documents
 
 Revision ID: add_description_to_legacy_documents
 Revises: 
-Create Date: 2024-05-28 03:45:00.000000
+Create Date: 2023-10-01 12:00:00.000000
 
 """
 from alembic import op
@@ -14,8 +14,8 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-def upgrade():
+def upgrade() -> None:
     op.add_column('legacy_documents', sa.Column('description', sa.String(), nullable=True))
 
-def downgrade():
+def downgrade() -> None:
     op.drop_column('legacy_documents', 'description') 

@@ -1,203 +1,128 @@
-# Guida all'Avvio del Sistema Eterna Home
+# Guida all'Avvio di Eterna Home
 
-Questa guida fornisce istruzioni dettagliate per l'avvio e la configurazione del sistema Eterna Home.
+Questa guida ti aiuterà a configurare e avviare il sistema Eterna Home.
 
 ## Prerequisiti
 
-Assicurati di avere installato:
-- Python 3.13+
-- Docker Desktop
-- PostgreSQL
-- Redis
-- Git
+- Python 3.8+
+- PostgreSQL 13+
+- Redis (per rate limiting)
+- Node.js 16+ (per il frontend)
 
-## 1. Setup Iniziale
+## Configurazione Iniziale
 
-### 1.1 Clonazione del Repository
+### 1. Ambiente Virtuale Python
+
 ```bash
-git clone https://github.com/Flv72S/Eterna-Home.git
-cd Eterna-Home
+# Crea l'ambiente virtuale
+python -m venv venv
+
+# Attiva l'ambiente virtuale
+# Windows:
+.\venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
 ```
 
-### 1.2 Installazione Dipendenze
+### 2. Installazione Dipendenze Backend
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 1.3 Configurazione Variabili d'Ambiente
-Crea un file `.env` nella root del progetto con le seguenti variabili:
-```env
-# Database
-database_url=postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_db
+Dipendenze principali:
+- fastapi
+- sqlmodel
+- uvicorn
+- pydantic-settings
+- fastapi-limiter
+- redis
+- psycopg2-binary
 
-# JWT
-secret_key=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
-algorithm=HS256
-access_token_expire_minutes=30
+### 3. Configurazione Database
 
-# MinIO
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_SECURE=false
-MINIO_BUCKET_MANUALS=eterna-manuals
-MINIO_BUCKET_AUDIO=eterna-audio
-MINIO_BUCKET_LEGACY=eterna-legacy
-MINIO_BUCKET_BIM=eterna-bim
-
-# Crittografia
-MINIO_ENCRYPTION_KEY=your-encryption-key-here
-```
-
-## 2. Avvio dei Servizi
-
-### 2.1 Avvio di MinIO
-```bash
-# Rimuovi eventuali container esistenti
-docker rm -f minio
-
-# Avvia un nuovo container MinIO
-docker run -d -p 9000:9000 -p 9001:9001 --name minio \
-  -e "MINIO_ROOT_USER=minioadmin" \
-  -e "MINIO_ROOT_PASSWORD=minioadmin" \
-  minio/minio server /data --console-address ":9001"
-```
-
-### 2.2 Configurazione PostgreSQL
-```bash
-# Connessione a PostgreSQL
-psql -U postgres
-
-# Creazione del database (se non esiste)
+1. Crea un database PostgreSQL:
+```sql
 CREATE DATABASE eterna_home_db;
-
-# Uscita da psql
-\q
 ```
 
-### 2.3 Migrazioni Database con Alembic
+2. Verifica le credenziali in `backend/core/config.py`:
+```python
+DATABASE_URL: str = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_db"
+)
+```
+
+### 4. Avvio del Backend
+
 ```bash
-# Inizializza le migrazioni (solo la prima volta)
-alembic init alembic
-
-# Crea una nuova migrazione
-alembic revision --autogenerate -m "descrizione della migrazione"
-
-# Applica le migrazioni
-alembic upgrade head
+python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 2.4 Avvio di Redis
-```bash
-# Avvia Redis in modalità standalone
-redis-server
+Verifica che il server sia in esecuzione visitando:
+- API Docs: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
+
+## Troubleshooting
+
+### Problemi Comuni
+
+1. **Errore "Module not found"**
+   - Verifica che l'ambiente virtuale sia attivo
+   - Reinstalla le dipendenze: `pip install -r requirements.txt`
+
+2. **Errore di connessione al database**
+   - Verifica che PostgreSQL sia in esecuzione
+   - Controlla le credenziali in `backend/core/config.py`
+
+3. **Errore di importazione circolare**
+   - Usa importazioni lazy con `from __future__ import annotations`
+   - Riorganizza la struttura dei moduli se necessario
+
+4. **Rate Limiting non funziona**
+   - Verifica che Redis sia in esecuzione
+   - Controlla la configurazione Redis in `backend/core/config.py`
+
+### Log e Debug
+
+- I log dell'applicazione sono disponibili in `logs/app.log`
+- Per debug dettagliato, modifica il livello di log in `backend/config/logging_config.py`
+
+## Struttura delle Directory
+
+```
+backend/
+├── core/
+│   └── config.py         # Configurazione dell'applicazione
+├── models/
+│   ├── node.py          # Modelli SQLModel per i nodi
+│   └── ...
+├── schemas/
+│   ├── node.py          # Schemi Pydantic per i nodi
+│   └── ...
+├── api/
+│   └── v1/
+│       └── endpoints/
+│           └── nodes.py  # API endpoints per i nodi
+└── main.py              # Entry point dell'applicazione
 ```
 
-### 2.5 Avvio del Backend
-```bash
-# Avvia il server FastAPI con hot-reload
-uvicorn backend.main:app --reload
-```
+## Note Importanti
 
-## 3. Verifica del Sistema
+1. **Ambiente Virtuale**
+   - Usa SEMPRE l'ambiente virtuale per lo sviluppo
+   - Non committare mai la cartella `venv`
 
-### 3.1 Controllo Servizi
-```bash
-# Verifica container Docker
-docker ps
+2. **Configurazione**
+   - Le configurazioni sensibili vanno in variabili d'ambiente
+   - Non committare mai file `.env` o credenziali
 
-# Verifica connessione PostgreSQL
-psql -U postgres -d eterna_home_db -c "\dt"
+3. **Database**
+   - Usa migrazioni per modifiche al database
+   - Backup regolari del database
 
-# Verifica Redis
-redis-cli ping
-
-# Verifica MinIO
-curl http://localhost:9000/minio/health/live
-```
-
-### 3.2 Test API
-```bash
-# Test endpoint di salute
-curl http://localhost:8000/health
-
-# Test rate limiting
-curl http://localhost:8000/rate-limited
-```
-
-## 4. Risoluzione Problemi Comuni
-
-### 4.1 Problemi di Connessione Database
-```bash
-# Verifica credenziali PostgreSQL
-psql -U postgres -d eterna_home_db
-
-# Reset database (se necessario)
-python reset_db.py
-```
-
-### 4.2 Problemi MinIO
-```bash
-# Verifica log MinIO
-docker logs minio
-
-# Riavvio MinIO
-docker restart minio
-```
-
-### 4.3 Problemi Redis
-```bash
-# Verifica stato Redis
-redis-cli info
-
-# Riavvio Redis
-redis-cli shutdown
-redis-server
-```
-
-### 4.4 Problemi Backend
-```bash
-# Verifica log backend
-tail -f logs/backend.log
-
-# Riavvio backend
-pkill -f uvicorn
-uvicorn backend.main:app --reload
-```
-
-## 5. Comandi Utili
-
-### 5.1 Gestione Database
-```bash
-# Backup database
-pg_dump -U postgres eterna_home_db > backup.sql
-
-# Ripristino database
-psql -U postgres eterna_home_db < backup.sql
-```
-
-### 5.2 Gestione Log
-```bash
-# Visualizza log backend
-tail -f logs/backend.log
-
-# Visualizza log MinIO
-docker logs -f minio
-```
-
-### 5.3 Pulizia Sistema
-```bash
-# Rimuovi container non utilizzati
-docker system prune
-
-# Pulisci cache Redis
-redis-cli FLUSHALL
-```
-
-## 6. Note Importanti
-
-- Mantieni sempre una copia di backup del database
-- Monitora regolarmente i log per eventuali errori
-- Aggiorna regolarmente le dipendenze con `pip install -r requirements.txt --upgrade`
-- Esegui i test dopo ogni aggiornamento significativo
-- Mantieni aggiornato il file `.env` con le configurazioni corrette 
+4. **Sicurezza**
+   - Mantieni aggiornate tutte le dipendenze
+   - Usa HTTPS in produzione
+   - Implementa rate limiting per tutte le API pubbliche 

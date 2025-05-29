@@ -494,6 +494,99 @@ def test_admin_access_allowed(admin_access_token: str) -> TestResult:
     except Exception as e:
         return TestResult("Accesso Consentito Endpoint Admin", False, str(e))
 
+def test_read_house_by_id(access_token: str, resources: TestResources) -> TestResult:
+    """Test di lettura di una singola casa tramite ID"""
+    try:
+        if not resources.house_id:
+            return TestResult("Lettura Casa", False, "ID casa non disponibile per il test")
+
+        response = requests.get(
+            f"{BASE_URL}/houses/{resources.house_id}",
+            headers=get_headers(access_token)
+        )
+
+        if response.status_code == 200:
+            house_data = response.json()
+            if house_data.get("id") != resources.house_id:
+                return TestResult("Lettura Casa", False, "ID casa non corrispondente")
+            return TestResult("Lettura Casa", True, f"Casa recuperata con successo: {house_data}")
+        else:
+            return TestResult("Lettura Casa", False, f"Codice di stato inatteso: {response.status_code}")
+    except Exception as e:
+        return TestResult("Lettura Casa", False, str(e))
+
+def test_read_all_houses(access_token: str) -> TestResult:
+    """Test di lettura di tutte le case"""
+    try:
+        response = requests.get(
+            f"{BASE_URL}/houses/",
+            headers=get_headers(access_token)
+        )
+
+        if response.status_code == 200:
+            houses = response.json()
+            if not isinstance(houses, list):
+                return TestResult("Lettura Tutte le Case", False, "Risposta non è una lista")
+            return TestResult("Lettura Tutte le Case", True, f"Recuperate {len(houses)} case")
+        else:
+            return TestResult("Lettura Tutte le Case", False, f"Codice di stato inatteso: {response.status_code}")
+    except Exception as e:
+        return TestResult("Lettura Tutte le Case", False, str(e))
+
+def test_update_house(access_token: str, resources: TestResources) -> TestResult:
+    """Test di aggiornamento di una casa esistente"""
+    try:
+        if not resources.house_id:
+            return TestResult("Aggiornamento Casa", False, "ID casa non disponibile per il test")
+
+        updated_data = {
+            "name": "Casa Rinnovata",
+            "address": "Via Milano 10, 20100 Milano"
+        }
+
+        response = requests.put(
+            f"{BASE_URL}/houses/{resources.house_id}",
+            json=updated_data,
+            headers=get_headers(access_token)
+        )
+
+        if response.status_code == 200:
+            updated_house = response.json()
+            if updated_house.get("name") != updated_data["name"] or updated_house.get("address") != updated_data["address"]:
+                return TestResult("Aggiornamento Casa", False, "Dati casa non aggiornati correttamente")
+            return TestResult("Aggiornamento Casa", True, f"Casa aggiornata con successo: {updated_house}")
+        else:
+            return TestResult("Aggiornamento Casa", False, f"Codice di stato inatteso: {response.status_code}")
+    except Exception as e:
+        return TestResult("Aggiornamento Casa", False, str(e))
+
+def test_delete_house(access_token: str, resources: TestResources) -> TestResult:
+    """Test di eliminazione di una casa"""
+    try:
+        if not resources.house_id:
+            return TestResult("Eliminazione Casa", False, "ID casa non disponibile per il test")
+
+        response = requests.delete(
+            f"{BASE_URL}/houses/{resources.house_id}",
+            headers=get_headers(access_token)
+        )
+
+        if response.status_code == 204:
+            # Verifica che la casa non esista più
+            check_response = requests.get(
+                f"{BASE_URL}/houses/{resources.house_id}",
+                headers=get_headers(access_token)
+            )
+            if check_response.status_code == 404:
+                resources.house_id = None  # Reset dell'ID dopo l'eliminazione
+                return TestResult("Eliminazione Casa", True, "Casa eliminata con successo")
+            else:
+                return TestResult("Eliminazione Casa", False, "Casa ancora presente dopo l'eliminazione")
+        else:
+            return TestResult("Eliminazione Casa", False, f"Codice di stato inatteso: {response.status_code}")
+    except Exception as e:
+        return TestResult("Eliminazione Casa", False, str(e))
+
 def main():
     """Funzione principale di esecuzione dei test"""
     logger.info("Avvio Test di Integrazione...")
@@ -568,6 +661,23 @@ def main():
             test_results.append(admin_allowed_result)
         else:
             logger.error("Token admin non ottenuto, test accesso consentito endpoint admin saltato")
+        
+        # Test CRUD per House
+        read_result = test_read_house_by_id(access_token, resources)
+        print_test_result(read_result)
+        test_results.append(read_result)
+
+        read_all_result = test_read_all_houses(access_token)
+        print_test_result(read_all_result)
+        test_results.append(read_all_result)
+
+        update_result = test_update_house(access_token, resources)
+        print_test_result(update_result)
+        test_results.append(update_result)
+
+        delete_result = test_delete_house(access_token, resources)
+        print_test_result(delete_result)
+        test_results.append(delete_result)
         
         # Stampa riepilogo
         logger.info("\nRiepilogo Test:")

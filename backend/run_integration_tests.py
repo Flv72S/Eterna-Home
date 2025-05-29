@@ -37,7 +37,7 @@ test_legacy_document_id = None
 def test_register_user():
     """Test registrazione utente"""
     global test_token
-    response = requests.post(f"{BASE_URL}/auth/register", json=TEST_USER)
+    response = requests.post(f"{BASE_URL}/auth/signup", json=TEST_USER)
     assert response.status_code == 200, f"Registrazione fallita con status code {response.status_code}"
     data = response.json()
     assert "access_token" in data, "Token di accesso non presente nella risposta"
@@ -48,7 +48,7 @@ def test_register_user():
 def test_register_admin():
     """Test registrazione utente admin"""
     global test_admin_token
-    response = requests.post(f"{BASE_URL}/auth/register", json=TEST_ADMIN)
+    response = requests.post(f"{BASE_URL}/auth/signup", json=TEST_ADMIN)
     assert response.status_code == 200, f"Registrazione admin fallita con status code {response.status_code}"
     data = response.json()
     assert "access_token" in data, "Token di accesso non presente nella risposta"

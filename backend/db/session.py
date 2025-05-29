@@ -1,6 +1,4 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel, create_engine, Session
 from ..config.settings import settings
 
 # Usa il DATABASE_URL dal file di configurazione
@@ -9,13 +7,13 @@ print(f"Database URL: {SQLALCHEMY_DATABASE_URL}")  # Debug print
 
 # Crea l'engine per PostgreSQL
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close() 
+    with Session(engine) as session:
+        try:
+            yield session
+        finally:
+            session.close() 

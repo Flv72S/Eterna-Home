@@ -1,16 +1,23 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
-from backend.db.session import Base
-import datetime
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, Relationship, SQLModel
+from datetime import datetime
 
-class AudioLog(Base):
+if TYPE_CHECKING:
+    from backend.models.node import Node
+
+class AudioLog(SQLModel, table=True):
     __tablename__ = "audio_logs"
+    __table_args__ = {'extend_existing': True}
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    file_path = Column(String(255), nullable=False)
-    duration = Column(Integer, nullable=True)  # durata in secondi
-    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(max_length=255, nullable=False)
+    description: Optional[str] = Field(default=None)
+    file_path: str = Field(max_length=255, nullable=False)
+    duration: Optional[float] = Field(default=None)
+    node_id: int = Field(foreign_key="nodes.id", nullable=False)
 
-    node = relationship("Node", back_populates="audio_logs") 
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # Relationships
+    node: "Node" = Relationship(back_populates="audio_logs") 
