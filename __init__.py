@@ -1,1 +1,0 @@
-# Questo file è necessario per far riconoscere la cartella come un package Python 

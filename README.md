@@ -1,105 +1,105 @@
-# Eterna Home
+# 🏠 Eterna Home
 
-Sistema di gestione domotica avanzato con integrazione AI.
+A modular platform for building digital twins with NFC-based document management.
 
-## Struttura del Progetto
+## 📋 Overview
+
+Eterna Home is a comprehensive solution for managing building documentation through NFC tags. Each building has its own digital repository containing technical documents, floor plans, renders, system schematics, manuals, and references.
+
+## 🚀 Features
+
+- **NFC Tag Integration**: Quick access to building documentation through NFC scanning
+- **Document Management**: Organized storage of technical documents and plans
+- **Mobile App**: Flutter-based mobile application for on-site access
+- **Voice Recording**: Offline voice recording with automatic transcription
+- **Secure Authentication**: JWT-based authentication system
+
+## 🛠 Tech Stack
+
+- **Backend**: TypeScript + Express/Fastify
+- **Authentication**: JWT or Clerk/Auth0
+- **Storage**: S3-compatible or filesystem
+- **Mobile**: Flutter
+- **Transcription**: Whisper API
+
+## 📁 Project Structure
 
 ```
-Eterna-Home/
-├── backend/
-│   ├── core/
-│   │   └── config.py         # Configurazione dell'applicazione
-│   ├── models/
-│   │   ├── node.py          # Modelli SQLModel per i nodi
-│   │   └── ...
-│   ├── schemas/
-│   │   ├── node.py          # Schemi Pydantic per i nodi
-│   │   └── ...
-│   ├── api/
-│   │   └── v1/
-│   │       └── endpoints/
-│   │           └── nodes.py  # API endpoints per i nodi
-│   └── main.py              # Entry point dell'applicazione
-├── frontend/
-│   └── ...
-└── venv/                    # Ambiente virtuale Python
+/eterna-home/
+│
+├── api/           # REST API modules
+│   ├── index.ts
+│   ├── auth/      # Authentication endpoints
+│   ├── repository/# Document repository endpoints
+│   └── nfc/       # NFC tag management
+│
+├── app/           # Flutter frontend
+│
+├── config/        # Environment configurations
+│   └── env.ts
+│
+├── docs/          # Technical documentation
+│
+├── tests/         # Unit and integration tests
+│
+└── scripts/       # Utility scripts
 ```
 
-## Requisiti
+## 🚀 Getting Started
 
-- Python 3.8+
-- PostgreSQL 13+
-- Node.js 16+
-- Redis (per rate limiting)
+### Prerequisites
 
-## Installazione
+- Node.js (v16+)
+- TypeScript
+- Flutter SDK
+- NFC reader/writer
+- S3-compatible storage (optional)
 
-### Backend
+### Installation
 
-1. Crea e attiva l'ambiente virtuale:
+1. Clone the repository:
    ```bash
-   python -m venv venv
-   .\venv\Scripts\activate  # Windows
-   source venv/bin/activate # Linux/Mac
+   git clone https://github.com/your-org/eterna-home.git
+   cd eterna-home
    ```
 
-2. Installa le dipendenze:
+2. Install dependencies:
    ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Configura il database:
-   - Crea un database PostgreSQL
-   - Aggiorna `backend/core/config.py` con le credenziali corrette
-
-4. Avvia il server:
-   ```bash
-   python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-   ```
-
-### Frontend
-
-1. Installa le dipendenze:
-   ```bash
-   cd frontend
    npm install
    ```
 
-2. Avvia il server di sviluppo:
+3. Set up environment variables:
    ```bash
-   npm run dev
+   cp config/env.example.ts config/env.ts
+   # Edit config/env.ts with your configuration
    ```
 
-## Troubleshooting
+4. Run tests:
+   ```bash
+   npm test
+   ```
 
-### Backend
+## 🧪 Testing
 
-1. **Errore "Module not found"**
-   - Verifica che l'ambiente virtuale sia attivo
-   - Reinstalla le dipendenze: `pip install -r requirements.txt`
+The project follows TDD principles. Each feature should have corresponding unit and integration tests:
 
-2. **Errore di connessione al database**
-   - Verifica che PostgreSQL sia in esecuzione
-   - Controlla le credenziali in `backend/core/config.py`
+```typescript
+// Example test structure
+describe("Feature", () => {
+  it("should behave in expected way", async () => {
+    // Test implementation
+  });
+});
+```
 
-3. **Errore di importazione circolare**
-   - Usa importazioni lazy con `from __future__ import annotations`
-   - Riorganizza la struttura dei moduli se necessario
+## 📝 License
 
-### Frontend
+[Your License Here]
 
-1. **Errore di compilazione**
-   - Cancella la cache: `npm run clean`
-   - Reinstalla le dipendenze: `npm install`
+## 🤝 Contributing
 
-## Contribuire
-
-1. Fork il repository
-2. Crea un branch per la tua feature
-3. Committa le modifiche
-4. Pusha al branch
-5. Crea una Pull Request
-
-## Licenza
-
-MIT 
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request 
