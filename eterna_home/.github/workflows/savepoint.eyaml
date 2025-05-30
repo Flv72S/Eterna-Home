@@ -1,0 +1,36 @@
+name: Auto Backup on Push
+
+on:
+  push:
+    branches:
+      - '**'   # su ogni branch, o metti 'main' se vuoi solo lì
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set timestamp variable
+        id: vars
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+
+      - name: Create backup directory
+        run: mkdir -p backup/${{ env.TIMESTAMP }}
+
+      - name: Copy all files to backup folder
+        run: |
+          shopt -s extglob
+          cp -r -- !(backup) backup/${{ env.TIMESTAMP }}/
+
+      - name: Commit and push backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backup/${{ env.TIMESTAMP }}
+          git commit -m "Backup auto-commit ${{ env.TIMESTAMP }}" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }}
