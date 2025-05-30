@@ -12,13 +12,16 @@ fastapi = "^0.109.0"
 uvicorn = "^0.27.0"
 sqlalchemy = "^2.0.25"
 alembic = "^1.13.1"
-pydantic = "^2.6.1"
+pydantic = {extras = ["email"], version = "^2.11.5"}
 pydantic-settings = "^2.2.1"
 python-dotenv = "^1.0.1"
 loguru = "^0.7.2"
 pytest = "^8.0.0"
 httpx = "^0.26.0"
 psycopg2-binary = "^2.9.9"
+email-validator = "^2.2.0"
+python-jose = {extras = ["cryptography"], version = "^3.5.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 
 [build-system]
 requires = ["poetry-core"]

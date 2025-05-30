@@ -1,63 +1,49 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.models.user import User
+from app.schemas.user import UserCreate, UserResponse
+from app.core.security import get_password_hash
 
 router = APIRouter()
 
-class UserBase(BaseModel):
-    email: EmailStr
-    username: str
-    full_name: Optional[str] = None
+@router.get("/", response_model=List[UserResponse])
+def read_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
 
-class UserCreate(UserBase):
-    password: str
-
-class UserResponse(UserBase):
-    id: int
-    is_active: bool = True
-
-    class Config:
-        from_attributes = True
-
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate):
-    """Create a new user."""
-    # TODO: Implement user creation logic
-    return {
-        "id": 1,
-        "email": user.email,
-        "username": user.username,
-        "full_name": user.full_name,
-        "is_active": True
-    }
+@router.post("/", response_model=UserResponse)
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email già registrata")
+    
+    hashed_password = get_password_hash(user.password)
+    db_user = User(
+        email=user.email,
+        hashed_password=hashed_password,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int):
-    """Get user by ID."""
-    # TODO: Implement user retrieval logic
-    if user_id != 1:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    return {
-        "id": user_id,
-        "email": "test@example.com",
-        "username": "testuser",
-        "full_name": "Test User",
-        "is_active": True
-    }
-
-@router.get("/", response_model=List[UserResponse])
-async def list_users(skip: int = 0, limit: int = 100):
-    """List all users with pagination."""
-    # TODO: Implement user listing logic
-    return [
-        {
-            "id": 1,
-            "email": "test@example.com",
-            "username": "testuser",
-            "full_name": "Test User",
-            "is_active": True
-        }
-    ] 
+def read_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    return user 
