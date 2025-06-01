@@ -134,4 +134,18 @@ class UserService:
             
         session.delete(db_user)
         session.commit()
-        return True 
+        return True
+    
+    @staticmethod
+    def get_users(session: Session, skip: int = 0, limit: int = 10) -> list[User]:
+        """
+        Restituisce una lista di utenti con paginazione.
+        Args:
+            session (Session): Sessione del database
+            skip (int): Numero di record da saltare
+            limit (int): Numero massimo di record da restituire
+        Returns:
+            list[User]: Lista degli utenti
+        """
+        statement = select(User).offset(skip).limit(limit)
+        return list(session.exec(statement)) 

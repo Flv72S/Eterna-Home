@@ -59,3 +59,29 @@ python -m pytest app/schemas/test_user.py -v
 - Implementazione modelli SQLModel
 - Integrazione con database
 - Implementazione CRUD operations
+
+## Macro-step 1.2.3 - API RESTful CRUD per User
+
+### Endpoint Implementati
+- POST /users/ : Crea un nuovo utente
+- GET /users/{id} : Recupera i dettagli di un utente
+- GET /users?skip=...&limit=... : Lista utenti con paginazione
+- PUT /users/{id} : Aggiorna un utente
+- DELETE /users/{id} : Elimina un utente
+
+### Test automatici superati
+- test_create_user_success: verifica creazione utente
+- test_create_user_duplicate_email: verifica gestione email duplicata
+- test_get_user_success: verifica recupero utente esistente
+- test_get_user_not_found: verifica gestione utente non trovato
+- test_get_users_pagination: verifica paginazione utenti
+- test_update_user_success: verifica aggiornamento utente
+- test_delete_user_success: verifica eliminazione utente
+
+### Come eseguire i test API
+
+```bash
+python -m pytest tests/api/test_user_api.py -v
+```
+
+Tutti i test devono risultare PASSED.

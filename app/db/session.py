@@ -1,16 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from typing import Generator
+from sqlmodel import Session, create_engine
 from app.core.config import settings
 
-engine = create_engine(settings.get_database_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# Creazione dell'engine SQLModel
+engine = create_engine(
+    settings.SQLALCHEMY_DATABASE_URI,
+    pool_pre_ping=True,
+    echo=settings.SQL_ECHO
+)
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_session() -> Generator[Session, None, None]:
+    """
+    Dependency per ottenere una sessione del database.
+    
+    Yields:
+        Session: Sessione del database
+    """
+    with Session(engine) as session:
+        yield session
 

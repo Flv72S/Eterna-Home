@@ -27,9 +27,8 @@ class UserRead(UserBase):
     id: int = Field(..., description="User's unique identifier")
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
-    
-    class Config:
-        orm_mode = True
+    full_name: Optional[str] = Field(None, description="Nome completo dell'utente")
+    username: str = Field(..., description="User's username")
     
     # Exclude hashed_password from serialization
     model_config = ConfigDict(

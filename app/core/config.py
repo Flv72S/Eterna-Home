@@ -1,14 +1,24 @@
-from pydantic import BaseSettings
+from typing import Optional
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    SQLALCHEMY_DATABASE_URI: str = "sqlite:///./test.db"
-    SQLALCHEMY_DATABASE_TEST_URI: str = "sqlite:///:memory:"
-    SECRET_KEY: str = "test-secret-key"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # Database
+    SQLALCHEMY_DATABASE_URI: str = "sqlite:///./eterna_home.db"
+    SQL_ECHO: bool = False
+    
+    # JWT
+    SECRET_KEY: str = "your-secret-key-here"  # In produzione, usare una chiave sicura
     ALGORITHM: str = "HS256"
-
-    @property
-    def get_database_url(self) -> str:
-        return self.SQLALCHEMY_DATABASE_URI
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # CORS
+    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+    
+    # API
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "Eterna Home"
+    
+    class Config:
+        case_sensitive = True
 
 settings = Settings() 

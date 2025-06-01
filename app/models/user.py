@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional
 from sqlmodel import Field, SQLModel, Column, DateTime, String, Boolean, Integer
-from app.db.session import Base
 
 class User(SQLModel, table=True):
     """
@@ -64,18 +63,6 @@ class User(SQLModel, table=True):
         max_length=20,
         description="Numero di telefono dell'utente"
     )
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "username": "johndoe",
-                "email": "john.doe@example.com",
-                "full_name": "John Doe",
-                "is_active": True,
-                "is_superuser": False,
-                "is_verified": False
-            }
-        }
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
