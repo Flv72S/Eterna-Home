@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 
 from app.schemas.user import UserCreate, UserUpdate, UserRead
 from app.models.user import User
-from app.utils.security import get_password_hash
+from app.utils.password import get_password_hash
 
 class UserService:
     """Servizio per la gestione delle operazioni CRUD sugli utenti."""

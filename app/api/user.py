@@ -5,6 +5,9 @@ from sqlmodel import Session
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.user import UserService
 from app.db.session import get_session
+from app.core.config import settings
+from app.models.user import User
+from app.utils.security import get_current_user
 
 router = APIRouter(
     prefix="/users",
@@ -141,4 +144,9 @@ def delete_user(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Utente non trovato"
             )
-        raise e 
+        raise e
+
+@router.get("/me", response_model=UserRead)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Endpoint per ottenere i dettagli dell'utente corrente."""
+    return current_user 
