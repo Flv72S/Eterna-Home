@@ -26,8 +26,13 @@ def create_user(
     if db_user:
         raise HTTPException(status_code=400, detail="Email già registrata")
     
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username già registrato")
+    
     hashed_password = get_password_hash(user.password)
     db_user = User(
+        username=user.username,
         email=user.email,
         hashed_password=hashed_password,
         is_active=user.is_active,

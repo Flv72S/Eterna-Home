@@ -4,7 +4,7 @@ from app.core.config import Settings, get_settings
 def test_settings_creation():
     """Test che verifica la creazione corretta delle impostazioni"""
     settings = Settings()
-    assert settings.APP_NAME == "Eterna Home Backend"
+    assert settings.PROJECT_NAME == "Eterna Home"
     assert settings.VERSION == "0.1.0"
     assert settings.API_V1_STR == "/api/v1"
     assert settings.ENVIRONMENT == "development"
@@ -19,9 +19,9 @@ def test_database_url_assembly():
         POSTGRES_DB="test_db",
         POSTGRES_PORT="5432"
     )
-    assert str(settings.DATABASE_URL).startswith("postgresql://")
-    assert "test_user" in str(settings.DATABASE_URL)
-    assert "test_db" in str(settings.DATABASE_URL)
+    assert str(settings.get_database_url).startswith("postgresql://")
+    assert "test_user" in str(settings.get_database_url)
+    assert "test_db" in str(settings.get_database_url)
 
 def test_settings_caching():
     """Test che verifica il caching delle impostazioni"""

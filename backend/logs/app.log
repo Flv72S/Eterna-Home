@@ -1,1 +1,32 @@
 2025-05-30 14:54:23,176 - root - INFO - Starting up Eterna Home API
+2025-05-30 19:17:45,630 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 1
+2025-05-30 19:17:46,116 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 1
+2025-05-30 19:17:46,170 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 1
+2025-05-30 19:28:12,229 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:31:38,890 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:32:33,839 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:32:35,151 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-05-30 19:32:35,475 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\Eterna-Home\backend\venv311\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-30 19:34:07,676 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:34:07,919 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-05-30 19:34:07,969 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 400 Bad Request"
+2025-05-30 19:35:22,800 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:35:23,065 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-05-30 19:35:23,093 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 400 Bad Request"
+2025-05-30 19:36:12,422 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:36:12,735 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-05-30 19:36:12,762 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 400 Bad Request"
+2025-05-30 19:38:22,217 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-05-30 19:38:22,391 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-05-30 19:38:22,432 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\Eterna-Home\backend\venv311\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-30 19:38:22,963 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"

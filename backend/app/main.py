@@ -1,15 +1,25 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.core.logging import logger
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting up Eterna Home API")
+    yield
+    # Shutdown
+    logger.info("Shutting down Eterna Home API")
+
 # Inizializzazione dell'applicazione FastAPI.
 # Il titolo, la descrizione e la versione verranno visualizzati nella documentazione OpenAPI (Swagger UI).
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 
 # Set all CORS enabled origins
@@ -27,14 +37,6 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
     return {"message": "Welcome to Eterna Home API"}
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Starting up Eterna Home API")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down Eterna Home API")
 
 # Il blocco if __name__ == "__main__": è utile per l'esecuzione diretta in sviluppo.
 # In produzione, Gunicorn (o un altro WSGI server) si occuperà di avviare l'applicazione.
