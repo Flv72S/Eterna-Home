@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
     password: str = Field(..., min_length=8, description="User's password (will be hashed)")
+    username: str
 
 class UserUpdate(BaseModel):
     """Schema for updating user data - all fields optional."""
@@ -26,6 +27,9 @@ class UserRead(UserBase):
     id: int = Field(..., description="User's unique identifier")
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
+    
+    class Config:
+        orm_mode = True
     
     # Exclude hashed_password from serialization
     model_config = ConfigDict(
