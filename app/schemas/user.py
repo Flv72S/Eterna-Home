@@ -44,4 +44,8 @@ class UserRead(UserBase):
                 "updated_at": "2024-01-01T00:00:00"
             }
         }
-    ) 
+    )
+
+class UserResponse(UserRead):
+    """Schema per la risposta dell'endpoint /me."""
+    pass 

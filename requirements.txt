@@ -9,4 +9,6 @@ passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.5
 slowapi>=0.1.8
 pytest>=7.4.0
-httpx>=0.24.0 
+httpx>=0.24.0
+redis>=5.0.1
+fakeredis>=2.20.0 

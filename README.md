@@ -85,3 +85,85 @@ python -m pytest tests/api/test_user_api.py -v
 ```
 
 Tutti i test devono risultare PASSED.
+
+## Macro-step 1.3 - Autenticazione e Sicurezza
+
+### Micro-step 1.3.1 - JWT Authentication
+
+- ✅ Implementazione sistema di autenticazione JWT:
+  - Generazione token di accesso
+  - Validazione token
+  - Gestione scadenza token
+  - Middleware di autenticazione
+
+### Micro-step 1.3.2 - Redis Caching
+
+- ✅ Implementazione caching con Redis:
+  - Cache per dati utente
+  - Gestione TTL (Time To Live)
+  - Invalidation cache
+  - Fallback su database
+
+### Test Implementati
+
+- ✅ Test autenticazione:
+  - Login utente
+  - Validazione token
+  - Protezione endpoint
+  - Gestione token scaduti
+- ✅ Test caching:
+  - Hit/Miss cache
+  - Invalidation
+  - TTL
+  - Fallback DB
+
+### Dipendenze
+
+- pydantic>=2.5.0
+- email-validator>=2.1.0
+- pytest>=7.4.0
+- sqlmodel>=0.0.8
+- python-jose[cryptography]>=3.3.0
+- redis>=5.0.0
+- fakeredis>=2.20.0
+
+## Struttura del Progetto
+
+```
+app/
+  ├── api/
+  │   ├── endpoints/
+  │   │   ├── users.py
+  │   │   └── auth.py
+  │   └── __init__.py
+  ├── core/
+  │   ├── security.py
+  │   ├── redis.py
+  │   └── deps.py
+  ├── models/
+  │   └── user.py
+  ├── schemas/
+  │   └── user.py
+  └── main.py
+tests/
+  ├── auth/
+  │   └── test_protected_endpoints.py
+  └── conftest.py
+```
+
+## Come Eseguire i Test
+
+```bash
+# Test schemi
+python -m pytest app/schemas/test_user.py -v
+
+# Test autenticazione e caching
+python -m pytest tests/auth/test_protected_endpoints.py -v
+```
+
+## Prossimi Step
+
+- Implementazione refresh token
+- Rate limiting avanzato
+- Logging e monitoring
+- Documentazione API con Swagger/OpenAPI
