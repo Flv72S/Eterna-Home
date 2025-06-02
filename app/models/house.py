@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.node import Node
+    from app.models.document import Document
 
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
@@ -26,4 +28,6 @@ class House(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"}) 
+    owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"})
+    nodes: List["Node"] = Relationship(back_populates="house")
+    documents: List["Document"] = Relationship(back_populates="house") 

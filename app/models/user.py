@@ -5,6 +5,7 @@ from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from app.models.house import House
+    from app.models.document import Document
 
 class User(SQLModel, table=True):
     """
@@ -17,7 +18,8 @@ class User(SQLModel, table=True):
     model_config = ConfigDict(
         from_attributes=True,  # equivalente a orm_mode=True
         populate_by_name=True,
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        str_strip_whitespace=True
     )
 
     # Campi primari e indici
@@ -77,6 +79,7 @@ class User(SQLModel, table=True):
 
     # Relazioni
     houses: List["House"] = Relationship(back_populates="owner", sa_relationship_kwargs={"lazy": "select"})
+    documents: List["Document"] = Relationship(back_populates="author")
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"

@@ -1,9 +1,10 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from app.models.house import House
+    from app.models.document import Document
 
 class NodeCreate(SQLModel):
     """Modello per la creazione di un nodo."""
@@ -32,4 +33,6 @@ class Node(SQLModel, table=True):
     nfc_id: str = Field(unique=True, index=True, description="Identificativo NFC univoco")
     house_id: int = Field(foreign_key="house.id")
 
-    house: Optional["House"] = Relationship(back_populates=None, sa_relationship_kwargs={"lazy": "select"}) 
+    # Relazioni
+    house: Optional["House"] = Relationship(back_populates="nodes")
+    documents: List["Document"] = Relationship(back_populates="node") 
