@@ -8,7 +8,8 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.db.session import get_session
 from app.services.user import UserService
-from app.utils.security import create_access_token, verify_password
+from app.utils.security import verify_password
+from app.core.auth import create_access_token
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)

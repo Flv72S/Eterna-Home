@@ -95,6 +95,9 @@ Tutti i test devono risultare PASSED.
   - Validazione token
   - Gestione scadenza token
   - Middleware di autenticazione
+  - Riorganizzazione struttura autenticazione:
+    * Router in `app/routers/auth.py`
+    * Funzioni di utilità in `app/core/auth.py`
 
 ### Micro-step 1.3.2 - Redis Caching
 
@@ -132,22 +135,26 @@ Tutti i test devono risultare PASSED.
 ```
 app/
   ├── api/
-  │   ├── endpoints/
-  │   │   ├── users.py
-  │   │   └── auth.py
   │   └── __init__.py
   ├── core/
+  │   ├── auth.py
   │   ├── security.py
-  │   ├── redis.py
-  │   └── deps.py
+  │   └── config.py
   ├── models/
-  │   └── user.py
+  │   ├── user.py
+  │   └── house.py
+  ├── routers/
+  │   ├── users.py
+  │   ├── auth.py
+  │   └── house.py
   ├── schemas/
-  │   └── user.py
+  │   ├── user.py
+  │   └── house.py
   └── main.py
 tests/
-  ├── auth/
-  │   └── test_protected_endpoints.py
+  ├── api/
+  │   ├── test_user_api.py
+  │   └── test_house_api.py
   └── conftest.py
 ```
 
@@ -157,8 +164,11 @@ tests/
 # Test schemi
 python -m pytest app/schemas/test_user.py -v
 
-# Test autenticazione e caching
-python -m pytest tests/auth/test_protected_endpoints.py -v
+# Test API utenti
+python -m pytest tests/api/test_user_api.py -v
+
+# Test API case
+python -m pytest tests/api/test_house_api.py -v
 ```
 
 ## Prossimi Step
@@ -167,3 +177,47 @@ python -m pytest tests/auth/test_protected_endpoints.py -v
 - Rate limiting avanzato
 - Logging e monitoring
 - Documentazione API con Swagger/OpenAPI
+- Implementazione gestione dispositivi
+- Integrazione con protocolli IoT
+
+## Macro-step 1.4 - Gestione Case
+
+### Micro-step 1.4.1 - Modello House
+
+- ✅ Implementazione modello House con SQLModel:
+  - Relazione many-to-one con User
+  - Gestione proprietario della casa
+  - Timestamps automatici
+  - Risoluzione importazioni circolari
+
+### Micro-step 1.4.2 - API RESTful CRUD per House
+
+- ✅ Implementazione endpoint CRUD:
+  - POST /houses/ : Crea una nuova casa
+  - GET /houses/ : Lista delle case dell'utente
+  - GET /houses/{house_id} : Dettagli di una casa
+  - PUT /houses/{house_id} : Aggiorna una casa
+  - DELETE /houses/{house_id} : Elimina una casa
+
+- ✅ Funzionalità implementate:
+  - Autenticazione JWT per tutti gli endpoint
+  - Verifica proprietà casa
+  - Field filtering nella lista case
+  - Gestione errori e permessi
+
+#### Test Implementati
+
+- ✅ Test modello House:
+  - Creazione casa
+  - Relazione con utente
+  - Validazione dati
+  - Timestamps
+
+- ✅ Test API House:
+  - Creazione casa
+  - Lista case
+  - Dettagli casa
+  - Aggiornamento casa
+  - Eliminazione casa
+  - Gestione permessi
+  - Field filtering

@@ -4,8 +4,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.endpoints import users
-from app.api import auth
+from app.routers import users, house, auth
 from app.core.config import settings
 
 app = FastAPI(
@@ -32,6 +31,7 @@ app.add_middleware(SlowAPIMiddleware)
 # Inclusione dei router
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(auth.router, tags=["auth"])
+app.include_router(house.router, prefix="/houses", tags=["houses"])
 
 @app.get("/")
 async def root():

@@ -1,6 +1,10 @@
-from datetime import datetime
-from typing import Optional
-from sqlmodel import Field, SQLModel, Column, DateTime, String, Boolean, Integer
+from datetime import datetime, timezone
+from typing import Optional, List, TYPE_CHECKING
+from sqlmodel import Field, SQLModel, Column, DateTime, String, Boolean, Integer, Relationship
+from pydantic import ConfigDict
+
+if TYPE_CHECKING:
+    from app.models.house import House
 
 class User(SQLModel, table=True):
     """
@@ -8,6 +12,13 @@ class User(SQLModel, table=True):
     Utilizza SQLModel per combinare le funzionalità di Pydantic e SQLAlchemy.
     """
     __tablename__ = "users"
+    
+    # Configurazione Pydantic
+    model_config = ConfigDict(
+        from_attributes=True,  # equivalente a orm_mode=True
+        populate_by_name=True,
+        arbitrary_types_allowed=True
+    )
 
     # Campi primari e indici
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -37,13 +48,13 @@ class User(SQLModel, table=True):
 
     # Campi di audit
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Data e ora di creazione dell'utente"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=datetime.utcnow),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(timezone.utc)),
         description="Data e ora dell'ultimo aggiornamento dell'utente"
     )
     last_login: Optional[datetime] = Field(
@@ -63,6 +74,9 @@ class User(SQLModel, table=True):
         max_length=20,
         description="Numero di telefono dell'utente"
     )
+
+    # Relazioni
+    houses: List["House"] = Relationship(back_populates="owner", sa_relationship_kwargs={"lazy": "select"})
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
