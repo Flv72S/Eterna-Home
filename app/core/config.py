@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    SQLALCHEMY_DATABASE_URI: str = "sqlite:///./eterna_home.db"
+    DATABASE_URL: str = "sqlite:///./eterna_home.db"
     SQL_ECHO: bool = False
     
     # JWT

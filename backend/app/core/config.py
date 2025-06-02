@@ -59,7 +59,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "N0nn0c4rl0!!"
     POSTGRES_DB: str = "eterna_home"
     POSTGRES_PORT: str = "5432"
-    SQLALCHEMY_DATABASE_URI: Optional[str] = None
+    DATABASE_URL: Optional[str] = None
+    SQL_ECHO: bool = False
     
     # Database Pool Settings
     DB_POOL_SIZE: int = 20
@@ -80,7 +81,7 @@ class Settings(BaseSettings):
             return False
         return v
 
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
+    @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: Optional[str], info) -> str:
         if isinstance(v, str):
@@ -111,9 +112,9 @@ class Settings(BaseSettings):
         ))
 
     @property
-    def get_database_url(self) -> str:
-        if self.SQLALCHEMY_DATABASE_URI:
-            return self.SQLALCHEMY_DATABASE_URI
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
 
     @property

@@ -4,7 +4,7 @@ from app.core.config import settings
 
 # Creazione dell'engine SQLModel
 engine = create_engine(
-    settings.SQLALCHEMY_DATABASE_URI,
+    settings.DATABASE_URL,
     pool_pre_ping=True,
     echo=settings.SQL_ECHO
 )

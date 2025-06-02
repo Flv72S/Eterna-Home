@@ -221,3 +221,112 @@ python -m pytest tests/api/test_house_api.py -v
   - Eliminazione casa
   - Gestione permessi
   - Field filtering
+
+## Macro-step 2.1 - Gestione Nodi
+
+### Micro-step 2.1.4 - CRUD API per Node
+
+- ✅ Implementazione modello Node:
+  - Campi: `id`, `name`, `description`, `nfc_id`, `house_id`
+  - Vincoli: `nfc_id` univoco e indicizzato
+  - Relazione con `House`
+  - Validazione campi obbligatori
+
+- ✅ Implementazione API Endpoints (`/nodes/`):
+  - POST / : Creazione nodo
+  - GET /{node_id} : Lettura singolo nodo
+  - GET / : Lista nodi con filtri
+  - PUT /{node_id} : Aggiornamento nodo
+  - DELETE /{node_id} : Eliminazione nodo
+
+- ✅ Funzionalità implementate:
+  - Validazione `nfc_id` duplicato
+  - Ricerca case-insensitive
+  - Filtri multipli (name, nfc_id, house_id)
+  - Autenticazione JWT
+  - Gestione errori e permessi
+
+- ✅ Test Suite:
+  - Test di base (CRUD)
+  - Test di filtro e ricerca
+  - Test di validazione
+  - Test di sicurezza
+  - Test di robustezza
+
+- ✅ Miglioramenti:
+  - Aggiornamento a Pydantic v2
+  - Gestione timezone
+  - Documentazione warning
+  - Ottimizzazioni performance
+
+## Struttura del Progetto
+
+```
+app/
+  ├── api/
+  │   └── __init__.py
+  ├── core/
+  │   ├── auth.py
+  │   ├── security.py
+  │   ├── config.py
+  │   └── warnings.py
+  ├── models/
+  │   ├── user.py
+  │   ├── house.py
+  │   └── node.py
+  ├── routers/
+  │   ├── users.py
+  │   ├── auth.py
+  │   ├── house.py
+  │   └── node.py
+  ├── schemas/
+  │   ├── user.py
+  │   ├── house.py
+  │   └── node.py
+  └── main.py
+tests/
+  ├── api/
+  │   ├── test_user_api.py
+  │   ├── test_house_api.py
+  │   └── test_node_api.py
+  ├── models/
+  │   ├── test_user.py
+  │   ├── test_house.py
+  │   └── test_node.py
+  └── conftest.py
+```
+
+## Come Eseguire i Test
+
+```bash
+# Test schemi
+python -m pytest app/schemas/test_user.py -v
+
+# Test API utenti
+python -m pytest tests/api/test_user_api.py -v
+
+# Test API case
+python -m pytest tests/api/test_house_api.py -v
+
+# Test API nodi
+python -m pytest tests/api/test_node_api.py -v
+```
+
+## Dipendenze
+
+* pydantic>=2.5.0
+* email-validator>=2.1.0
+* pytest>=7.4.0
+* sqlmodel>=0.0.8
+* python-jose[cryptography]>=3.3.0
+* redis>=5.0.0
+* fakeredis>=2.20.0
+
+## Prossimi Step
+
+* Implementazione refresh token
+* Rate limiting avanzato
+* Logging e monitoring
+* Documentazione API con Swagger/OpenAPI
+* Implementazione gestione dispositivi
+* Integrazione con protocolli IoT
