@@ -262,6 +262,106 @@ python -m pytest tests/api/test_house_api.py -v
   - Nome bucket
   - Regione
 
+## Macro-step 2.2 - Gestione Documenti
+
+### Micro-step 2.2.4 - Endpoint API per Download di Documenti
+
+* ✅ Implementazione endpoint download sicuro:
+  * `GET /api/v1/documents/download/{document_id}`
+  * Autenticazione JWT richiesta
+  * Verifica autorizzazione utente
+  * Generazione URL pre-firmati MinIO
+
+* ✅ Funzionalità implementate:
+  * Verifica esistenza documento
+  * Controllo autorizzazione (solo autore)
+  * URL pre-firmati con scadenza (1 ora)
+  * Gestione errori completa
+  * Logging dettagliato
+
+* ✅ Test implementati:
+  * Test 2.2.4.1: Download con successo
+    * Verifica status 200
+    * Controllo URL pre-firmato
+    * Validazione chiamata MinIO
+  * Test 2.2.4.2: Gestione errori autenticazione
+    * Token mancante
+    * Token invalido
+  * Test 2.2.4.3: Gestione documento non trovato
+    * Verifica status 404
+    * Messaggio errore appropriato
+
+* ✅ Sicurezza:
+  * Autenticazione JWT
+  * Verifica autorizzazione
+  * URL pre-firmati temporanei
+  * Nessuna esposizione diretta file
+
+* ✅ Best Practices:
+  * Dependency Injection
+  * Separazione responsabilità
+  * Test isolati con mock
+  * Gestione errori robusta
+  * Documentazione completa
+
+## Macro-step 2.2 - Gestione File
+
+### Micro-step 2.2.2 - Servizio di Upload File su MinIO
+
+- ✅ Implementazione servizio di upload file:
+  - Client MinIO con supporto SSE-S3
+  - Gestione dinamica bucket e path
+  - Generazione automatica path univoci
+  - Rilevamento automatico content type
+  - Gestione errori e logging
+
+- ✅ Funzionalità implementate:
+  - Upload file con crittografia server-side (SSE-S3)
+  - Generazione URL file
+  - Creazione automatica bucket
+  - Gestione metadati e content type
+
+- ✅ Test implementati:
+  - Upload file con successo
+  - Uso bucket di default
+  - Generazione path automatica
+  - Rilevamento content type
+  - Gestione errori
+  - Creazione bucket
+
+- ✅ Dipendenze aggiunte:
+  - minio>=7.2.0
+
+- ✅ Configurazione:
+  - Endpoint MinIO
+  - Credenziali accesso
+  - Nome bucket default
+  - SSL/TLS
+
+#### Esempio di utilizzo:
+```python
+from app.services.minio_service import minio_service
+
+# Upload file con bucket e path specifici
+url, object_name = minio_service.upload_file(
+    file=file_bytes,
+    filename="document.pdf",
+    bucket="my-bucket",
+    path="documents/2024"
+)
+
+# Upload file con bucket di default e path automatico
+url, object_name = minio_service.upload_file(
+    file=file_bytes,
+    filename="image.jpg"
+)
+```
+
+#### Test del servizio:
+```bash
+python -m pytest tests/services/test_minio_service.py -v
+```
+
 ## Macro-step 2.1 - Gestione Nodi
 
 ### Micro-step 2.1.4 - CRUD API per Node
