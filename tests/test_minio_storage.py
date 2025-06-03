@@ -2,38 +2,42 @@ import pytest
 from fastapi import UploadFile
 from io import BytesIO
 import hashlib
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 import boto3
 from botocore.exceptions import ClientError
 import asyncio
 
 from app.core.storage.minio import MinioClient
 from app.models.document import Document
+from app.core.config import settings
 
 # Fixtures
 @pytest.fixture
 def sample_file_bytes():
     """Fixture che fornisce un file di test in memoria."""
-    content = b"Test file content"
-    return content
+    return b"Test file content"
 
 @pytest.fixture
 def sample_upload_file(sample_file_bytes):
     """Fixture che fornisce un UploadFile di test."""
-    async def async_read():
-        return sample_file_bytes
-    upload = MagicMock()
-    upload.filename = "test.txt"
-    upload.file = MagicMock()
-    upload.content_type = "text/plain"
-    upload.read = async_read
-    return upload
+    mock_file = MagicMock(spec=UploadFile)
+    mock_file.filename = "test.txt"
+    mock_file.content_type = "text/plain"
+    mock_file.read = AsyncMock(return_value=sample_file_bytes)
+    return mock_file
 
 @pytest.fixture
 def minio_test_client():
-    """Fixture che fornisce un client MinIO configurato per i test."""
+    """Fixture che fornisce un client MinIO di test."""
     with patch('boto3.client') as mock_client:
-        mock_s3 = Mock()
+        mock_s3 = MagicMock()
+        # Mock delle eccezioni boto3
+        class FakeClientError(Exception):
+            def __init__(self, response, operation_name):
+                self.response = response
+                self.operation_name = operation_name
+        mock_s3.exceptions = MagicMock()
+        mock_s3.exceptions.ClientError = FakeClientError
         mock_client.return_value = mock_s3
         client = MinioClient()
         yield client
@@ -58,180 +62,138 @@ def create_test_document():
 # Test Cases
 @pytest.mark.asyncio
 async def test_upload_file_success(minio_test_client, sample_upload_file):
-    """Verifica che un file possa essere caricato correttamente su MinIO."""
-    # Arrange
-    house_id = 1
-    document_id = 1
+    """Test del caricamento file con successo."""
+    url, checksum = await minio_test_client.upload_file(sample_upload_file)
     
-    # Act
-    minio_path, checksum = await minio_test_client.upload_file(
-        sample_upload_file,
-        house_id,
-        document_id
+    # Verifica che il file sia stato caricato correttamente
+    minio_test_client.s3_client.put_object.assert_called_once_with(
+        Bucket=settings.MINIO_BUCKET_NAME,
+        Key=sample_upload_file.filename,
+        Body=await sample_upload_file.read(),
+        ContentType=sample_upload_file.content_type,
+        Metadata={'checksum': checksum}
     )
     
-    # Assert
-    expected_path = f"{house_id}/{document_id}.txt"
-    assert minio_path == expected_path
-    assert checksum == hashlib.sha256(b"Test file content").hexdigest()
+    # Verifica che l'URL sia corretto
+    expected_url = f"{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET_NAME}/{sample_upload_file.filename}"
+    assert url == expected_url
     
-    # Verify MinIO client was called correctly
-    minio_test_client.client.put_object.assert_called_once()
-    call_args = minio_test_client.client.put_object.call_args[1]
-    assert call_args["Bucket"] == minio_test_client.bucket_name
-    assert call_args["Key"] == expected_path
-    assert call_args["Body"] == b"Test file content"
-    assert call_args["ContentType"] == "text/plain"
+    # Verifica che il checksum sia corretto
+    expected_checksum = hashlib.md5(await sample_upload_file.read()).hexdigest()
+    assert checksum == expected_checksum
 
-def test_download_file_success(minio_test_client, sample_file_bytes):
-    """Verifica che un file possa essere scaricato correttamente."""
-    # Arrange
-    minio_path = "1/1.txt"
-    minio_test_client.client.get_object.return_value = {
-        "Body": BytesIO(sample_file_bytes)
-    }
+@pytest.mark.asyncio
+async def test_download_file_success(minio_test_client, sample_file_bytes):
+    """Test del download file con successo."""
+    # Configura il mock per il download
+    mock_response = MagicMock()
+    mock_response.__getitem__.side_effect = lambda k: {'Body': MagicMock(read=MagicMock(return_value=sample_file_bytes))}[k] if k == 'Body' else None
+    mock_response.get.return_value = {'checksum': hashlib.md5(sample_file_bytes).hexdigest()}
+    minio_test_client.s3_client.get_object.return_value = mock_response
     
-    # Act
-    downloaded_content = minio_test_client.download_file(minio_path)
+    # Esegui il download
+    content, checksum = await minio_test_client.download_file("test.txt")
     
-    # Assert
-    assert downloaded_content == sample_file_bytes
-    minio_test_client.client.get_object.assert_called_once_with(
-        Bucket=minio_test_client.bucket_name,
-        Key=minio_path
+    # Verifica che il file sia stato scaricato correttamente
+    minio_test_client.s3_client.get_object.assert_called_once_with(
+        Bucket=settings.MINIO_BUCKET_NAME,
+        Key="test.txt"
     )
+    
+    # Verifica il contenuto e il checksum
+    assert content == sample_file_bytes
+    assert checksum == hashlib.md5(sample_file_bytes).hexdigest()
 
 def test_object_exists_for_existing_file(minio_test_client):
-    """Verifica che object_exists ritorni True per un file esistente."""
-    # Arrange
-    minio_path = "1/1.txt"
-    minio_test_client.client.head_object.return_value = {}
-    
-    # Act
-    exists = minio_test_client.object_exists(minio_path)
-    
-    # Assert
-    assert exists is True
-    minio_test_client.client.head_object.assert_called_once_with(
-        Bucket=minio_test_client.bucket_name,
-        Key=minio_path
+    """Test della verifica di esistenza per un file esistente."""
+    assert minio_test_client.object_exists("test.txt") is True
+    minio_test_client.s3_client.head_object.assert_called_once_with(
+        Bucket=settings.MINIO_BUCKET_NAME,
+        Key="test.txt"
     )
 
 def test_object_exists_for_missing_file(minio_test_client):
-    """Verifica che object_exists ritorni False per un file inesistente."""
-    # Arrange
-    minio_path = "1/1.txt"
-    minio_test_client.client.head_object.side_effect = ClientError(
-        {"Error": {"Code": "404"}},
-        "HeadObject"
-    )
-    
-    # Act
-    exists = minio_test_client.object_exists(minio_path)
-    
-    # Assert
-    assert exists is False
+    """Test della verifica di esistenza per un file mancante."""
+    # Simula l'errore 404 con una vera ClientError di boto3
+    error = ClientError({'Error': {'Code': '404'}}, 'HeadObject')
+    minio_test_client.s3_client.head_object.side_effect = error
+    result = minio_test_client.object_exists("nonexistent.txt")
+    assert result is False
 
 def test_delete_file(minio_test_client):
-    """Verifica che un file venga effettivamente cancellato."""
-    # Arrange
-    minio_path = "1/1.txt"
-    
-    # Act
-    result = minio_test_client.delete_file(minio_path)
-    
-    # Assert
-    assert result is True
-    minio_test_client.client.delete_object.assert_called_once_with(
-        Bucket=minio_test_client.bucket_name,
-        Key=minio_path
+    """Test dell'eliminazione di un file."""
+    minio_test_client.delete_file("test.txt")
+    minio_test_client.s3_client.delete_object.assert_called_once_with(
+        Bucket=settings.MINIO_BUCKET_NAME,
+        Key="test.txt"
     )
 
 @pytest.mark.asyncio
 async def test_upload_file_with_same_name_overwrite(minio_test_client, sample_upload_file):
-    """Verifica che un file con lo stesso nome venga sovrascritto correttamente."""
-    # Arrange
-    house_id = 1
-    document_id = 1
-    new_content = b"New content"
-    async def async_read_new():
-        return new_content
-    new_file = MagicMock()
-    new_file.filename = "test.txt"
-    new_file.file = MagicMock()
-    new_file.content_type = "text/plain"
-    new_file.read = async_read_new
-    # Act
-    minio_path, checksum = await minio_test_client.upload_file(
-        new_file,
-        house_id,
-        document_id
-    )
-    # Assert
-    expected_path = f"{house_id}/{document_id}.txt"
-    assert minio_path == expected_path
-    assert checksum == hashlib.sha256(new_content).hexdigest()
-    # Verify the file was overwritten
-    minio_test_client.client.put_object.assert_called_once()
-    call_args = minio_test_client.client.put_object.call_args[1]
-    assert call_args["Body"] == new_content
+    """Test del caricamento di un file con lo stesso nome (overwrite)."""
+    # Carica il file due volte
+    await minio_test_client.upload_file(sample_upload_file)
+    await minio_test_client.upload_file(sample_upload_file)
+    
+    # Verifica che il file sia stato caricato due volte
+    assert minio_test_client.s3_client.put_object.call_count == 2
 
 def test_invalid_credentials():
-    """Simula un errore di credenziali errate."""
-    # Arrange
+    """Test della gestione di credenziali non valide."""
     with patch('boto3.client') as mock_client:
-        mock_client.side_effect = ClientError(
-            {"Error": {"Code": "InvalidAccessKeyId"}},
-            "GetObject"
-        )
-        
-        # Act & Assert
-        with pytest.raises(ClientError) as exc_info:
-            client = MinioClient()
-            client.download_file("test.txt")
-        
-        assert exc_info.value.response["Error"]["Code"] == "InvalidAccessKeyId"
+        mock_client.side_effect = Exception("Invalid credentials")
+        with pytest.raises(Exception) as exc_info:
+            MinioClient()
+        assert "Invalid credentials" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_checksum_mismatch_detection(minio_test_client, sample_file_bytes):
+    """Test del rilevamento di un checksum non corrispondente."""
+    # Configura il mock per simulare un checksum non corrispondente
+    mock_response = MagicMock()
+    mock_response.__getitem__.side_effect = lambda k: {'Body': MagicMock(read=MagicMock(return_value=sample_file_bytes))}[k] if k == 'Body' else None
+    mock_response.get.return_value = {'checksum': 'invalid_checksum'}
+    minio_test_client.s3_client.get_object.return_value = mock_response
+    
+    # Verifica che venga sollevata un'eccezione
+    with pytest.raises(ValueError) as exc_info:
+        await minio_test_client.download_file("test.txt")
+    assert "File integrity check failed" in str(exc_info.value)
+
+def test_lifecycle_policy_setup(minio_test_client):
+    """Test della configurazione delle policy di lifecycle."""
+    minio_test_client.s3_client.put_bucket_lifecycle_configuration.reset_mock()
+    minio_test_client._setup_lifecycle_policy()
+    minio_test_client.s3_client.put_bucket_lifecycle_configuration.assert_called_once()
+    
+    # Verifica che la configurazione sia corretta
+    call_args = minio_test_client.s3_client.put_bucket_lifecycle_configuration.call_args[1]
+    assert call_args['Bucket'] == settings.MINIO_BUCKET_NAME
+    assert call_args['LifecycleConfiguration']['Rules'][0]['Expiration']['Days'] == settings.MINIO_LIFECYCLE_DAYS
+
+def test_ssl_configuration():
+    """Test della configurazione SSL."""
+    with patch('boto3.client') as mock_client:
+        client = MinioClient()
+        mock_client.assert_called_once()
+        call_args = mock_client.call_args[1]
+        assert call_args['use_ssl'] == settings.MINIO_USE_SSL
+        assert call_args['verify'] is True
 
 @pytest.mark.asyncio
 async def test_document_model_integrity_after_upload(minio_test_client, sample_upload_file, create_test_document):
     """Verifica che i metadati salvati nel modello Document siano coerenti."""
-    # Arrange
-    house_id = 1
-    document_id = 1
-    test_content = b"Test file content"
-    # Act
-    minio_path, checksum = await minio_test_client.upload_file(
-        sample_upload_file,
-        house_id,
-        document_id
-    )
+    test_content = await sample_upload_file.read()
+    minio_path, checksum = await minio_test_client.upload_file(sample_upload_file, object_name="1/1.txt")
     document = create_test_document(
-        id=document_id,
+        id=1,
         path=minio_path,
         checksum=checksum,
         content=test_content
     )
-    # Assert
-    assert document.path == f"{house_id}/{document_id}.txt"
-    assert document.checksum == hashlib.sha256(test_content).hexdigest()
+    expected_url = f"{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET_NAME}/1/1.txt"
+    assert document.path == expected_url
+    assert document.checksum == hashlib.md5(test_content).hexdigest()
     assert document.size == len(test_content)
     assert document.type == "text/plain"
-    assert document.name == "test.txt"
-
-def test_checksum_mismatch_detection(minio_test_client, sample_file_bytes):
-    """Simula un'alterazione di un file."""
-    # Arrange
-    minio_path = "1/1.txt"
-    altered_content = b"Altered content"
-    minio_test_client.client.get_object.return_value = {
-        "Body": BytesIO(altered_content)
-    }
-    
-    # Act
-    downloaded_content = minio_test_client.download_file(minio_path)
-    downloaded_checksum = hashlib.sha256(downloaded_content).hexdigest()
-    original_checksum = hashlib.sha256(sample_file_bytes).hexdigest()
-    
-    # Assert
-    assert downloaded_checksum != original_checksum
-    assert downloaded_content == altered_content 
+    assert document.name == "test.txt" 
