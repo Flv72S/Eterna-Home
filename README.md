@@ -223,6 +223,45 @@ python -m pytest tests/api/test_house_api.py -v
   - Gestione permessi
   - Field filtering
 
+## Macro-step 2.1 - Gestione Documenti
+
+### Micro-step 2.1.7 - Upload/Download File Document (Storage MinIO)
+
+- ✅ Implementazione storage MinIO:
+  - Client MinIO per upload/download file
+  - Gestione bucket e path
+  - Calcolo checksum SHA256
+  - Gestione errori e permessi
+
+- ✅ Endpoint implementati:
+  - POST /documents/{document_id}/upload: Upload file
+  - GET /documents/{document_id}/download: Download file
+
+- ✅ Funzionalità implementate:
+  - Verifica esistenza documento
+  - Verifica permessi utente
+  - Prevenzione upload doppio
+  - Streaming download file
+  - Gestione errori e permessi
+
+- ✅ Test implementati:
+  - Upload file valido
+  - Upload su documento non esistente
+  - Upload doppio su stesso documento
+  - Download file esistente
+  - Download file non esistente
+  - Download documento senza file
+
+- ✅ Dipendenze aggiunte:
+  - boto3>=1.34.0
+  - aiofiles>=23.2.1
+
+- ✅ Configurazione:
+  - Endpoint MinIO
+  - Credenziali accesso
+  - Nome bucket
+  - Regione
+
 ## Macro-step 2.1 - Gestione Nodi
 
 ### Micro-step 2.1.4 - CRUD API per Node
@@ -311,7 +350,28 @@ python -m pytest tests/api/test_house_api.py -v
 
 # Test API nodi
 python -m pytest tests/api/test_node_api.py -v
+
+# Test MinIO Storage
+python -m pytest tests/test_minio_storage.py -v
 ```
+
+## Test Suite MinIO Storage
+* ✅ Test upload file:
+  * Upload file di successo
+  * Overwrite file esistente
+  * Gestione errori credenziali
+* ✅ Test download file:
+  * Download file di successo
+  * Verifica integrità contenuto
+  * Rilevamento alterazioni (checksum mismatch)
+* ✅ Test operazioni file:
+  * Verifica esistenza file
+  * Eliminazione file
+  * Gestione file mancanti
+* ✅ Test integrità dati:
+  * Coerenza metadati Document
+  * Verifica checksum
+  * Validazione dimensioni file
 
 ## Dipendenze
 
@@ -331,3 +391,14 @@ python -m pytest tests/api/test_node_api.py -v
 * Documentazione API con Swagger/OpenAPI
 * Implementazione gestione dispositivi
 * Integrazione con protocolli IoT
+
+## Implementazioni Realizzate
+
+### 2.1.6 Gestione Utenti
+- **Modello User**: Creato in `app/models/user.py` con campi come `id`, `email`, `hashed_password`, `is_active`, `is_superuser`, `created_at`, `updated_at`, `username` (opzionale), `is_verified`, `last_login`, `full_name`, `phone_number` e relazioni con `House` e `Document`.
+- **Router per la Gestione Utenti**: Implementato in `app/routers/users.py` con endpoint per creazione, lettura, aggiornamento ed eliminazione utenti.
+- **Dipendenze e Autenticazione**: Configurato `get_current_user` in `app/core/deps.py` per gestire l'autenticazione tramite JWT e cache Redis.
+- **Test Automatici**: Creati test in `tests/api/test_users.py` per verificare tutte le operazioni CRUD.
+- **Configurazione del Database di Test**: Configurato `conftest.py` per creare un database SQLite in memoria per i test.
+- **Uniformazione degli Import**: Uniformato l'import di `get_session` da `app.database` in tutti i file rilevanti.
+- **Rendere `username` Opzionale**: Modificato il modello `User` per rendere `username` opzionale, garantendo compatibilità con i test e le API.
