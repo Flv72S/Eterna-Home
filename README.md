@@ -502,3 +502,10 @@ python -m pytest tests/test_minio_storage.py -v
 - **Configurazione del Database di Test**: Configurato `conftest.py` per creare un database SQLite in memoria per i test.
 - **Uniformazione degli Import**: Uniformato l'import di `get_session` da `app.database` in tutti i file rilevanti.
 - **Rendere `username` Opzionale**: Modificato il modello `User` per rendere `username` opzionale, garantendo compatibilità con i test e le API.
+
+### Step 3.1: Gestione della manutenzione dei nodi
+
+- **Modello MaintenanceRecord**: Implementato il modello per i record di manutenzione dei nodi, con relazioni verso Node e Document.
+- **Enum MaintenanceType**: Definiti i tipi di manutenzione supportati (ROUTINE, PREVENTIVE, CORRECTIVE, EMERGENCY, INSPECTION).
+- **Enum MaintenanceStatus**: Definiti gli stati possibili di un record di manutenzione (PENDING, COMPLETED, FAILED).
+- **Test**: Implementati test per la creazione di record di manutenzione, la relazione con i nodi e i vincoli NOT NULL.

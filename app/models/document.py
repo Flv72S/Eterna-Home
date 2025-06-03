@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, List
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
@@ -7,9 +7,11 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.house import House
     from app.models.node import Node
+    from app.models.maintenance import MaintenanceRecord
 
 class Document(SQLModel, table=True):
     """Modello per la rappresentazione di un documento nel database."""
+    __tablename__ = "documents"
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
@@ -43,16 +45,17 @@ class Document(SQLModel, table=True):
     checksum: str = Field(description="Hash SHA256 del contenuto file")
     house_id: Optional[int] = Field(
         default=None,
-        foreign_key="house.id",
+        foreign_key="houses.id",
         description="ID della casa associata al documento"
     )
     node_id: Optional[int] = Field(
         default=None,
-        foreign_key="node.id",
+        foreign_key="nodes.id",
         description="ID del nodo associato al documento"
     )
 
     # Relazioni
     author: Optional["User"] = Relationship(back_populates="documents")
     house: Optional["House"] = Relationship(back_populates="documents")
-    node: Optional["Node"] = Relationship(back_populates="documents") 
+    node: Optional["Node"] = Relationship(back_populates="documents")
+    maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="document") 

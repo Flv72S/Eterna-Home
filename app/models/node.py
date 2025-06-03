@@ -5,6 +5,7 @@ from pydantic import ConfigDict
 if TYPE_CHECKING:
     from app.models.house import House
     from app.models.document import Document
+    from app.models.maintenance import MaintenanceRecord
 
 class NodeCreate(SQLModel):
     """Modello per la creazione di un nodo."""
@@ -21,6 +22,7 @@ class NodeCreate(SQLModel):
 
 class Node(SQLModel, table=True):
     """Modello per la rappresentazione di un nodo nel database."""
+    __tablename__ = "nodes"
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
@@ -31,8 +33,9 @@ class Node(SQLModel, table=True):
     name: str
     description: Optional[str] = None
     nfc_id: str = Field(unique=True, index=True, description="Identificativo NFC univoco")
-    house_id: int = Field(foreign_key="house.id")
+    house_id: int = Field(foreign_key="houses.id")
 
     # Relazioni
     house: Optional["House"] = Relationship(back_populates="nodes")
-    documents: List["Document"] = Relationship(back_populates="node") 
+    documents: List["Document"] = Relationship(back_populates="node")
+    maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="node") 

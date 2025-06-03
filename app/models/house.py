@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
     
+    __tablename__ = "houses"
+    
     # Configurazione Pydantic
     model_config = ConfigDict(
         from_attributes=True,  # equivalente a orm_mode=True

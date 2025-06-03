@@ -1,6 +1,8 @@
+"""Configurazione dei test."""
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 from fastapi.testclient import TestClient
 
 from app.database import get_session
@@ -9,6 +11,7 @@ from app.models.user import User
 from app.models.house import House
 from app.models.node import Node
 from app.models.document import Document
+from app.models.maintenance import MaintenanceRecord
 
 # Create a test engine
 TEST_DATABASE_URL = "sqlite:///./test.db"
@@ -28,19 +31,30 @@ def create_test_db():
 @pytest.fixture(scope="function")
 def db_session():
     """Crea una sessione di test e la pulisce dopo ogni test."""
+    with test_engine.connect() as conn:
+        conn.execute(text("PRAGMA foreign_keys=ON"))
     with Session(test_engine) as session:
         yield session
         session.rollback()
 
-@pytest.fixture(scope="function", autouse=True)
-def override_get_session(db_session):
-    """Override la dependency get_session per usare sempre la sessione di test."""
-    def _override_get_session():
-        yield db_session
-    
-    app.dependency_overrides[get_session] = _override_get_session
-    yield
-    app.dependency_overrides.clear()
+@pytest.fixture(name="session")
+def session_fixture():
+    """Fixture per creare una sessione di test."""
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
+
+@pytest.fixture(autouse=True)
+def override_get_session(session: Session):
+    """Override della funzione get_session per i test."""
+    def _get_session():
+        yield session
+    return _get_session
 
 @pytest.fixture(name="client")
 def test_client():
