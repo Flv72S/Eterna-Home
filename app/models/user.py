@@ -1,13 +1,18 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Column, DateTime, String, Boolean, Integer, Relationship
-from pydantic import ConfigDict
+from pydantic import ConfigDict, EmailStr
 
 if TYPE_CHECKING:
     from app.models.house import House
     from app.models.document import Document
 
-class User(SQLModel, table=True):
+class UserBase(SQLModel):
+    email: EmailStr = Field(unique=True, index=True)
+    is_active: bool = True
+    is_superuser: bool = False
+
+class User(UserBase, table=True):
     """
     Modello User per l'autenticazione e l'autorizzazione.
     Utilizza SQLModel per combinare le funzionalità di Pydantic e SQLAlchemy.
@@ -24,18 +29,11 @@ class User(SQLModel, table=True):
 
     # Campi primari e indici
     id: Optional[int] = Field(default=None, primary_key=True)
-    username: str = Field(
+    username: Optional[str] = Field(
+        default=None,
         index=True,
         unique=True,
-        min_length=3,
-        max_length=50,
         description="Username univoco dell'utente"
-    )
-    email: str = Field(
-        index=True,
-        unique=True,
-        max_length=255,
-        description="Email univoca dell'utente"
     )
     hashed_password: str = Field(
         min_length=60,
@@ -44,8 +42,6 @@ class User(SQLModel, table=True):
     )
 
     # Campi di stato
-    is_active: bool = Field(default=True, description="Indica se l'utente è attivo")
-    is_superuser: bool = Field(default=False, description="Indica se l'utente è un superuser")
     is_verified: bool = Field(default=False, description="Indica se l'email dell'utente è verificata")
 
     # Campi di audit
@@ -92,4 +88,16 @@ class User(SQLModel, table=True):
     @property
     def is_anonymous(self) -> bool:
         """Indica se l'utente è anonimo."""
-        return False 
+        return False
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(SQLModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+
+class UserRead(UserBase):
+    id: int 

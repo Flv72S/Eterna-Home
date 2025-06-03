@@ -11,6 +11,14 @@ from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+def get_db():
+    """Get database session."""
+    db = get_session()
+    try:
+        yield db
+    finally:
+        db.close()
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_session)
