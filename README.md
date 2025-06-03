@@ -356,22 +356,22 @@ python -m pytest tests/test_minio_storage.py -v
 ```
 
 ## Test Suite MinIO Storage
-* ✅ Test upload file:
-  * Upload file di successo
-  * Overwrite file esistente
-  * Gestione errori credenziali
-* ✅ Test download file:
-  * Download file di successo
-  * Verifica integrità contenuto
-  * Rilevamento alterazioni (checksum mismatch)
-* ✅ Test operazioni file:
-  * Verifica esistenza file
-  * Eliminazione file
-  * Gestione file mancanti
-* ✅ Test integrità dati:
-  * Coerenza metadati Document
-  * Verifica checksum
-  * Validazione dimensioni file
+
+Per eseguire tutti i test automatici relativi all'integrazione MinIO:
+
+```bash
+python -m pytest tests/test_minio_storage.py -v
+```
+
+## Copertura del test suite MinIO
+* ✅ **Upload file**: successo, overwrite, gestione errori credenziali
+* ✅ **Download file**: successo, verifica integrità contenuto, rilevamento alterazioni (checksum mismatch)
+* ✅ **Operazioni file**: verifica esistenza, eliminazione, gestione file mancanti
+* ✅ **Integrità dati**: coerenza metadati Document, verifica checksum (MD5), validazione dimensioni file
+* ✅ **Policy di lifecycle**: verifica configurazione automatica per auto-eliminazione file obsoleti
+* ✅ **Configurazione SSL**: verifica parametri HTTPS/SSL
+
+> Tutti i test sono eseguiti tramite mock, senza necessità di un server MinIO attivo. Il checksum usato per la verifica integrità è MD5, coerente con l'implementazione del client. Le policy di lifecycle e la configurazione SSL sono testate tramite mock delle chiamate boto3.
 
 ## Dipendenze
 
