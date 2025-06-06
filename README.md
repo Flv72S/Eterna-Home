@@ -1,5 +1,15 @@
 # Eterna-Home
 
+## Novità e Implementazioni Recenti (giugno 2025)
+
+- **Endpoint Export Manutenzione**: `/api/v1/maintenance_records/export` per esportazione CSV/JSON con filtri avanzati.
+- **Endpoint Import Storico**: `/api/v1/maintenance_records/import-historical-data` per importazione da CSV/JSON.
+- **Fix Routing**: Corretto ordine degli endpoint per evitare conflitti tra `/export` e `/{id}`.
+- **Gestione case-insensitive** per il filtro `status`.
+- **Gestione errori migliorata** e messaggi di validazione chiari.
+- **Test automatici** per export, filtri, errori formato e range date.
+- **Best Practice**: separazione logica, logging, test isolati.
+
 Sistema di Gestione Centralizzata della Casa Digitale
 
 ## Implementazioni Completate
@@ -509,3 +519,43 @@ python -m pytest tests/test_minio_storage.py -v
 - **Enum MaintenanceType**: Definiti i tipi di manutenzione supportati (ROUTINE, PREVENTIVE, CORRECTIVE, EMERGENCY, INSPECTION).
 - **Enum MaintenanceStatus**: Definiti gli stati possibili di un record di manutenzione (PENDING, COMPLETED, FAILED).
 - **Test**: Implementati test per la creazione di record di manutenzione, la relazione con i nodi e i vincoli NOT NULL.
+
+### Step 3.2: Export e Import dei record di manutenzione
+
+- **Endpoint Export**: Implementato endpoint `/api/v1/maintenance_records/export` per esportare i record di manutenzione in formato CSV o JSON, con filtri su status, tipo, nodo e intervallo date.
+- **Endpoint Import**: Implementato endpoint `/api/v1/maintenance_records/import-historical-data` per importare record storici da file CSV o JSON, con validazione e processi asincroni.
+- **Fix Routing**: Corretto l'ordine degli endpoint per evitare conflitti tra `/export` e `/{id}`.
+- **Gestione Case-insensitive**: Migliorata la gestione del filtro `status` per accettare valori case-insensitive.
+- **Gestione errori**: Migliorata la gestione degli errori e dei messaggi di validazione per parametri e filtri.
+- **Test Export**: Implementati test automatici per l'export in CSV e JSON, filtri, gestione formati non validi e range date non valido.
+- **Best Practice**: Separazione delle logiche di validazione, uso di SQLModel, test isolati, logging dettagliato.
+
+## Struttura aggiornata del progetto
+
+```
+backend/
+  ├── app/
+  │   ├── api/v1/endpoints/maintenance.py  # Endpoint manutenzione (export/import inclusi)
+  │   ├── schemas/maintenance.py           # Schemi Pydantic per manutenzione
+  │   └── ...
+  ├── tests/
+  │   ├── test_maintenance_export.py      # Test export manutenzione
+  │   └── ...
+  └── ...
+```
+
+## Prossimi Step
+- Pulizia e isolamento dati nei test di export (reset DB tra i test)
+- Aggiornamento test per compatibilità Pydantic v2
+- Refactoring e documentazione endpoint manutenzione
+- Miglioramento UX lato frontend per export/import
+- Logging avanzato e monitoraggio errori
+
+## Implementazioni Realizzate (aggiornamento)
+
+### 3.2 Gestione Manutenzione Avanzata
+- **Export/Import**: Endpoint per esportazione e importazione record manutenzione, con filtri avanzati e validazione.
+- **Test Export**: Test automatici per export CSV/JSON, filtri, errori formato e range date.
+- **Fix Routing**: Corretto ordine endpoint per evitare conflitti.
+- **Gestione errori**: Migliorata validazione parametri e messaggi di errore.
+- **Best Practice**: Logging, separazione responsabilità, test isolati.
