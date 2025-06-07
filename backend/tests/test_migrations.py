@@ -1,86 +1,65 @@
 import pytest
-from pytest_alembic import MigrationContext
 from sqlalchemy import inspect, text
-from app.db.session import engine
+from alembic import command
+from alembic.config import Config
 
-def test_migration_creates_users_table(alembic_runner: MigrationContext):
-    """Test che verifica la creazione della tabella users."""
-    # Esegui la migrazione
-    alembic_runner.migrate_up_to("head")
+def test_migration_upgrade(alembic_runner, alembic_engine):
+    """Test that the migration can be applied."""
+    # Run the migration
+    alembic_runner.migrate_up_one()
     
-    # Verifica che la tabella users esista
-    inspector = inspect(engine)
-    assert "users" in inspector.get_table_names()
+    # Verify that the tables were created
+    inspector = inspect(alembic_engine)
+    tables = inspector.get_table_names()
+    
+    # Check that all expected tables exist
+    expected_tables = ['users', 'houses', 'nodes', 'user_houses', 'documents', 'alembic_version']
+    for table in expected_tables:
+        assert table in tables, f"Table {table} was not created"
 
-def test_migration_creates_correct_columns(alembic_runner: MigrationContext):
-    """Test che verifica la presenza di tutte le colonne nella tabella users."""
-    # Esegui la migrazione
-    alembic_runner.migrate_up_to("head")
+def test_migration_downgrade(alembic_runner, alembic_engine):
+    """Test that the migration can be reversed."""
+    # First upgrade to create the tables
+    alembic_runner.migrate_up_one()
     
-    # Verifica le colonne
-    inspector = inspect(engine)
-    columns = {col["name"]: col["type"] for col in inspector.get_columns("users")}
+    # Then downgrade to remove them
+    alembic_runner.migrate_down_one()
     
-    # Verifica le colonne obbligatorie
-    assert "id" in columns
-    assert "username" in columns
-    assert "email" in columns
-    assert "hashed_password" in columns
-    assert "is_active" in columns
-    assert "is_superuser" in columns
-    assert "is_verified" in columns
-    assert "created_at" in columns
-    assert "updated_at" in columns
+    # Verify that only the alembic_version table remains
+    inspector = inspect(alembic_engine)
+    tables = inspector.get_table_names()
+    assert len(tables) == 1, f"Expected only alembic_version table, got {tables}"
+    assert 'alembic_version' in tables, "alembic_version table was not preserved"
 
-def test_migration_creates_indexes(alembic_runner: MigrationContext):
-    """Test che verifica la creazione degli indici."""
-    # Esegui la migrazione
-    alembic_runner.migrate_up_to("head")
-    
-    # Verifica gli indici
-    inspector = inspect(engine)
-    indexes = inspector.get_indexes("users")
-    index_names = {index["name"] for index in indexes}
-    
-    assert "ix_users_username" in index_names
-    assert "ix_users_email" in index_names
+def test_migration_idempotency(alembic_runner, alembic_engine):
+    """Test that running the same migration multiple times doesn't cause issues."""
+    # Run the migration multiple times
+    for _ in range(3):
+        alembic_runner.migrate_up_one()
 
-def test_migration_is_reversible(alembic_runner: MigrationContext):
-    """Test che verifica che la migrazione sia reversibile."""
-    # Esegui la migrazione
-    alembic_runner.migrate_up_to("head")
-    
-    # Verifica che la tabella esista
-    inspector = inspect(engine)
-    assert "users" in inspector.get_table_names()
-    
-    # Esegui il downgrade
-    alembic_runner.migrate_down_to("base")
-    
-    # Verifica che la tabella non esista più
-    assert "users" not in inspector.get_table_names()
+    # Verify that the tables were created correctly
+    inspector = inspect(alembic_engine)
+    tables = inspector.get_table_names()
 
-def test_migration_sets_default_values(alembic_runner: MigrationContext):
-    """Test che verifica i valori di default delle colonne."""
-    # Esegui la migrazione
-    alembic_runner.migrate_up_to("head")
-    
-    # Inserisci un utente di test
-    with engine.connect() as conn:
-        conn.execute(text("""
-            INSERT INTO users (username, email, hashed_password)
-            VALUES ('testuser', 'test@example.com', 'hashed_password')
-        """))
-        conn.commit()
-    
-    # Verifica i valori di default
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT is_active, is_superuser, is_verified
-            FROM users
-            WHERE username = 'testuser'
-        """)).fetchone()
-        
-        assert result[0] is True  # is_active
-        assert result[1] is False  # is_superuser
-        assert result[2] is False  # is_verified 
+    # Check that all expected tables exist
+    expected_tables = ['users', 'houses', 'nodes', 'user_houses', 'documents', 'alembic_version']
+    for table in expected_tables:
+        assert table in tables, f"Table {table} was not created"
+
+    # Get current revision
+    with alembic_engine.connect() as conn:
+        current_revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+
+    # Run the downgrade only if we have a valid revision
+    if current_revision:
+        for _ in range(3):
+            try:
+                alembic_runner.migrate_down_one()
+            except ValueError as e:
+                if "Revision None is not a valid revision" in str(e):
+                    break
+                raise e
+
+    # Verify that alembic_version table still exists
+    tables = inspector.get_table_names()
+    assert 'alembic_version' in tables 

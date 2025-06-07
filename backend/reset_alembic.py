@@ -1,10 +1,12 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+from app.db.session import engine
 
-# Connessione al database eterna_home
-engine = create_engine('postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home')
+def reset_alembic():
+    # Elimina la tabella alembic_version se esiste
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        conn.commit()
+    print("Tabella alembic_version eliminata con successo.")
 
-# Eliminazione della tabella alembic_version se esiste
-with engine.connect() as conn:
-    conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
-    conn.commit()
-    print("Tabella alembic_version resettata con successo!") 
+if __name__ == "__main__":
+    reset_alembic() 

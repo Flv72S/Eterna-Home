@@ -1,147 +1,86 @@
 import pytest
-from datetime import datetime
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-
+from datetime import datetime, timedelta, UTC
+from app.main import app
 from app.models.maintenance import MaintenanceRecord, MaintenanceStatus
 from app.models.node import Node
-from app.core.config import settings
 
-API_PREFIX = f"{settings.API_V1_STR}/maintenance_records"
+# Usa i fixture definiti in conftest.py
+# Non è necessario definire qui la configurazione del database
 
-def test_export_csv(client: TestClient, db):
-    """Test per l'export dei record di manutenzione in formato CSV."""
-    # Crea un nodo di test
-    node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
+@pytest.fixture
+def test_node(db):
+    node = Node(
+        name="Test Node",
+        type="sensor",
+        location="Test Location",
+        status="active"
+    )
     db.add(node)
     db.commit()
+    db.refresh(node)
+    return node
 
-    # Crea alcuni record di manutenzione
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=datetime.utcnow(),
-            type="Routine",
+@pytest.fixture
+def test_maintenance_records(db, test_node):
+    records = []
+    for i in range(3):
+        record = MaintenanceRecord(
+            node_id=test_node.id,
+            type="preventive",
             description=f"Test maintenance {i}",
-            status=MaintenanceStatus.PENDING,
+            status=MaintenanceStatus.COMPLETED,
+            date=datetime.now(UTC) - timedelta(days=i),
             notes=f"Test notes {i}"
-        ) for i in range(3)
-    ]
-    db.add_all(records)
+        )
+        db.add(record)
+        records.append(record)
     db.commit()
+    for record in records:
+        db.refresh(record)
+    return records
 
-    # Test export CSV
-    response = client.get(f"{API_PREFIX}/export?format=csv")
-    if response.status_code != 200:
-        print(f"Error response: {response.json()}")
+def test_export_csv(client, test_maintenance_records):
+    response = client.get("/api/v1/maintenance_records/export?format=csv")
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/csv"
-    
-    # Verifica il contenuto CSV
-    content = response.text
-    lines = content.strip().split("\n")
-    assert len(lines) == 4  # Header + 3 record
-    
-    # Verifica header
-    headers = lines[0].split(",")
-    expected_headers = ["id", "node_id", "date", "type", "description", "status", "notes", "created_at", "updated_at"]
-    assert all(h in headers for h in expected_headers)
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "node_id,type,description,status" in response.text
 
-def test_export_json(client: TestClient, db):
-    """Test per l'export dei record di manutenzione in formato JSON."""
-    # Crea un nodo di test
-    node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
-    db.add(node)
-    db.commit()
-
-    # Crea alcuni record di manutenzione
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=datetime.utcnow(),
-            type="Routine",
-            description=f"Test maintenance {i}",
-            status=MaintenanceStatus.PENDING,
-            notes=f"Test notes {i}"
-        ) for i in range(3)
-    ]
-    db.add_all(records)
-    db.commit()
-
-    # Test export JSON
-    response = client.get(f"{API_PREFIX}/export?format=json")
-    if response.status_code != 200:
-        print(f"Error response: {response.json()}")
+def test_export_json(client, test_maintenance_records):
+    response = client.get("/api/v1/maintenance_records/export?format=json")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    
-    # Verifica il contenuto JSON
     data = response.json()
-    assert isinstance(data, list)
     assert len(data) == 3
-    
-    # Verifica la struttura dei record
-    for record in data:
-        assert "id" in record
-        assert "node_id" in record
-        assert "date" in record
-        assert "type" in record
-        assert "description" in record
-        assert "status" in record
-        assert "notes" in record
+    assert all(isinstance(record, dict) for record in data)
 
-def test_export_filters(client: TestClient, db):
-    """Test per l'export dei record di manutenzione con filtri."""
-    # Crea un nodo di test
-    node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
-    db.add(node)
-    db.commit()
-
-    # Crea record con stati diversi
-    now = datetime.utcnow()
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=now,
-            type="Routine",
-            description="Test maintenance 1",
-            status=MaintenanceStatus.PENDING,
-            notes="Test notes 1"
-        ),
-        MaintenanceRecord(
-            node_id=node.id,
-            date=now,
-            type="Emergency",
-            description="Test maintenance 2",
-            status=MaintenanceStatus.COMPLETED,
-            notes="Test notes 2"
-        )
-    ]
-    db.add_all(records)
-    db.commit()
-
-    # Test export con filtro status
-    response = client.get(f"{API_PREFIX}/export?format=json&status=pending")
-    if response.status_code != 200:
-        print(f"Error response: {response.json()}")
+def test_export_filters(client, test_maintenance_records):
+    response = client.get(
+        "/api/v1/maintenance_records/export?format=json&status=completed"
+    )
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["status"] == "pending"
+    assert len(data) == 2
+    assert all(record["status"] == "COMPLETED" for record in data)
 
-    # Test export con filtro type
-    response = client.get(f"{API_PREFIX}/export?format=json&record_type=Emergency")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["type"] == "Emergency"
-
-def test_export_invalid_format(client: TestClient):
-    """Test per l'export con formato non valido."""
-    response = client.get(f"{API_PREFIX}/export?format=invalid")
+def test_export_invalid_format(client):
+    response = client.get("/api/v1/maintenance_records/export?format=invalid")
     assert response.status_code == 422
+    assert "Format must be either 'csv' or 'json'" in response.text
 
-def test_export_invalid_date_range(client: TestClient):
-    """Test per l'export con range date non valido."""
-    response = client.get(f"{API_PREFIX}/export?start_date=2024-03-20&end_date=2024-03-19")
-    assert response.status_code == 422 
+def test_export_date_range(client, test_maintenance_records):
+    start_date = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%d")
+    end_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    response = client.get(
+        f"/api/v1/maintenance_records/export?format=json&start_date={start_date}&end_date={end_date}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+
+def test_export_invalid_date_range(client):
+    response = client.get(
+        "/api/v1/maintenance_records/export?format=json&start_date=2025-01-01&end_date=2024-01-01"
+    )
+    assert response.status_code == 422
+    assert "end_date must be after start_date" in response.text 

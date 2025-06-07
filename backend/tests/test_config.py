@@ -14,14 +14,14 @@ def test_database_url_assembly():
     """Test che verifica l'assemblaggio corretto dell'URL del database"""
     settings = Settings(
         POSTGRES_SERVER="localhost",
-        POSTGRES_USER="test_user",
+        POSTGRES_USER="postgres",
         POSTGRES_PASSWORD="test_password",
-        POSTGRES_DB="test_db",
+        POSTGRES_DB="eterna_home_test",
         POSTGRES_PORT="5432"
     )
-    assert str(settings.get_database_url).startswith("postgresql://")
-    assert "test_user" in str(settings.get_database_url)
-    assert "test_db" in str(settings.get_database_url)
+    assert str(settings.database_url).startswith("postgresql://")
+    assert "postgres" in str(settings.database_url)
+    assert "eterna_home_test" in str(settings.database_url)
 
 def test_settings_caching():
     """Test che verifica il caching delle impostazioni"""

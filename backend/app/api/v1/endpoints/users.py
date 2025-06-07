@@ -1,10 +1,13 @@
-from typing import List
+from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse
 from app.core.security import get_password_hash
+from app import crud
+from app.api import deps
+from datetime import datetime
 
 router = APIRouter()
 
@@ -19,24 +22,27 @@ def read_users(
 
 @router.post("/", response_model=UserResponse)
 def create_user(
-    user: UserCreate,
-    db: Session = Depends(get_db)
-):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email già registrata")
-    
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username già registrato")
-    
-    hashed_password = get_password_hash(user.password)
+    *,
+    db: Session = Depends(deps.get_db),
+    user_in: UserCreate,
+) -> Any:
+    """
+    Create new user.
+    """
+    user = crud.user.get_by_email(db, email=user_in.email)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    hashed_password = get_password_hash(user_in.password)
     db_user = User(
-        username=user.username,
-        email=user.email,
+        username=user_in.username,
+        email=user_in.email,
         hashed_password=hashed_password,
-        is_active=user.is_active,
-        is_superuser=user.is_superuser
+        is_active=user_in.is_active,
+        is_superuser=user_in.is_superuser,
+        updated_at=datetime.now()
     )
     db.add(db_user)
     db.commit()

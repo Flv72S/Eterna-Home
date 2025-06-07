@@ -30,3 +30,240 @@ Traceback (most recent call last):
               ^^^^^^^^^^^^^^^^^
 AttributeError: module 'bcrypt' has no attribute '__about__'
 2025-05-30 19:38:22,963 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 16:40:51,478 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 16:41:22,514 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 16:41:22,515 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 18:23:47,582 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 18:23:48,510 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 18:23:48,912 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 18:23:50,604 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 18:23:50,859 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 18:23:50,860 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 18:27:02,492 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 18:27:32,356 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 18:27:35,648 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 18:27:36,421 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 18:27:36,424 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 19:38:29,083 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 19:38:43,029 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 19:38:43,030 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 20:31:06,937 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 20:31:07,688 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 20:31:07,913 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 20:31:14,562 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 20:31:14,566 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 20:33:46,895 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 20:33:47,873 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 20:33:48,167 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 20:33:58,009 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 20:33:58,010 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 22:38:01,607 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 22:38:02,289 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:38:12,696 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 22:38:12,701 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 22:43:12,886 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 22:43:16,582 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:43:17,616 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 22:43:20,153 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:43:21,151 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 22:43:21,160 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 22:44:52,209 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 22:44:53,050 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:44:53,279 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 22:44:55,346 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:44:55,820 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 22:44:55,822 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 22:45:51,930 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 22:45:52,513 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:45:52,620 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 22:45:53,963 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:45:54,166 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 22:45:54,169 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-05 22:48:47,350 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-05 22:48:48,277 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:48:48,521 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-05 22:48:49,796 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-05 22:48:50,104 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-05 22:48:50,106 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:10:58,162 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:10:58,702 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:10:58,813 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:10:59,522 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:10:59,755 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:10:59,757 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:11:47,182 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:11:47,700 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:11:47,809 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:11:48,467 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:11:48,577 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:11:48,578 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:12:48,260 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:12:48,829 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:12:48,901 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:12:49,584 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:12:49,778 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:12:49,779 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:14:05,629 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:14:06,195 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:14:06,350 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:14:07,636 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:14:07,826 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:14:07,828 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:24:01,861 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:24:02,606 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:24:02,741 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:24:03,468 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:24:03,584 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:24:03,584 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:26:09,074 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:26:10,685 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:26:10,786 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:26:11,524 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:26:11,705 - alembic.runtime.migration - INFO - Context impl SQLiteImpl.
+2025-06-06 00:26:11,707 - alembic.runtime.migration - INFO - Will assume non-transactional DDL.
+2025-06-06 00:28:48,939 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:28:49,373 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:28:49,455 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:28:50,299 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:28:50,378 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:28:50,379 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:29:53,730 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:29:54,114 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:29:54,217 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:29:55,503 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:29:55,623 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:29:55,626 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:30:44,123 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:30:44,662 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:30:44,785 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:30:45,760 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:30:45,848 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:30:45,849 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:31:34,547 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:31:35,377 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:31:35,580 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:31:36,979 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:31:37,046 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:31:37,047 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:32:42,769 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:32:43,428 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:32:43,503 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\flavi\AppData\Roaming\Python\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-06-06 00:32:44,144 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/users/ "HTTP/1.1 200 OK"
+2025-06-06 00:32:44,211 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:32:44,212 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:33:51,014 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:34:02,506 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:34:02,508 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 00:35:06,464 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 00:35:18,281 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 00:35:18,282 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 09:50:43,737 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 09:51:01,274 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 09:51:01,276 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 09:51:01,319 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 09:51:01,320 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 09:53:16,155 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 09:53:35,731 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 09:53:35,733 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 09:53:35,767 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 09:53:35,768 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 10:02:09,580 - httpx - INFO - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-06-06 10:02:28,095 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 10:02:28,096 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-06 10:02:28,130 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
+2025-06-06 10:02:28,133 - alembic.runtime.migration - INFO - Will assume transactional DDL.
