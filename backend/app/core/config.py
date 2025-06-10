@@ -34,7 +34,10 @@ class Settings(BaseSettings):
                 "DB_USE_ASYNC": False,
                 "BACKEND_CORS_ORIGINS": ["http://localhost:3000", "http://localhost:8000"],
                 "LOG_LEVEL": "INFO",
-                "LOG_FORMAT": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                "LOG_FORMAT": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "FIRST_SUPERUSER": "admin",
+                "FIRST_SUPERUSER_PASSWORD": "admin",
+                "FIRST_SUPERUSER_EMAIL": "admin@example.com"
             }
         }
     )
@@ -72,6 +75,11 @@ class Settings(BaseSettings):
     # Async Database Settings
     DB_USE_ASYNC: bool = False
     ASYNC_DATABASE_URI: Optional[str] = None
+
+    # Superuser Settings
+    FIRST_SUPERUSER: str = "admin"
+    FIRST_SUPERUSER_PASSWORD: str = "admin"
+    FIRST_SUPERUSER_EMAIL: str = "admin@example.com"
 
     @field_validator("DEBUG", mode="after")
     @classmethod

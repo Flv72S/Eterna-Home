@@ -5,6 +5,7 @@ from app.main import app
 from app.models.maintenance import MaintenanceRecord, MaintenanceStatus
 from app.models.node import Node
 import logging
+from tests.utils import get_superuser_token_headers
 
 # Configura il logging
 logging.basicConfig(level=logging.DEBUG)
@@ -60,7 +61,7 @@ def test_maintenance_record_creation(test_maintenance_record, test_node):
 def test_export_json(client, test_maintenance_record):
     """Test l'endpoint di export JSON."""
     logger.info("Test endpoint export JSON...")
-    response = client.get("/api/v1/maintenance_records/export?format=json")
+    response = client.get("/api/v1/maintenance_records/export?format=json", headers=get_superuser_token_headers(client))
     logger.info(f"Status code: {response.status_code}")
     logger.info(f"Headers: {response.headers}")
     assert response.status_code == 200
@@ -73,7 +74,7 @@ def test_export_json(client, test_maintenance_record):
 def test_export_csv(client, test_maintenance_record):
     """Test l'endpoint di export CSV."""
     logger.info("Test endpoint export CSV...")
-    response = client.get("/api/v1/maintenance_records/export?format=csv")
+    response = client.get("/api/v1/maintenance_records/export?format=csv", headers=get_superuser_token_headers(client))
     logger.info(f"Status code: {response.status_code}")
     logger.info(f"Headers: {response.headers}")
     assert response.status_code == 200

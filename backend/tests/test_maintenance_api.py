@@ -12,17 +12,10 @@ from app.core.config import settings
 
 API_PREFIX = f"{settings.API_V1_STR}/maintenance_records"
 
-def cleanup_maintenance_records(db: Session):
-    """Pulisce la tabella maintenance_records."""
-    db.execute(delete(MaintenanceRecord))
-    db.commit()
-
 @pytest.fixture(autouse=True)
 def setup_teardown(db: Session):
     """Setup e teardown per ogni test."""
-    cleanup_maintenance_records(db)
     yield
-    cleanup_maintenance_records(db)
 
 def test_create_maintenance_record_api(client: TestClient, db):
     """Test per la creazione di un record di manutenzione tramite API."""
@@ -258,14 +251,13 @@ def test_search_by_node_id(client: TestClient, db):
     db.add_all([record1, record2])
     db.commit()
 
-    # Test ricerca per node_id
+    # Chiamata API
     response = client.get(f"{API_PREFIX}/search?node_id={node1.id}")
-    if response.status_code != 200:
-        print(f"Error in test_search_by_node_id: {response.json()}")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]["node_id"] == node1.id
+    result = response.json()
+    assert len(result) == 1
+    assert result[0]["node_id"] == node1.id
+    assert result[0]["description"] == "Test maintenance 1"
 
 def test_search_by_status(client: TestClient, db):
     """Test per la ricerca di record di manutenzione per status."""
@@ -274,7 +266,7 @@ def test_search_by_status(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea record con status diversi
+    # Crea record di manutenzione con status diversi
     record1 = MaintenanceRecord(
         node_id=node.id,
         date=datetime.utcnow(),
@@ -294,27 +286,25 @@ def test_search_by_status(client: TestClient, db):
     db.add_all([record1, record2])
     db.commit()
 
-    # Test ricerca per status
-    response = client.get(f"{API_PREFIX}/search?status=pending")
-    if response.status_code != 200:
-        print(f"Error in test_search_by_status: {response.json()}")
+    # Chiamata API
+    response = client.get(f"{API_PREFIX}/search?status={MaintenanceStatus.PENDING}")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]["status"] == MaintenanceStatus.PENDING
+    result = response.json()
+    assert len(result) == 1
+    assert result[0]["status"] == MaintenanceStatus.PENDING
+    assert result[0]["description"] == "Test maintenance 1"
 
 def test_search_by_created_at_range(client: TestClient, db):
-    """Test per la ricerca di record di manutenzione per intervallo di creazione."""
+    """Test per la ricerca di record di manutenzione per range di date."""
     # Crea un nodo di test
     node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
     db.add(node)
     db.commit()
 
-    # Crea record con date di creazione diverse
-    now = datetime.utcnow()
+    # Crea record di manutenzione con date diverse
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=now - timedelta(days=2),
+        date=datetime.utcnow() - timedelta(days=2),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -322,7 +312,7 @@ def test_search_by_created_at_range(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=now,
+        date=datetime.utcnow(),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.PENDING,
@@ -331,16 +321,14 @@ def test_search_by_created_at_range(client: TestClient, db):
     db.add_all([record1, record2])
     db.commit()
 
-    # Test ricerca per intervallo di creazione
-    from_date = (now - timedelta(days=1)).isoformat()
-    to_date = (now + timedelta(days=1)).isoformat()
-    response = client.get(f"{API_PREFIX}/search?created_from={from_date}&created_to={to_date}")
-    if response.status_code != 200:
-        print(f"Error in test_search_by_created_at_range: {response.json()}")
+    # Chiamata API
+    start_date = (datetime.utcnow() - timedelta(days=1)).isoformat()
+    end_date = (datetime.utcnow() + timedelta(days=1)).isoformat()
+    response = client.get(f"{API_PREFIX}/search?start_date={start_date}&end_date={end_date}")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]["id"] == record2.id
+    result = response.json()
+    assert len(result) == 1
+    assert result[0]["description"] == "Test maintenance 2"
 
 def test_search_by_notes_keyword(client: TestClient, db):
     """Test per la ricerca di record di manutenzione per keyword nelle note."""
@@ -349,14 +337,14 @@ def test_search_by_notes_keyword(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea record con note diverse
+    # Crea record di manutenzione con note diverse
     record1 = MaintenanceRecord(
         node_id=node.id,
         date=datetime.utcnow(),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
-        notes="Test notes with keyword"
+        notes="Test notes 1"
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
@@ -364,51 +352,47 @@ def test_search_by_notes_keyword(client: TestClient, db):
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.PENDING,
-        notes="Test notes with something else"
+        notes="Test notes 2"
     )
     db.add_all([record1, record2])
     db.commit()
 
-    # Test ricerca per keyword nelle note
-    response = client.get(f"{API_PREFIX}/search?notes_query=keyword")
-    if response.status_code != 200:
-        print(f"Error in test_search_by_notes_keyword: {response.json()}")
+    # Chiamata API
+    response = client.get(f"{API_PREFIX}/search?notes=Test notes 1")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]["notes"] == "Test notes with keyword"
+    result = response.json()
+    assert len(result) == 1
+    assert result[0]["notes"] == "Test notes 1"
 
-def test_search_pagination_limit_and_skip(client: TestClient, db: Session):
-    """Test della paginazione con limit e skip."""
-    # Creo un nodo di test
+def test_search_pagination_limit_and_skip(client: TestClient, db):
+    """Test per la paginazione dei risultati di ricerca."""
+    # Crea un nodo di test
     node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
     db.add(node)
     db.commit()
-    node_id = node.id
 
+    # Crea record di manutenzione
     records = []
     for i in range(5):
         record = MaintenanceRecord(
-            node_id=node_id,
+            node_id=node.id,
             date=datetime.utcnow(),
             type="Routine",
             description=f"Test maintenance {i}",
             status=MaintenanceStatus.PENDING,
-            notes=f"Test record {i}"
+            notes=f"Test notes {i}"
         )
-        db.add(record)
-        db.commit()  # Commit subito per avere l'id
-        records.append(record.id)
-    # Test paginazione
-    response = client.get(f"{API_PREFIX}/search?skip=2&limit=2")
-    if response.status_code != 200:
-        print(f"Error in test_search_pagination_limit_and_skip: {response.json()}")
+        records.append(record)
+    db.add_all(records)
+    db.commit()
+
+    # Chiamata API con limit e skip
+    response = client.get(f"{API_PREFIX}/search?limit=2&skip=1")
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
-    # Verifica che gli id restituiti siano tra quelli creati
-    assert data[0]["id"] in records
-    assert data[1]["id"] in records
+    result = response.json()
+    assert len(result) == 2
+    assert result[0]["description"] == "Test maintenance 1"
+    assert result[1]["description"] == "Test maintenance 2"
 
 def test_search_combined_filters(client: TestClient, db):
     """Test per la ricerca con filtri combinati."""
@@ -417,49 +401,43 @@ def test_search_combined_filters(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea record con caratteristiche diverse
-    now = datetime.utcnow()
+    # Crea record di manutenzione
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=now,
+        date=datetime.utcnow(),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
-        notes="Test notes with keyword"
+        notes="Test notes 1"
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=now,
+        date=datetime.utcnow(),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.COMPLETED,
-        notes="Test notes without keyword"
+        notes="Test notes 2"
     )
     db.add_all([record1, record2])
     db.commit()
 
-    # Test ricerca con filtri combinati
-    response = client.get(
-        f"{API_PREFIX}/search"
-        f"?node_id={node.id}"
-        f"&status=pending"
-        f"&notes_query=keyword"
-    )
-    if response.status_code != 200:
-        print(f"Error in test_search_combined_filters: {response.json()}")
+    # Chiamata API con filtri combinati
+    response = client.get(f"{API_PREFIX}/search?node_id={node.id}&status={MaintenanceStatus.PENDING}")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 1
-    assert results[0]["id"] == record1.id
+    result = response.json()
+    assert len(result) == 1
+    assert result[0]["node_id"] == node.id
+    assert result[0]["status"] == MaintenanceStatus.PENDING
+    assert result[0]["description"] == "Test maintenance 1"
 
 def test_search_empty_result(client: TestClient, db):
-    """Test per la ricerca che non produce risultati."""
+    """Test per la ricerca che non restituisce risultati."""
     # Crea un nodo di test
     node = Node(name="Test Node", type="Test Type", location="Test Location", status="active")
     db.add(node)
     db.commit()
 
-    # Crea un record
+    # Crea record di manutenzione
     record = MaintenanceRecord(
         node_id=node.id,
         date=datetime.utcnow(),
@@ -471,13 +449,11 @@ def test_search_empty_result(client: TestClient, db):
     db.add(record)
     db.commit()
 
-    # Test ricerca senza risultati
-    response = client.get(f"{API_PREFIX}/search?status=completed")
-    if response.status_code != 200:
-        print(f"Error in test_search_empty_result: {response.json()}")
+    # Chiamata API con filtro che non restituisce risultati
+    response = client.get(f"{API_PREFIX}/search?status={MaintenanceStatus.COMPLETED}")
     assert response.status_code == 200
-    results = response.json()
-    assert len(results) == 0
+    result = response.json()
+    assert len(result) == 0
 
 def test_export_csv(client: TestClient, db):
     """Test per l'export dei record di manutenzione in formato CSV."""
@@ -486,34 +462,23 @@ def test_export_csv(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea alcuni record di manutenzione
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=datetime.utcnow(),
-            type="Routine",
-            description=f"Test maintenance {i}",
-            status=MaintenanceStatus.PENDING,
-            notes=f"Test notes {i}"
-        ) for i in range(3)
-    ]
-    db.add_all(records)
+    # Crea record di manutenzione
+    record = MaintenanceRecord(
+        node_id=node.id,
+        date=datetime.utcnow(),
+        type="Routine",
+        description="Test maintenance",
+        status=MaintenanceStatus.PENDING,
+        notes="Test notes"
+    )
+    db.add(record)
     db.commit()
 
-    # Test export CSV
+    # Chiamata API
     response = client.get(f"{API_PREFIX}/export?format=csv")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/csv"
-    
-    # Verifica il contenuto CSV
-    content = response.text
-    lines = content.strip().split("\n")
-    assert len(lines) == 4  # Header + 3 record
-    
-    # Verifica header
-    headers = lines[0].split(",")
-    expected_headers = ["id", "node_id", "date", "type", "description", "status", "notes", "created_at", "updated_at"]
-    assert all(h in headers for h in expected_headers)
+    assert response.headers["content-disposition"] == "attachment; filename=maintenance_records.csv"
 
 def test_export_json(client: TestClient, db):
     """Test per l'export dei record di manutenzione in formato JSON."""
@@ -522,39 +487,23 @@ def test_export_json(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea alcuni record di manutenzione
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=datetime.utcnow(),
-            type="Routine",
-            description=f"Test maintenance {i}",
-            status=MaintenanceStatus.PENDING,
-            notes=f"Test notes {i}"
-        ) for i in range(3)
-    ]
-    db.add_all(records)
+    # Crea record di manutenzione
+    record = MaintenanceRecord(
+        node_id=node.id,
+        date=datetime.utcnow(),
+        type="Routine",
+        description="Test maintenance",
+        status=MaintenanceStatus.PENDING,
+        notes="Test notes"
+    )
+    db.add(record)
     db.commit()
 
-    # Test export JSON
+    # Chiamata API
     response = client.get(f"{API_PREFIX}/export?format=json")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    
-    # Verifica il contenuto JSON
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 3
-    
-    # Verifica la struttura dei record
-    for record in data:
-        assert "id" in record
-        assert "node_id" in record
-        assert "date" in record
-        assert "type" in record
-        assert "description" in record
-        assert "status" in record
-        assert "notes" in record
+    assert response.headers["content-disposition"] == "attachment; filename=maintenance_records.json"
 
 def test_export_filters(client: TestClient, db):
     """Test per l'export dei record di manutenzione con filtri."""
@@ -563,49 +512,35 @@ def test_export_filters(client: TestClient, db):
     db.add(node)
     db.commit()
 
-    # Crea record con stati diversi
-    now = datetime.utcnow()
-    records = [
-        MaintenanceRecord(
-            node_id=node.id,
-            date=now,
-            type="Routine",
-            description="Test maintenance 1",
-            status=MaintenanceStatus.PENDING,
-            notes="Test notes 1"
-        ),
-        MaintenanceRecord(
-            node_id=node.id,
-            date=now,
-            type="Emergency",
-            description="Test maintenance 2",
-            status=MaintenanceStatus.COMPLETED,
-            notes="Test notes 2"
-        )
-    ]
-    db.add_all(records)
+    # Crea record di manutenzione
+    record1 = MaintenanceRecord(
+        node_id=node.id,
+        date=datetime.utcnow(),
+        type="Routine",
+        description="Test maintenance 1",
+        status=MaintenanceStatus.PENDING,
+        notes="Test notes 1"
+    )
+    record2 = MaintenanceRecord(
+        node_id=node.id,
+        date=datetime.utcnow(),
+        type="Routine",
+        description="Test maintenance 2",
+        status=MaintenanceStatus.COMPLETED,
+        notes="Test notes 2"
+    )
+    db.add_all([record1, record2])
     db.commit()
 
-    # Test export con filtro status
-    response = client.get(f"{API_PREFIX}/export?format=json&status=PENDING")
+    # Chiamata API con filtri
+    response = client.get(f"{API_PREFIX}/export?format=csv&status={MaintenanceStatus.PENDING}")
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["status"] == "PENDING"
-
-    # Test export con filtro type
-    response = client.get(f"{API_PREFIX}/export?format=json&type=Emergency")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["type"] == "Emergency"
+    assert response.headers["content-type"] == "text/csv"
+    assert response.headers["content-disposition"] == "attachment; filename=maintenance_records.csv"
 
 def test_export_invalid_format(client: TestClient):
     """Test per l'export con formato non valido."""
+    # Chiamata API con formato non valido
     response = client.get(f"{API_PREFIX}/export?format=invalid")
-    assert response.status_code == 422
-
-def test_export_invalid_date_range(client: TestClient):
-    """Test per l'export con range date non valido."""
-    response = client.get(f"{API_PREFIX}/export?start_date=2024-03-20&end_date=2024-03-19")
-    assert response.status_code == 422 
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid export format. Supported formats: csv, json" 

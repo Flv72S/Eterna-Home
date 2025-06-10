@@ -22,6 +22,10 @@ os.environ["DATABASE_URL"] = "postgresql://postgres:N0nn0c4rl0!!@localhost:5432/
 from app.db.base_class import Base
 from app.db.session import get_db
 from app.main import app
+from tests.utils import get_superuser_token_headers
+from app.core.config import settings
+from app.core.security import get_password_hash
+from app.models.user import User
 
 # Database di test
 SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
@@ -77,6 +81,29 @@ def apply_migrations():
     config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
     command.upgrade(config, "head")
 
+def create_superuser(db: TestingSessionLocal):
+    from app.models.user import User
+    from app.core.config import settings
+    from app.core.security import get_password_hash
+
+    user = db.query(User).filter(
+        (User.email == settings.FIRST_SUPERUSER_EMAIL) |
+        (User.username == settings.FIRST_SUPERUSER)
+    ).first()
+    if user:
+        return user
+    user = User(
+        email=settings.FIRST_SUPERUSER_EMAIL,
+        username=settings.FIRST_SUPERUSER,
+        hashed_password=get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),
+        is_superuser=True,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """Create test database before running tests and drop it after."""
@@ -129,4 +156,10 @@ def client(db):
 @pytest.fixture(scope="session")
 def db_engine():
     """Fixture che fornisce l'engine del database per i test."""
-    return engine 
+    return engine
+
+@pytest.fixture(scope="function")
+def superuser_token_headers(client: TestClient, db: TestingSessionLocal) -> dict:
+    """Fixture che fornisce gli header di autenticazione per un utente superuser."""
+    create_superuser(db)
+    return get_superuser_token_headers(client) 

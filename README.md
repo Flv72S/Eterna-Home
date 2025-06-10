@@ -248,259 +248,154 @@ python -m pytest tests/api/test_house_api.py -v
   - GET /documents/{document_id}/download: Download file
 
 - ✅ Funzionalità implementate:
-  - Verifica esistenza documento
-  - Verifica permessi utente
-  - Prevenzione upload doppio
-  - Streaming download file
-  - Gestione errori e permessi
-
-- ✅ Test implementati:
-  - Upload file valido
-  - Upload su documento non esistente
-  - Upload doppio su stesso documento
-  - Download file esistente
-  - Download file non esistente
-  - Download documento senza file
-
-- ✅ Dipendenze aggiunte:
-  - boto3>=1.34.0
-  - aiofiles>=23.2.1
-
-- ✅ Configurazione:
-  - Endpoint MinIO
-  - Credenziali accesso
-  - Nome bucket
-  - Regione
-
-## Macro-step 2.2 - Gestione Documenti
-
-### Micro-step 2.2.4 - Endpoint API per Download di Documenti
-
-* ✅ Implementazione endpoint download sicuro:
-  * `GET /api/v1/documents/download/{document_id}`
-  * Autenticazione JWT richiesta
-  * Verifica autorizzazione utente
-  * Generazione URL pre-firmati MinIO
-
-* ✅ Funzionalità implementate:
-  * Verifica esistenza documento
-  * Controllo autorizzazione (solo autore)
-  * URL pre-firmati con scadenza (1 ora)
-  * Gestione errori completa
-  * Logging dettagliato
-
-* ✅ Test implementati:
-  * Test 2.2.4.1: Download con successo
-    * Verifica status 200
-    * Controllo URL pre-firmato
-    * Validazione chiamata MinIO
-  * Test 2.2.4.2: Gestione errori autenticazione
-    * Token mancante
-    * Token invalido
-  * Test 2.2.4.3: Gestione documento non trovato
-    * Verifica status 404
-    * Messaggio errore appropriato
-
-* ✅ Sicurezza:
-  * Autenticazione JWT
-  * Verifica autorizzazione
-  * URL pre-firmati temporanei
-  * Nessuna esposizione diretta file
-
-* ✅ Best Practices:
-  * Dependency Injection
-  * Separazione responsabilità
-  * Test isolati con mock
-  * Gestione errori robusta
-  * Documentazione completa
-
-## Macro-step 2.2 - Gestione File
-
-### Micro-step 2.2.2 - Servizio di Upload File su MinIO
-
-- ✅ Implementazione servizio di upload file:
-  - Client MinIO con supporto SSE-S3
-  - Gestione dinamica bucket e path
-  - Generazione automatica path univoci
-  - Rilevamento automatico content type
-  - Gestione errori e logging
-
-- ✅ Funzionalità implementate:
-  - Upload file con crittografia server-side (SSE-S3)
-  - Generazione URL file
-  - Creazione automatica bucket
-  - Gestione metadati e content type
-
-- ✅ Test implementati:
-  - Upload file con successo
-  - Uso bucket di default
-  - Generazione path automatica
-  - Rilevamento content type
+  - Validazione file (tipo, dimensione)
   - Gestione errori
-  - Creazione bucket
+  - Permessi utente
+  - Logging operazioni
 
-- ✅ Dipendenze aggiunte:
-  - minio>=7.2.0
+- ✅ Test implementati:
+  - Upload file
+  - Download file
+  - Validazione file
+  - Gestione errori
+  - Permessi utente
 
-- ✅ Configurazione:
-  - Endpoint MinIO
-  - Credenziali accesso
-  - Nome bucket default
-  - SSL/TLS
+### Micro-step 2.1.8 - Gestione Versioni Documenti
 
-#### Esempio di utilizzo:
-```python
-from app.services.minio_service import minio_service
+- ✅ Implementazione gestione versioni:
+  - Storage versioni in MinIO
+  - Metadati versione
+  - Rollback versione
+  - Diff tra versioni
 
-# Upload file con bucket e path specifici
-url, object_name = minio_service.upload_file(
-    file=file_bytes,
-    filename="document.pdf",
-    bucket="my-bucket",
-    path="documents/2024"
-)
-
-# Upload file con bucket di default e path automatico
-url, object_name = minio_service.upload_file(
-    file=file_bytes,
-    filename="image.jpg"
-)
-```
-
-#### Test del servizio:
-```bash
-python -m pytest tests/services/test_minio_service.py -v
-```
-
-## Macro-step 2.1 - Gestione Nodi
-
-### Micro-step 2.1.4 - CRUD API per Node
-
-- ✅ Implementazione modello Node:
-  - Campi: `id`, `name`, `description`, `nfc_id`, `house_id`
-  - Vincoli: `nfc_id` univoco e indicizzato
-  - Relazione con `House`
-  - Validazione campi obbligatori
-
-- ✅ Implementazione API Endpoints (`/nodes/`):
-  - POST / : Creazione nodo
-  - GET /{node_id} : Lettura singolo nodo
-  - GET / : Lista nodi con filtri
-  - PUT /{node_id} : Aggiornamento nodo
-  - DELETE /{node_id} : Eliminazione nodo
+- ✅ Endpoint implementati:
+  - GET /documents/{document_id}/versions: Lista versioni
+  - GET /documents/{document_id}/versions/{version_id}: Dettagli versione
+  - POST /documents/{document_id}/versions/{version_id}/rollback: Rollback versione
 
 - ✅ Funzionalità implementate:
-  - Validazione `nfc_id` duplicato
-  - Ricerca case-insensitive
-  - Filtri multipli (name, nfc_id, house_id)
-  - Autenticazione JWT
+  - Storage versioni
+  - Metadati versione
+  - Rollback versione
+  - Diff tra versioni
+
+- ✅ Test implementati:
+  - Lista versioni
+  - Dettagli versione
+  - Rollback versione
+  - Diff tra versioni
+
+### Micro-step 2.1.9 - Ricerca Documenti
+
+- ✅ Implementazione ricerca documenti:
+  - Ricerca full-text
+  - Filtri avanzati
+  - Paginazione risultati
+  - Ordinamento risultati
+
+- ✅ Endpoint implementati:
+  - GET /documents/search: Ricerca documenti
+
+- ✅ Funzionalità implementate:
+  - Ricerca full-text
+  - Filtri avanzati
+  - Paginazione risultati
+  - Ordinamento risultati
+
+- ✅ Test implementati:
+  - Ricerca full-text
+  - Filtri avanzati
+  - Paginazione risultati
+  - Ordinamento risultati
+
+## Macro-step 2.2 - Gestione Manutenzioni
+
+### Micro-step 2.2.1 - Modello Maintenance
+
+- ✅ Implementazione modello Maintenance con SQLModel:
+  - Relazione many-to-one con House
+  - Gestione stato manutenzione
+  - Timestamps automatici
+  - Risoluzione importazioni circolari
+
+### Micro-step 2.2.2 - API RESTful CRUD per Maintenance
+
+- ✅ Implementazione endpoint CRUD:
+  - POST /maintenance_records/ : Crea una nuova manutenzione
+  - GET /maintenance_records/ : Lista delle manutenzioni della casa
+  - GET /maintenance_records/{id} : Dettagli di una manutenzione
+  - PUT /maintenance_records/{id} : Aggiorna una manutenzione
+  - DELETE /maintenance_records/{id} : Elimina una manutenzione
+
+- ✅ Funzionalità implementate:
+  - Autenticazione JWT per tutti gli endpoint
+  - Verifica proprietà casa
+  - Field filtering nella lista manutenzioni
   - Gestione errori e permessi
 
-- ✅ Test Suite:
-  - Test di base (CRUD)
-  - Test di filtro e ricerca
-  - Test di validazione
-  - Test di sicurezza
-  - Test di robustezza
+#### Test Implementati
 
-- ✅ Miglioramenti:
-  - Aggiornamento a Pydantic v2
-  - Gestione timezone
-  - Documentazione warning
-  - Ottimizzazioni performance
+- ✅ Test modello Maintenance:
+  - Creazione manutenzione
+  - Relazione con casa
+  - Validazione dati
+  - Timestamps
 
-## Struttura del Progetto
+- ✅ Test API Maintenance:
+  - Creazione manutenzione
+  - Lista manutenzioni
+  - Dettagli manutenzione
+  - Aggiornamento manutenzione
+  - Eliminazione manutenzione
+  - Gestione permessi
+  - Field filtering
 
-```
-app/
-  ├── api/
-  │   └── __init__.py
-  ├── core/
-  │   ├── auth.py
-  │   ├── security.py
-  │   ├── config.py
-  │   └── warnings.py
-  ├── models/
-  │   ├── user.py
-  │   ├── house.py
-  │   └── node.py
-  ├── routers/
-  │   ├── users.py
-  │   ├── auth.py
-  │   ├── house.py
-  │   └── node.py
-  ├── schemas/
-  │   ├── user.py
-  │   ├── house.py
-  │   └── node.py
-  └── main.py
-tests/
-  ├── api/
-  │   ├── test_user_api.py
-  │   ├── test_house_api.py
-  │   └── test_node_api.py
-  ├── models/
-  │   ├── test_user.py
-  │   ├── test_house.py
-  │   └── test_node.py
-  └── conftest.py
-```
+### Micro-step 2.2.3 - Export/Import Manutenzioni
 
-## Come Eseguire i Test
+- ✅ Implementazione export/import manutenzioni:
+  - Export CSV/JSON
+  - Import CSV/JSON
+  - Validazione dati
+  - Gestione errori
 
-```bash
-# Test schemi
-python -m pytest app/schemas/test_user.py -v
+- ✅ Endpoint implementati:
+  - GET /maintenance_records/export: Export manutenzioni
+  - POST /maintenance_records/import-historical-data: Import manutenzioni
 
-# Test API utenti
-python -m pytest tests/api/test_user_api.py -v
+- ✅ Funzionalità implementate:
+  - Export CSV/JSON
+  - Import CSV/JSON
+  - Validazione dati
+  - Gestione errori
 
-# Test API case
-python -m pytest tests/api/test_house_api.py -v
+- ✅ Test implementati:
+  - Export CSV/JSON
+  - Import CSV/JSON
+  - Validazione dati
+  - Gestione errori
 
-# Test API nodi
-python -m pytest tests/api/test_node_api.py -v
+## Test Falliti
 
-# Test MinIO Storage
-python -m pytest tests/test_minio_storage.py -v
-```
+- **ModuleNotFoundError: No module named 'app.db.base_class'**
+  - Causa: La directory `backend` non è nel `PYTHONPATH` di pytest.
+  - Soluzione: Aggiungere la riga `pythonpath = .` in `pytest.ini`.
 
-## Test Suite MinIO Storage
+- **ImportError: cannot import name 'upload_file' from 'app.services.minio_service'**
+  - Causa: La funzione `upload_file` non esiste o non è esportata in `app/services/minio_service.py`.
+  - Soluzione: Verificare che la funzione `upload_file` sia definita ed esportata in `app/services/minio_service.py`.
 
-Per eseguire tutti i test automatici relativi all'integrazione MinIO:
-
-```bash
-python -m pytest tests/test_minio_storage.py -v
-```
-
-## Copertura del test suite MinIO
-* ✅ **Upload file**: successo, overwrite, gestione errori credenziali
-* ✅ **Download file**: successo, verifica integrità contenuto, rilevamento alterazioni (checksum mismatch)
-* ✅ **Operazioni file**: verifica esistenza, eliminazione, gestione file mancanti
-* ✅ **Integrità dati**: coerenza metadati Document, verifica checksum (MD5), validazione dimensioni file
-* ✅ **Policy di lifecycle**: verifica configurazione automatica per auto-eliminazione file obsoleti
-* ✅ **Configurazione SSL**: verifica parametri HTTPS/SSL
-
-> Tutti i test sono eseguiti tramite mock, senza necessità di un server MinIO attivo. Il checksum usato per la verifica integrità è MD5, coerente con l'implementazione del client. Le policy di lifecycle e la configurazione SSL sono testate tramite mock delle chiamate boto3.
-
-## Dipendenze
-
-* pydantic>=2.5.0
-* email-validator>=2.1.0
-* pytest>=7.4.0
-* sqlmodel>=0.0.8
-* python-jose[cryptography]>=3.3.0
-* redis>=5.0.0
-* fakeredis>=2.20.0
+- **ModuleNotFoundError: No module named 'faker'**
+  - Causa: La libreria `faker` non è installata.
+  - Soluzione: Installare la libreria `faker` con `pip install faker`.
 
 ## Prossimi Step
 
-* Implementazione refresh token
-* Rate limiting avanzato
-* Logging e monitoring
-* Documentazione API con Swagger/OpenAPI
-* Implementazione gestione dispositivi
-* Integrazione con protocolli IoT
+- Risolvere gli errori dei test falliti.
+- Implementare la gestione dei file BIM.
+- Migliorare la gestione degli errori e il logging.
+- Aggiungere documentazione API con Swagger/OpenAPI.
+- Implementare la gestione dei dispositivi.
+- Integrare con protocolli IoT.
 
 ## Implementazioni Realizzate
 

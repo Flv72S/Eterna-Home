@@ -267,3 +267,13 @@ AttributeError: module 'bcrypt' has no attribute '__about__'
 2025-06-06 10:02:28,096 - alembic.runtime.migration - INFO - Will assume transactional DDL.
 2025-06-06 10:02:28,130 - alembic.runtime.migration - INFO - Context impl PostgresqlImpl.
 2025-06-06 10:02:28,133 - alembic.runtime.migration - INFO - Will assume transactional DDL.
+2025-06-10 02:57:52,637 - fastapi - ERROR - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-06-10 04:01:46,990 - fastapi - ERROR - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+

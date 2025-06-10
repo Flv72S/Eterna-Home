@@ -40,13 +40,21 @@ def test_maintenance_records(db, test_node):
         db.refresh(record)
     return records
 
-def test_export_csv(client, test_maintenance_records):
+# Aggiungo la fixture per pulire la tabella maintenance_records prima di ogni test
+@pytest.fixture(autouse=True)
+def cleanup_maintenance_records(db):
+    yield
+    db.query(MaintenanceRecord).delete()
+    db.commit()
+
+def test_export_csv(client, test_maintenance_records, cleanup_maintenance_records):
     response = client.get("/api/v1/maintenance_records/export?format=csv")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
-    assert "node_id,type,description,status" in response.text
+    expected_headers = "id,node_id,date,type,description,status,notes,created_at,updated_at"
+    assert expected_headers in response.text
 
-def test_export_json(client, test_maintenance_records):
+def test_export_json(client, test_maintenance_records, cleanup_maintenance_records):
     response = client.get("/api/v1/maintenance_records/export?format=json")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -54,7 +62,7 @@ def test_export_json(client, test_maintenance_records):
     assert len(data) == 3
     assert all(isinstance(record, dict) for record in data)
 
-def test_export_filters(client, test_maintenance_records):
+def test_export_filters(client, test_maintenance_records, cleanup_maintenance_records):
     response = client.get(
         "/api/v1/maintenance_records/export?format=json&status=completed"
     )
@@ -63,12 +71,12 @@ def test_export_filters(client, test_maintenance_records):
     assert len(data) == 2
     assert all(record["status"] == "COMPLETED" for record in data)
 
-def test_export_invalid_format(client):
+def test_export_invalid_format(client, cleanup_maintenance_records):
     response = client.get("/api/v1/maintenance_records/export?format=invalid")
     assert response.status_code == 422
     assert "Format must be either 'csv' or 'json'" in response.text
 
-def test_export_date_range(client, test_maintenance_records):
+def test_export_date_range(client, test_maintenance_records, cleanup_maintenance_records):
     start_date = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%d")
     end_date = datetime.now(UTC).strftime("%Y-%m-%d")
     response = client.get(
@@ -78,9 +86,30 @@ def test_export_date_range(client, test_maintenance_records):
     data = response.json()
     assert len(data) == 2
 
-def test_export_invalid_date_range(client):
+def test_export_invalid_date_range(client, cleanup_maintenance_records):
     response = client.get(
         "/api/v1/maintenance_records/export?format=json&start_date=2025-01-01&end_date=2024-01-01"
     )
     assert response.status_code == 422
-    assert "end_date must be after start_date" in response.text 
+    assert "end_date must be after start_date" in response.text
+
+def test_export_csv_with_filters(client, test_maintenance_records, cleanup_maintenance_records):
+    response = client.get(
+        "/api/v1/maintenance_records/export?format=csv&status=completed&type=preventive"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "node_id,type,description,status" in response.text
+    assert "preventive" in response.text
+    assert "completed" in response.text
+
+def test_export_json_with_filters(client, test_maintenance_records, cleanup_maintenance_records):
+    response = client.get(
+        "/api/v1/maintenance_records/export?format=json&status=completed&type=preventive"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    data = response.json()
+    assert len(data) > 0
+    assert all(record["status"] == "completed" for record in data)
+    assert all(record["type"] == "preventive" for record in data) 

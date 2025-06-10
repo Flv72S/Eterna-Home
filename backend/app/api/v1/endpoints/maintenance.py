@@ -15,8 +15,15 @@ from fastapi.responses import StreamingResponse
 from app.schemas.maintenance import MaintenanceExportParams
 from dateutil.parser import parse as parse_date
 import json
+from app.api.deps import get_current_active_superuser
+from app.models.user import User
 
 router = APIRouter()
+
+def default_json(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return str(obj)
 
 @router.get("/", response_model=List[MaintenanceRecord])
 def read_maintenance_records(db: Session = Depends(get_db)):
@@ -45,7 +52,8 @@ def search_maintenance_records(
         filters.append(MaintenanceRecord.node_id == node_id)
     if status is not None:
         try:
-            status_enum = MaintenanceStatus(status.upper())
+            # Converti lo status in minuscolo per corrispondere ai valori dell'enum
+            status_enum = MaintenanceStatus(status.lower())
             filters.append(MaintenanceRecord.status == status_enum)
         except ValueError:
             raise HTTPException(
@@ -88,11 +96,13 @@ def search_maintenance_records(
 def export_maintenance_records(
     format: str = Query("csv", description="Formato di export: csv o json"),
     status: Optional[str] = Query(None, description="Stato manutenzione"),
-    record_type: Optional[str] = Query(None, description="Tipo manutenzione"),
+    type: Optional[str] = Query(None, description="Tipo manutenzione"),
     node_id: Optional[int] = Query(None, description="ID nodo"),
     start_date: Optional[str] = Query(None, description="Data inizio intervallo"),
     end_date: Optional[str] = Query(None, description="Data fine intervallo"),
-    db: Session = Depends(get_db)
+    search: Optional[str] = Query(None, description="Cerca nella descrizione"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_superuser)
 ):
     """
     Esporta i record di manutenzione in formato CSV o JSON.
@@ -115,8 +125,8 @@ def export_maintenance_records(
                 detail=f"Invalid status value. Must be one of: {', '.join(s.value for s in MaintenanceStatus)}"
             )
 
-    if record_type is not None:
-        filters.append(MaintenanceRecord.type == record_type)
+    if type is not None:
+        filters.append(MaintenanceRecord.type == type)
 
     if node_id is not None:
         filters.append(MaintenanceRecord.node_id == node_id)
@@ -141,20 +151,27 @@ def export_maintenance_records(
         if end_dt < start_dt:
             raise HTTPException(status_code=422, detail="end_date must be after start_date")
 
+    if search is not None:
+        filters.append(MaintenanceRecord.description.ilike(f"%{search}%"))
+
     if filters:
         query = query.where(and_(*filters))
 
     records = db.execute(query).scalars().all()
 
     if format.lower() == "json":
-        return [record.model_dump(exclude={"created_at", "updated_at"}) for record in records]
+        return StreamingResponse(
+            iter([json.dumps([record.model_dump() for record in records], default=default_json)]),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=maintenance_records.json"}
+        )
     else:
         output = StringIO()
-        fieldnames = ["id", "node_id", "date", "type", "description", "status", "notes"]
+        fieldnames = ["id", "node_id", "date", "type", "description", "status", "notes", "created_at", "updated_at"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         for record in records:
-            data = record.model_dump(exclude={"created_at", "updated_at"})
+            data = record.model_dump()
             writer.writerow(data)
         return StreamingResponse(
             iter([output.getvalue()]),

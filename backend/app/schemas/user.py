@@ -18,6 +18,19 @@ class UserUpdate(BaseModel):
     is_superuser: Optional[bool] = None
     is_verified: Optional[bool] = None
 
+class UserInDBBase(UserBase):
+    id: int
+    is_verified: bool = False
+
+    class Config:
+        from_attributes = True
+
+class User(UserInDBBase):
+    pass
+
+class UserInDB(UserInDBBase):
+    hashed_password: str
+
 class UserResponse(UserBase):
     id: int
 
