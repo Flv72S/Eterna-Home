@@ -1,51 +1,26 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlalchemy.pool import StaticPool
+from sqlmodel import Session
+import logging
 
 from app.main import app
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.user import UserService
-from app.db.session import get_session
+from app.core.security import get_password_hash
 
-# Configurazione del database di test
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        return session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
-@pytest.fixture(name="test_user")
-def test_user_fixture(session: Session):
-    user_create = UserCreate(
-        email="test@example.com",
-        password="testpassword123",
-        full_name="Test User",
-        username="testuser"
-    )
-    return UserService.create_user(session, user_create)
+# Configurazione del logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Test 1.3.1.1: Verifica hashing password
 def test_password_hashing(test_user: User):
     """Verifica che la password sia stata hashata correttamente."""
+    logger.debug("Starting password hashing test...")
+    logger.debug(f"User hashed password: {test_user.hashed_password}")
     assert test_user.hashed_password != "testpassword123"
     assert test_user.hashed_password.startswith("$2b$")  # Verifica che sia un hash bcrypt
+    logger.debug("Password hashing test completed successfully")
 
 # Test 1.3.1.2: POST /token - Successo
 def test_login_success(client: TestClient, test_user: User):

@@ -32,7 +32,9 @@ class UserRead(UserBase):
     
     # Exclude hashed_password from serialization
     model_config = ConfigDict(
-        from_attributes=True,  # For ORM compatibility
+        from_attributes=True,
+        validate_by_name=True,
+        str_strip_whitespace=True,
         json_schema_extra={
             "example": {
                 "id": 1,

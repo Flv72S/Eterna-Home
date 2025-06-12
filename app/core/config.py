@@ -41,8 +41,18 @@ class Settings(BaseSettings):
     MAX_DIRECT_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     PRESIGNED_URL_EXPIRY: int = 3600  # 1 hour
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env"
+    }
 
-settings = Settings() 
+settings = Settings()
+
+def get_settings() -> Settings:
+    """
+    Dependency per ottenere le impostazioni dell'applicazione.
+    
+    Returns:
+        Settings: Istanza delle impostazioni
+    """
+    return settings 

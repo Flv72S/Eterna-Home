@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column('node_id', sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
         sa.ForeignKeyConstraint(['house_id'], ['house.id'], ),
-        sa.ForeignKeyConstraint(['node_id'], ['node.id'], ),
+        sa.ForeignKeyConstraint(['node_id'], ['nodes.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_document_name'), 'document', ['name'], unique=False)

@@ -50,6 +50,12 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_house_name'), 'house', ['name'], unique=False)
+    op.create_table(
+        'rooms',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('house_id', sa.Integer(), sa.ForeignKey('house.id'), nullable=False),
+    )
     # ### end Alembic commands ###
 
 

@@ -78,21 +78,17 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    try:
-        url = get_url()
-        logger.info(f"Running offline migrations with URL: {url}")
-        context.configure(
-            url=url,
-            target_metadata=target_metadata,
-            literal_binds=True,
-            dialect_opts={"paramstyle": "named"},
-        )
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
 
-        with context.begin_transaction():
-            context.run_migrations()
-    except Exception as e:
-        logger.error(f"Error during offline migration: {str(e)}")
-        raise
+    with context.begin_transaction():
+        context.run_migrations()
+
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
@@ -101,31 +97,24 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    try:
-        configuration = config.get_section(config.config_ini_section)
-        configuration["sqlalchemy.url"] = get_url()
-        logger.info(f"Running online migrations with configuration: {configuration}")
-        
-        connectable = engine_from_config(
-            configuration,
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
+    # Forza l'uso di PostgreSQL anche in ambiente di test
+    if config.get_main_option("sqlalchemy.url").startswith("sqlite"):
+        config.set_main_option("sqlalchemy.url", "postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test")
+
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, target_metadata=target_metadata
         )
 
-        with connectable.connect() as connection:
-            logger.info("Connected to database successfully")
-            context.configure(
-                connection=connection,
-                target_metadata=target_metadata
-            )
+        with context.begin_transaction():
+            context.run_migrations()
 
-            with context.begin_transaction():
-                logger.info("Starting migration transaction")
-                context.run_migrations()
-                logger.info("Migration completed successfully")
-    except Exception as e:
-        logger.error(f"Error during online migration: {str(e)}")
-        raise
 
 if context.is_offline_mode():
     run_migrations_offline()

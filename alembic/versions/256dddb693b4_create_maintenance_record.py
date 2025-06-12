@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column('notes', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column('document_id', sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(['node_id'], ['nodes.id'], ),
-        sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ),
+        sa.ForeignKeyConstraint(['document_id'], ['document.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

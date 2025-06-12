@@ -1,6 +1,6 @@
 import pytest
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
@@ -79,7 +79,7 @@ def test_jwt_token_structure(client: TestClient, test_user: User):
     # Verifica che il token non sia scaduto
     exp_timestamp = payload["exp"]
     exp_datetime = datetime.fromtimestamp(exp_timestamp)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     assert exp_datetime > now
 
 # Test 2: Verifica scadenza del token

@@ -454,3 +454,21 @@ backend/
 - **Fix Routing**: Corretto ordine endpoint per evitare conflitti.
 - **Gestione errori**: Migliorata validazione parametri e messaggi di errore.
 - **Best Practice**: Logging, separazione responsabilità, test isolati.
+
+## Novità Apportate
+
+- **Test di Autenticazione**: Implementati test per verificare il corretto funzionamento dell'autenticazione, inclusi test per il login e la gestione delle password hashate.
+- **Gestione delle Password**: Utilizzo di `bcrypt` per l'hashing delle password, garantendo la sicurezza delle credenziali degli utenti.
+- **Logging**: Aggiunto logging per facilitare il debug e il monitoraggio delle operazioni di test.
+
+## Come Eseguire i Test
+
+Per eseguire i test di autenticazione, utilizza il seguente comando:
+
+```bash
+pytest tests/api/test_auth.py -v
+```
+
+## Contribuire
+
+Se desideri contribuire al progetto, segui le istruzioni nel file `CONTRIBUTING.md`.

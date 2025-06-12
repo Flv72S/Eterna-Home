@@ -18,7 +18,11 @@ class HouseUpdate(HouseBase):
 
 # Schema per la risposta con i dettagli di una casa
 class HouseResponse(HouseBase):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        validate_by_name=True,
+        str_strip_whitespace=True
+    )
     
     id: int
     owner_id: int

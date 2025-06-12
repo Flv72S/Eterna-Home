@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from minio.error import S3Error
-from app.services.minio_service import MinioService, upload_file
+from app.services.minio_service import MinioService
 
 @pytest.fixture
 def sample_file_bytes():
@@ -34,7 +34,8 @@ def test_upload_file_success(mock_minio_class):
     mock_client.bucket_exists.return_value = True
     mock_client.put_object.return_value = None
 
-    result = upload_file(b"test", "file.txt", "test-bucket", "folder/")
+    minio_service = MinioService()
+    result = minio_service.upload_file(b"test", "file.txt", "test-bucket", "folder/")
 
     mock_client.bucket_exists.assert_called_once_with("test-bucket")
     mock_client.put_object.assert_called_once()
@@ -54,7 +55,8 @@ def test_upload_file_with_default_bucket(mock_minio_class):
     mock_client.bucket_exists.return_value = True
     mock_client.put_object.return_value = None
 
-    result = upload_file(b"test", "file.txt")
+    minio_service = MinioService()
+    result = minio_service.upload_file(b"test", "file.txt")
 
     mock_client.bucket_exists.assert_called_once_with("default-bucket")
     mock_client.put_object.assert_called_once()
@@ -73,7 +75,8 @@ def test_upload_file_with_auto_path(mock_minio_class):
     mock_client.bucket_exists.return_value = True
     mock_client.put_object.return_value = None
 
-    result = upload_file(b"test", "file.txt", "test-bucket")
+    minio_service = MinioService()
+    result = minio_service.upload_file(b"test", "file.txt", "test-bucket")
 
     mock_client.bucket_exists.assert_called_once_with("test-bucket")
     mock_client.put_object.assert_called_once()
@@ -102,8 +105,9 @@ def test_upload_file_content_type_detection(mock_minio_class):
         ("test.unknown", "application/octet-stream")
     ]
 
+    minio_service = MinioService()
     for filename, expected_type in test_cases:
-        result = upload_file(b"test", filename, "test-bucket", "folder/")
+        result = minio_service.upload_file(b"test", filename, "test-bucket", "folder/")
         
         put_object_args = mock_client.put_object.call_args[1]
         assert put_object_args["content_type"] == expected_type
@@ -117,8 +121,9 @@ def test_upload_file_error_handling(mock_minio_class):
     mock_client.bucket_exists.return_value = True
     mock_client.put_object.side_effect = S3Error("err", "msg", "req", "host")
 
+    minio_service = MinioService()
     with pytest.raises(S3Error) as exc_info:
-        upload_file(b"test", "file.txt", "test-bucket", "folder/")
+        minio_service.upload_file(b"test", "file.txt", "test-bucket", "folder/")
     
     assert str(exc_info.value) == "err"
     mock_client.bucket_exists.assert_called_once_with("test-bucket")
@@ -133,7 +138,8 @@ def test_bucket_creation(mock_minio_class):
     mock_client.make_bucket.return_value = None
     mock_client.put_object.return_value = None
 
-    result = upload_file(b"test", "file.txt", "test-bucket", "folder/")
+    minio_service = MinioService()
+    result = minio_service.upload_file(b"test", "file.txt", "test-bucket", "folder/")
 
     mock_client.bucket_exists.assert_called_once_with("test-bucket")
     mock_client.make_bucket.assert_called_once_with("test-bucket")
@@ -152,7 +158,8 @@ def test_bucket_exists_check(mock_minio_class):
     mock_client.bucket_exists.return_value = True
     mock_client.put_object.return_value = None
 
-    result = upload_file(b"test", "file.txt", "test-bucket", "folder/")
+    minio_service = MinioService()
+    result = minio_service.upload_file(b"test", "file.txt", "test-bucket", "folder/")
 
     mock_client.bucket_exists.assert_called_once_with("test-bucket")
     mock_client.make_bucket.assert_not_called()  # Verifica che non venga chiamato make_bucket

@@ -19,3 +19,13 @@ def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
 
+def get_db() -> Generator[Session, None, None]:
+    """
+    Dependency per ottenere una sessione del database.
+    Alias di get_session per compatibilità con il codice esistente.
+    
+    Yields:
+        Session: Sessione del database
+    """
+    yield from get_session()
+

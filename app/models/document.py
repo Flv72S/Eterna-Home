@@ -2,19 +2,22 @@ from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING, List
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
+from app.models.user import User
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.house import House
     from app.models.node import Node
     from app.models.maintenance import MaintenanceRecord
+    from app.models.document_version import DocumentVersion
 
 class Document(SQLModel, table=True):
-    """Modello per la rappresentazione di un documento nel database."""
+    """Modello per i documenti."""
     __tablename__ = "documents"
+    __table_args__ = {'extend_existing': True}
+    
     model_config = ConfigDict(
         from_attributes=True,
-        populate_by_name=True,
+        validate_by_name=True,
         str_strip_whitespace=True,
         json_schema_extra={
             "example": {
@@ -29,17 +32,24 @@ class Document(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(index=True)
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Foreign keys
+    owner_id: int = Field(foreign_key="users.id", index=True)
+    
+    # Relationships
+    owner: "app.models.user.User" = Relationship(back_populates="documents")
+    versions: List["app.models.document_version.DocumentVersion"] = Relationship(back_populates="document")
+
     name: str = Field(description="Nome del documento")
     type: str = Field(description="MIME type del documento")
     size: int = Field(description="Dimensione del documento in bytes")
     upload_date: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Data e ora di upload"
-    )
-    author_id: Optional[int] = Field(
-        default=None,
-        foreign_key="users.id",
-        description="ID dell'utente che ha caricato il documento"
     )
     path: str = Field(description="Percorso del file su storage")
     checksum: str = Field(description="Hash SHA256 del contenuto file")
@@ -55,7 +65,6 @@ class Document(SQLModel, table=True):
     )
 
     # Relazioni
-    author: Optional["User"] = Relationship(back_populates="documents")
     house: Optional["House"] = Relationship(back_populates="documents")
     node: Optional["Node"] = Relationship(back_populates="documents")
     maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="document") 

@@ -7,19 +7,19 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.node import Node
     from app.models.document import Document
+    from app.models.room import Room
 
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
     
     __tablename__ = "houses"
     
-    # Configurazione Pydantic
     model_config = ConfigDict(
-        from_attributes=True,  # equivalente a orm_mode=True
-        populate_by_name=True,
-        arbitrary_types_allowed=True
+        from_attributes=True,
+        validate_by_name=True,
+        str_strip_whitespace=True
     )
-    
+
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     address: str
@@ -32,4 +32,5 @@ class House(SQLModel, table=True):
     # Relazioni
     owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"})
     nodes: List["Node"] = Relationship(back_populates="house")
-    documents: List["Document"] = Relationship(back_populates="house") 
+    documents: List["Document"] = Relationship(back_populates="house")
+    rooms: List["Room"] = Relationship(back_populates="house") 

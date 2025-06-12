@@ -1,8 +1,83 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel
+from sqlalchemy import create_engine
 
-from app.models.user import User, UserCreate, UserUpdate
-from app.core.security import get_password_hash
+from app.main import app
+from app.models.user import User
+from app.schemas.user import UserCreate
+from app.services.user import UserService
+from app.db.session import get_session
+
+# Configurazione del database di test
+@pytest.fixture(name="session")
+def session_fixture():
+    engine = create_engine(
+        "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
+        # Pulizia dopo i test
+        SQLModel.metadata.drop_all(engine)
+
+@pytest.fixture(name="client")
+def client_fixture(session: Session):
+    def get_session_override():
+        return session
+
+    app.dependency_overrides[get_session] = get_session_override
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+@pytest.fixture(name="test_user")
+def test_user_fixture(session: Session):
+    user_create = UserCreate(
+        email="test@example.com",
+        password="testpassword123",
+        full_name="Test User",
+        username="testuser"
+    )
+    return UserService.create_user(session, user_create)
+
+# Test 1.1.1: GET /users/me - Successo
+def test_read_users_me(client: TestClient, test_user: User):
+    """Verifica che l'endpoint /users/me restituisca i dati dell'utente autenticato."""
+    # Login per ottenere il token
+    response = client.post(
+        "/token",
+        data={"username": "test@example.com", "password": "testpassword123"}
+    )
+    token = response.json()["access_token"]
+    
+    # Richiesta con token
+    response = client.get(
+        "/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "test@example.com"
+    assert data["username"] == "testuser"
+    assert data["full_name"] == "Test User"
+
+# Test 1.1.2: GET /users/me - Non autenticato
+def test_read_users_me_unauthorized(client: TestClient):
+    """Verifica che l'endpoint /users/me restituisca errore 401 se non autenticato."""
+    response = client.get("/users/me")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+# Test 1.1.3: GET /users/me - Token non valido
+def test_read_users_me_invalid_token(client: TestClient):
+    """Verifica che l'endpoint /users/me restituisca errore 401 con token non valido."""
+    response = client.get(
+        "/users/me",
+        headers={"Authorization": "Bearer invalid_token"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Could not validate credentials"
 
 def test_create_user(client: TestClient):
     """Test creazione utente."""

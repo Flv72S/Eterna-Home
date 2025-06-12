@@ -28,7 +28,7 @@ class MaintenanceRecord(SQLModel, table=True):
 
     model_config = ConfigDict(
         from_attributes=True,
-        populate_by_name=True,
+        validate_by_name=True,
         str_strip_whitespace=True,
         json_schema_extra={
             "example": {

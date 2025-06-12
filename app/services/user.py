@@ -35,6 +35,7 @@ class UserService:
         db_user = User(
             email=user_create.email,
             username=user_create.username,
+            full_name=user_create.full_name,
             hashed_password=get_password_hash(user_create.password),
             is_active=user_create.is_active,
             is_superuser=user_create.is_superuser
@@ -72,7 +73,8 @@ class UserService:
             Optional[User]: Utente trovato o None
         """
         statement = select(User).where(User.email == email)
-        return session.exec(statement).first()
+        result = session.execute(statement)
+        return result.scalar_one_or_none()
     
     @staticmethod
     def update_user(session: Session, user_id: int, user_update: UserUpdate) -> User:
@@ -148,4 +150,5 @@ class UserService:
             list[User]: Lista degli utenti
         """
         statement = select(User).offset(skip).limit(limit)
-        return list(session.exec(statement)) 
+        result = session.execute(statement)
+        return list(result.scalars().all()) 
