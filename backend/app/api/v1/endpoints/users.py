@@ -27,10 +27,18 @@ async def create_user(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """Get current user info."""
-    return current_user
+    user_service = UserService(session)
+    user = user_service.get_user_by_id(current_user.id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utente non trovato"
+        )
+    return user
 
 @router.put("/me", response_model=UserResponse)
 async def update_current_user(
@@ -64,7 +72,7 @@ async def get_user(
         )
     return user
 
-@router.put("/{user_id}", response_model=UserRead)
+@router.patch("/{user_id}", response_model=UserRead)
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
@@ -79,4 +87,31 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Utente non trovato"
         )
-    return user 
+    return user
+
+@router.get("/", response_model=list[UserRead])
+async def list_users(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all users."""
+    user_service = UserService(session)
+    users = user_service.get_all_users()
+    return users
+
+@router.delete("/{user_id}", status_code=204)
+async def delete_user(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete user by ID."""
+    user_service = UserService(session)
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utente non trovato"
+        )
+    user_service.delete_user(user_id)
+    return None 
