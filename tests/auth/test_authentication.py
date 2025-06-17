@@ -1,3 +1,4 @@
+"""Test authentication endpoints."""
 import pytest
 import time
 from datetime import datetime, timedelta, timezone
@@ -5,6 +6,7 @@ from jose import jwt
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 
 from app.main import app
 from app.models.user import User
@@ -18,13 +20,20 @@ from app.utils.password import get_password_hash
 # Configurazione del database di test
 @pytest.fixture(name="session")
 def session_fixture():
+    # Usa PostgreSQL per i test
+    DATABASE_URL = "postgresql://postgres:N0nn0c4rl0!!@localhost/eterna_home_test"
     engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10
     )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
+        with engine.connect() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+            conn.commit()
         yield session
 
 @pytest.fixture(name="client")
@@ -57,7 +66,7 @@ def test_jwt_token_structure(client: TestClient, test_user: User):
     """Verifica la struttura e i claim del token JWT."""
     # Login per ottenere il token
     response = client.post(
-        "/token",
+        "/api/v1/auth/token",
         data={"username": "test@example.com", "password": "testpassword123"}
     )
     assert response.status_code == 200
@@ -72,7 +81,7 @@ def test_jwt_token_structure(client: TestClient, test_user: User):
     )
     
     # Verifica i claim
-    assert payload["sub"] == test_user.email
+    assert payload["sub"] == test_user.email  # Usa l'email invece dell'ID
     assert "exp" in payload
     assert token_data["token_type"] == "bearer"
     
@@ -94,7 +103,7 @@ def test_jwt_token_expiration(client: TestClient, test_user: User):
     time.sleep(2)
     # Prova ad usare il token scaduto
     response = client.get(
-        "/users/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [401, 403, 422]  # Accetta anche 422 come risposta valida
@@ -109,11 +118,11 @@ def test_login_with_inactive_user(client: TestClient, test_user: User, session: 
     
     # Prova il login
     response = client.post(
-        "/token",
+        "/api/v1/auth/token",
         data={"username": "test@example.com", "password": "testpassword123"}
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "User is inactive"
+    assert response.json()["detail"] == "Utente disabilitato"  # Messaggio in italiano
 
 # Test 4: Stress test sul Rate Limiting
 def test_rate_limiting_exceeded(client: TestClient, test_user: User):
@@ -122,7 +131,7 @@ def test_rate_limiting_exceeded(client: TestClient, test_user: User):
     responses = []
     for i in range(10):
         response = client.post(
-            "/token",
+            "/api/v1/auth/token",
             data={"username": "test@example.com", "password": "wrongpassword"}
         )
         responses.append(response)
@@ -141,4 +150,52 @@ def test_rate_limiting_exceeded(client: TestClient, test_user: User):
             "Rate limit exceeded" in data.get("error", "")
         )
     for r in responses[:first_429]:
-        assert r.status_code == 401 
+        assert r.status_code == 401
+
+# Test 5: Refresh Token
+def test_refresh_token(client: TestClient, test_user: User):
+    """Verifica il refresh del token."""
+    # Prima login per ottenere il token iniziale
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "test@example.com", "password": "testpassword123"}
+    )
+    assert login_response.status_code == 200
+    initial_token = login_response.json()["access_token"]
+
+    # Prova a refreshare il token
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {initial_token}"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "token_type" in data
+    assert data["token_type"] == "bearer"
+    assert data["access_token"] != initial_token
+
+# Test 6: Logout
+def test_logout(client: TestClient, test_user: User):
+    """Verifica la funzionalità di logout."""
+    # Prima login per ottenere il token
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "test@example.com", "password": "testpassword123"}
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    # Prova il logout
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+
+    # Verifica che il token non sia più valido
+    verify_response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert verify_response.status_code in [401, 403] 

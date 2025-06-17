@@ -14,7 +14,7 @@ from app.utils.password import get_password_hash, verify_password
 
 # Configurazione del contesto per l'hashing delle password
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Crea un JWT token con i dati forniti."""
@@ -24,7 +24,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    # Converti il datetime in timestamp per il test
+    to_encode.update({"exp": int(expire.timestamp())})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -62,4 +63,21 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is inactive"
         )
-    return user 
+    
+    # Assicurati che tutti i campi necessari siano presenti
+    if not user.username:
+        user.username = user.email.split('@')[0]
+    if not user.full_name:
+        user.full_name = user.username
+    
+    # Restituisci solo i campi necessari
+    return User(
+        id=user.id,
+        email=user.email,
+        username=user.username,
+        full_name=user.full_name,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    ) 

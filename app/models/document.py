@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING, List
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
-from app.models.user import User
 
 if TYPE_CHECKING:
+    from app.models.user import User
     from app.models.house import House
     from app.models.node import Node
     from app.models.maintenance import MaintenanceRecord
@@ -32,17 +32,15 @@ class Document(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(index=True)
-    description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
-    owner_id: int = Field(foreign_key="users.id", index=True)
+    owner_id: int = Field(foreign_key="user.id", index=True)
     
     # Relationships
-    owner: "app.models.user.User" = Relationship(back_populates="documents")
-    versions: List["app.models.document_version.DocumentVersion"] = Relationship(back_populates="document")
+    owner: "User" = Relationship(back_populates="documents")
+    versions: List["DocumentVersion"] = Relationship(back_populates="document")
 
     name: str = Field(description="Nome del documento")
     type: str = Field(description="MIME type del documento")
@@ -67,4 +65,6 @@ class Document(SQLModel, table=True):
     # Relazioni
     house: Optional["House"] = Relationship(back_populates="documents")
     node: Optional["Node"] = Relationship(back_populates="documents")
-    maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="document") 
+    maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="document")
+
+    description: Optional[str] = None 

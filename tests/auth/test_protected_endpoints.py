@@ -34,7 +34,7 @@ def test_get_current_user_authenticated(db: Session):
 
     # Test protected endpoint
     response = client.get(
-        "/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": f"Bearer {access_token}"}
     )
     
@@ -45,13 +45,13 @@ def test_get_current_user_authenticated(db: Session):
 
 def test_get_current_user_unauthenticated():
     # Test without auth header
-    response = client.get("/users/me")
+    response = client.get("/api/v1/users/me")
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
 
     # Test with invalid token
     response = client.get(
-        "/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401

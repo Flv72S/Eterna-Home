@@ -9,6 +9,8 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import text
 from fastapi.testclient import TestClient
+from alembic.config import Config
+from alembic import command
 
 from app.database import get_session
 from app.main import app
@@ -25,11 +27,26 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Importa la configurazione Redis per i test
-from tests.conftest_redis import redis_client, override_redis_settings
+from tests.conftest_redis import redis_client, override_redis_client
 
 # Configurazione del database di test
 TEST_DATABASE_URL = "postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test"
 TEST_DATABASE_NAME = "eterna_home_test"
+
+def apply_migrations():
+    """Applica le migrazioni Alembic al database di test."""
+    logger.debug("Applying Alembic migrations...")
+    try:
+        # Configura Alembic per usare il database di test
+        alembic_cfg = Config("backend/alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+        
+        # Applica tutte le migrazioni
+        command.upgrade(alembic_cfg, "head")
+        logger.debug("Alembic migrations applied successfully")
+    except Exception as e:
+        logger.error(f"Error applying Alembic migrations: {str(e)}")
+        raise
 
 @pytest.fixture(scope="session", autouse=True)
 def create_test_database():
@@ -75,6 +92,41 @@ def create_test_database():
         
         yield
         
+        # Pulizia: invece di TRUNCATE, eseguo DROP TABLE per ogni tabella
+        logger.debug("Cleaning up test database...")
+        cleanup_conn = psycopg2.connect(
+            dbname=TEST_DATABASE_NAME,
+            user="postgres",
+            password="N0nn0c4rl0!!",
+            host="localhost"
+        )
+        cleanup_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        cleanup_cur = cleanup_conn.cursor()
+        
+        # Lista delle tabelle da pulire
+        tables = [
+            "document_versions",
+            "documents",
+            "maintenance_records",
+            "nodes",
+            "rooms",
+            "houses",
+            "users",
+            "bookings"
+        ]
+        
+        # Drop di ogni tabella se esiste
+        for table in tables:
+            try:
+                cleanup_cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+                logger.debug(f"Dropped table {table} if it existed")
+            except Exception as e:
+                logger.warning(f"Error dropping table {table}: {str(e)}")
+        
+        cleanup_cur.close()
+        cleanup_conn.close()
+        logger.debug("Test database cleanup completed")
+        
     except Exception as e:
         logger.error(f"Error setting up test database: {str(e)}")
         import traceback
@@ -87,7 +139,7 @@ def test_engine():
     logger.debug("Creating test engine...")
     try:
         engine = create_engine(
-            TEST_DATABASE_URL,
+    TEST_DATABASE_URL,
             pool_pre_ping=True,
             pool_size=5,
             max_overflow=10,
@@ -121,6 +173,31 @@ def create_test_db(test_engine):
     """Crea le tabelle nel database di test."""
     logger.debug("Creating test database tables...")
     try:
+        # Importa tutti i modelli per assicurarsi che siano registrati con SQLModel
+        from app.models import User, Document, DocumentVersion, House, Node, Room, Booking, MaintenanceRecord
+        
+        # Crea manualmente la tabella user se non esiste
+        with test_engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS "user" (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR NOT NULL UNIQUE,
+                    username VARCHAR NOT NULL UNIQUE,
+                    hashed_password VARCHAR NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    is_superuser BOOLEAN DEFAULT FALSE,
+                    is_verified BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                    last_login TIMESTAMP WITH TIME ZONE,
+                    full_name VARCHAR(255),
+                    phone_number VARCHAR(20)
+                )
+            """))
+            conn.commit()
+            logger.debug("User table created manually")
+        
+        # Crea le tabelle con SQLModel (per sicurezza)
         SQLModel.metadata.create_all(test_engine)
         logger.debug("Test database tables created successfully")
         yield
@@ -145,6 +222,27 @@ def db_session(test_engine):
     """Crea una sessione di test e la pulisce dopo ogni test."""
     logger.debug("Creating function-scoped test session...")
     try:
+        # Assicurati che la tabella user esista per ogni test
+        with test_engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS "user" (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR NOT NULL UNIQUE,
+                    username VARCHAR NOT NULL UNIQUE,
+                    hashed_password VARCHAR NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    is_superuser BOOLEAN DEFAULT FALSE,
+                    is_verified BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                    last_login TIMESTAMP WITH TIME ZONE,
+                    full_name VARCHAR(255),
+                    phone_number VARCHAR(20)
+                )
+            """))
+            conn.commit()
+            logger.debug("User table ensured for function-scoped test")
+        
         with Session(test_engine) as session:
             yield session
             session.rollback()

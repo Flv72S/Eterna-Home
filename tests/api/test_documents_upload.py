@@ -6,7 +6,7 @@ import io
 import uuid
 import traceback
 
-from app.main import app, get_minio_service
+from app.main import app
 from app.services.minio_service import MinioService
 from app.models.document import Document
 from app.core.config import settings

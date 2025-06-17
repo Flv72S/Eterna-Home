@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 from sqlmodel import Field, SQLModel, Relationship
@@ -45,7 +45,7 @@ class MaintenanceRecord(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     node_id: int = Field(foreign_key="nodes.id", index=True)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     maintenance_type: MaintenanceType
     description: str
     status: MaintenanceStatus = Field(default=MaintenanceStatus.PENDING)

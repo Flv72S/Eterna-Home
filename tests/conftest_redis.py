@@ -1,21 +1,29 @@
-import fakeredis
 import pytest
-from app.core.config import settings
+from fakeredis import FakeRedis
+from app.core.redis import get_redis_client
+import logging
 
-@pytest.fixture(scope="session")
-def redis_client():
-    """Crea un client Redis fittizio per i test."""
-    server = fakeredis.FakeServer()
-    client = fakeredis.FakeRedis(server=server)
-    return client
+logger = logging.getLogger(__name__)
+
+# Crea un'istanza di FakeRedis per i test
+redis_client = FakeRedis(
+    decode_responses=True,
+    socket_timeout=5,
+    socket_connect_timeout=5
+)
 
 @pytest.fixture(autouse=True)
-def override_redis_settings():
-    """Override delle impostazioni Redis per i test."""
-    original_host = settings.REDIS_HOST
-    original_port = settings.REDIS_PORT
-    settings.REDIS_HOST = "localhost"
-    settings.REDIS_PORT = 6379
-    yield
-    settings.REDIS_HOST = original_host
-    settings.REDIS_PORT = original_port 
+def override_redis_client():
+    """Override Redis client with FakeRedis for testing."""
+    logger.debug("Setting up FakeRedis for tests...")
+    original_client = get_redis_client()
+    
+    # Sostituisci il client Redis con FakeRedis
+    import app.core.redis
+    app.core.redis.redis_client = redis_client
+    
+    yield redis_client
+    
+    # Ripristina il client Redis originale
+    app.core.redis.redis_client = original_client
+    logger.debug("Restored original Redis client")

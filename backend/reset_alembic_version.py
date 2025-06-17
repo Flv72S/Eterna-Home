@@ -1,19 +1,41 @@
 from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+import sys
 
-DATABASE_URL = 'postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home'
-engine = create_engine(DATABASE_URL)
+# Database connection string
+DATABASE_URL = "postgresql://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test"
 
-with engine.connect() as conn:
-    # Svuota la tabella alembic_version se esiste
-    result = conn.execute(text("""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_name = 'alembic_version'
-        );
-    """)).scalar()
-    if result:
-        conn.execute(text("DELETE FROM alembic_version"))
-        print("Tabella alembic_version svuotata.")
-    else:
-        print("La tabella alembic_version non esiste.") 
+def reset_alembic_version():
+    print("🔄 Inizializzazione reset alembic_version...")
+    try:
+        print("📡 Connessione al database...")
+        # Create engine
+        engine = create_engine(DATABASE_URL)
+        
+        print("🔑 Creazione sessione...")
+        # Create a session
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        
+        print("🗑️ Eliminazione tabella alembic_version...")
+        # Drop the alembic_version table if it exists
+        session.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        session.commit()
+        
+        print("✅ Tabella alembic_version resettata con successo!")
+        
+    except Exception as e:
+        print(f"❌ Errore durante il reset della tabella alembic_version: {str(e)}")
+        print(f"Tipo di errore: {type(e).__name__}")
+        print(f"Stack trace:", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        session.rollback()
+    finally:
+        print("🔒 Chiusura sessione...")
+        session.close()
+
+if __name__ == "__main__":
+    print("🚀 Avvio script reset alembic_version...")
+    reset_alembic_version()
+    print("🏁 Script completato.") 

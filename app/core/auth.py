@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session
@@ -9,39 +9,34 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.models.user import User
 from app.services.user import UserService
+from app.utils.security import create_access_token, get_current_user
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/token")
+router = APIRouter()
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Crea un JWT token di accesso."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+@router.post("/token")
+async def login_for_access_token(
+    username: str,
+    password: str,
     session: Session = Depends(get_session)
-) -> User:
-    """Verifica il token JWT e restituisce l'utente corrente."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+):
+    """Login per ottenere il token JWT."""
+    user = UserService.authenticate_user(session, username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenziali non valide",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Utente disabilitato"
+        )
     
-    user = UserService.get_user_by_email(session, email)
-    if user is None:
-        raise credentials_exception
-    return user 
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout(current_user: User = Depends(get_current_user)):
+    """Logout dell'utente."""
+    return {"message": "Logout effettuato con successo"} 

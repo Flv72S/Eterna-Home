@@ -19,11 +19,11 @@ class House(SQLModel, table=True):
         validate_by_name=True,
         str_strip_whitespace=True
     )
-
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     address: str
-    owner_id: int = Field(foreign_key="users.id")
+    owner_id: int = Field(foreign_key="user.id")
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -32,5 +32,8 @@ class House(SQLModel, table=True):
     # Relazioni
     owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"})
     nodes: List["Node"] = Relationship(back_populates="house")
-    documents: List["Document"] = Relationship(back_populates="house")
+    documents: List["Document"] = Relationship(
+        back_populates="house",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     rooms: List["Room"] = Relationship(back_populates="house") 

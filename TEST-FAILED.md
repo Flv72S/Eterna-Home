@@ -50,4 +50,8 @@
 - **test_house_api.py**: Creazione, modifica, eliminazione case/stanze, permessi, errori
 
 ### Gestione Utenti
-- **test_user_api.py**: Registrazione, login, modifica profilo, permessi, errori 
+- **test_user_api.py**: Registrazione, login, modifica profilo, permessi, errori
+
+## Note
+- I test di autenticazione sono stati spostati in TEST.md poiché sono stati superati con successo
+- I test rimanenti richiedono attenzione per la loro implementazione o correzione 

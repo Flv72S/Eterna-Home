@@ -23,7 +23,7 @@ def test_create_user():
         "is_active": True,
         "is_superuser": False
     }
-    response = client.post("/api/v1/users/", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     if response.status_code != 200:
         print(f"Response body: {response.json()}")
     assert response.status_code == 200

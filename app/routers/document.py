@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlmodel import Session, select, or_
-from app.core.auth import get_current_user
+from app.utils.security import get_current_user
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import DocumentCreate, DocumentRead, DocumentUpdate

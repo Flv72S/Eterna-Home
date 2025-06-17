@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.house import House
 from app.schemas.house import HouseCreate, HouseUpdate, HouseResponse, HouseList
 from app.db.session import get_session
-from app.core.auth import get_current_user
+from app.utils.security import get_current_user
 
 router = APIRouter()
 

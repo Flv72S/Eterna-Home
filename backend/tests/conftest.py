@@ -2,46 +2,84 @@
 
 import os
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 from alembic.config import Config
 from alembic import command
 from app.core.config import settings
+from tests.test_session import get_test_session
 
-# Configurazione del database di test
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
-)
+# URL del database di test
+TEST_DATABASE_URL = settings.DATABASE_URL
 
 @pytest.fixture(scope="session")
 def test_engine():
-    """Crea un engine PostgreSQL per i test."""
+    """Crea un engine di test."""
+    print("\n[DEBUG] Creating test engine...")
     engine = create_engine(TEST_DATABASE_URL)
+    print("[DEBUG] Test engine created successfully")
     return engine
 
-@pytest.fixture(scope="session")
-def test_db_session(test_engine):
+@pytest.fixture
+def db_session():
     """Crea una sessione di test."""
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-    session = TestingSessionLocal()
-    try:
+    for session in get_test_session():
         yield session
-    finally:
-        session.close()
+
+@pytest.fixture(scope="function", autouse=True)
+def clean_db(test_engine):
+    """Pulisce il database prima di ogni test e riapplica le migration."""
+    print("\n[DEBUG] Cleaning database before test...")
+    with test_engine.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+        conn.commit()
+    print("[DEBUG] Database cleaned")
+    
+    # Riapplica le migration dopo la pulizia
+    print("[DEBUG] Reapplying migrations...")
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+    command.upgrade(alembic_cfg, "head")
+    print("[DEBUG] Migrations reapplied")
 
 @pytest.fixture(scope="session", autouse=True)
 def create_test_db(test_engine):
     """Applica le migrazioni Alembic al database di test."""
+    print("\n[DEBUG] Starting database setup...")
+
+    # Pulizia: elimina tutte le tabelle dal database di test
+    print("[DEBUG] Cleaning up database...")
+    with test_engine.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+        conn.commit()
+    print("[DEBUG] Database cleanup completed")
+
     # Configura Alembic per usare il database di test
+    print("[DEBUG] Configuring Alembic...")
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
-    
+
     # Applica le migrazioni
+    print("[DEBUG] Applying migrations...")
     command.upgrade(alembic_cfg, "head")
-    
+    print("[DEBUG] Migrations applied successfully")
+
     yield
-    
-    # Pulizia: elimina tutte le tabelle dal database di test
-    SQLModel.metadata.drop_all(test_engine)
+
+    # Pulizia finale
+    print("[DEBUG] Final cleanup...")
+    with test_engine.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+        conn.commit()
+    print("[DEBUG] Final cleanup completed")
+
+@pytest.fixture
+def client():
+    """Crea un client di test."""
+    from app.main import app
+    from fastapi.testclient import TestClient
+    return TestClient(app)

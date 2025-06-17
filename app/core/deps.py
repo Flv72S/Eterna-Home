@@ -5,9 +5,10 @@ from sqlmodel import Session, select
 from typing import Optional
 
 from app.core.config import settings
-from app.core.redis import get_cached_user, cache_user
 from app.db.session import get_session
+from app.db.utils import safe_exec
 from app.models.user import User
+from app.utils.security import get_cached_user, cache_user
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -21,7 +22,7 @@ def get_db():
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_session)
+    session: Session = Depends(get_session)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,7 +48,9 @@ async def get_current_user(
         return User(**cached_user)
 
     # If not in cache, get from database
-    user = db.exec(select(User).where(User.email == email)).first()
+    query = select(User).where(User.email == email)
+    result = safe_exec(session, query)
+    user = result.first()
     if user is None:
         raise credentials_exception
 

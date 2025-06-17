@@ -1,86 +1,136 @@
+"""Script di debug per testare i componenti uno alla volta."""
 import os
 import sys
 from pathlib import Path
 
-# Aggiungi la directory root del progetto al PYTHONPATH
-project_root = str(Path(__file__).parent.parent)
-sys.path.insert(0, project_root)
+# Aggiungi la directory backend al Python path
+backend_dir = str(Path(__file__).parent.parent)
+sys.path.append(backend_dir)
 
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime, timedelta, UTC
+from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import text
+
 from app.main import app
-from app.models.maintenance import MaintenanceRecord, MaintenanceStatus
-from app.models.node import Node
-from app.db.session import SessionLocal
-import logging
+from app.models.user import User
+from app.db.session import get_session
+from app.utils.password import get_password_hash
+from app.core.config import settings
 
-# Configura il logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-def test_debug():
-    """Test di diagnostica per verificare i problemi nei test di manutenzione."""
-    client = TestClient(app)
-    db = SessionLocal()
-    
+def test_database_connection():
+    """Test la connessione al database."""
+    print("\n[DEBUG] Testing database connection...")
     try:
-        # 1. Verifica creazione nodo
-        logger.info("1. Test creazione nodo...")
-        node = Node(
-            name="Test Node",
-            type="sensor",
-            location="Test Location",
-            status="active"
-        )
-        db.add(node)
-        db.commit()
-        db.refresh(node)
-        logger.info(f"Nodo creato con ID: {node.id}")
-        
-        # 2. Verifica creazione record di manutenzione
-        logger.info("2. Test creazione record di manutenzione...")
-        record = MaintenanceRecord(
-            node_id=node.id,
-            type="preventive",
-            description="Test maintenance",
-            status=MaintenanceStatus.COMPLETED,
-            date=datetime.now(UTC),
-            notes="Test notes"
-        )
-        db.add(record)
-        db.commit()
-        db.refresh(record)
-        logger.info(f"Record creato con ID: {record.id}")
-        
-        # 3. Verifica endpoint export JSON
-        logger.info("3. Test endpoint export JSON...")
-        response = client.get("/api/v1/maintenance_records/export?format=json")
-        logger.info(f"Status code: {response.status_code}")
-        logger.info(f"Headers: {response.headers}")
-        if response.status_code == 200:
-            data = response.json()
-            logger.info(f"Numero di record: {len(data)}")
-            if data:
-                logger.info(f"Esempio di record: {data[0]}")
-        else:
-            logger.error(f"Errore nella risposta: {response.text}")
-        
-        # 4. Verifica endpoint export CSV
-        logger.info("4. Test endpoint export CSV...")
-        response = client.get("/api/v1/maintenance_records/export?format=csv")
-        logger.info(f"Status code: {response.status_code}")
-        logger.info(f"Headers: {response.headers}")
-        if response.status_code == 200:
-            logger.info(f"Contenuto CSV: {response.text[:200]}...")
-        else:
-            logger.error(f"Errore nella risposta: {response.text}")
-            
+        engine = create_engine(settings.DATABASE_URL)
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            assert result.scalar() == 1
+        print("[DEBUG] Database connection successful!")
     except Exception as e:
-        logger.error(f"Errore durante il test: {str(e)}")
+        print(f"[ERROR] Database connection failed: {str(e)}")
         raise
-    finally:
-        db.close()
+
+def test_database_tables():
+    """Test che le tabelle necessarie esistano."""
+    print("\n[DEBUG] Checking database tables...")
+    try:
+        engine = create_engine(settings.DATABASE_URL)
+        with engine.connect() as conn:
+            # Verifica tabella user
+            result = conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'user'
+                )
+            """))
+            assert result.scalar() is True, "Table 'user' does not exist"
+            
+            # Verifica tabella alembic_version
+            result = conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'alembic_version'
+                )
+            """))
+            assert result.scalar() is True, "Table 'alembic_version' does not exist"
+            
+        print("[DEBUG] All required tables exist!")
+    except Exception as e:
+        print(f"[ERROR] Table check failed: {str(e)}")
+        raise
+
+def test_user_creation():
+    """Test la creazione di un utente."""
+    print("\n[DEBUG] Testing user creation...")
+    try:
+        engine = create_engine(settings.DATABASE_URL)
+        with Session(engine) as session:
+            # Crea un utente di test
+            user = User(
+                email="debug@example.com",
+                hashed_password=get_password_hash("testpassword"),
+                is_active=True,
+                full_name="Debug User"
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            
+            # Verifica che l'utente sia stato creato
+            assert user.id is not None
+            assert user.email == "debug@example.com"
+            print("[DEBUG] User creation successful!")
+            
+            # Pulisci il database
+            session.delete(user)
+            session.commit()
+    except Exception as e:
+        print(f"[ERROR] User creation failed: {str(e)}")
+        raise
+
+def test_api_endpoints():
+    """Test gli endpoint API."""
+    print("\n[DEBUG] Testing API endpoints...")
+    try:
+        client = TestClient(app)
+        
+        # Test endpoint di creazione utente
+        print("[DEBUG] Testing user creation endpoint...")
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "api_test@example.com",
+                "password": "testpassword123",
+                "full_name": "API Test User"
+            }
+        )
+        print(f"[DEBUG] User creation response: {response.status_code}")
+        print(f"[DEBUG] Response body: {response.json()}")
+        
+        # Test endpoint di login
+        print("\n[DEBUG] Testing login endpoint...")
+        response = client.post(
+            "/api/v1/auth/token",
+            data={
+                "username": "api_test@example.com",
+                "password": "testpassword123"
+            }
+        )
+        print(f"[DEBUG] Login response: {response.status_code}")
+        print(f"[DEBUG] Response body: {response.json()}")
+        
+    except Exception as e:
+        print(f"[ERROR] API test failed: {str(e)}")
+        raise
 
 if __name__ == "__main__":
-    test_debug() 
+    print("Starting debug tests...")
+    
+    # Esegui i test in sequenza
+    test_database_connection()
+    test_database_tables()
+    test_user_creation()
+    test_api_endpoints()
+    
+    print("\nDebug tests completed!")
