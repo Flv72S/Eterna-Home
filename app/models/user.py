@@ -15,7 +15,7 @@ class User(SQLModel, table=True):
     Modello User per l'autenticazione e l'autorizzazione.
     Utilizza SQLModel per combinare le funzionalità di Pydantic e SQLAlchemy.
     """
-    __tablename__ = "user"
+    __tablename__ = "users"
     __table_args__ = {'extend_existing': True}
     
     model_config = ConfigDict(

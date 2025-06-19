@@ -1,10 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
+from app.database import get_session
+from sqlmodel import Session
+import sqlalchemy
 
-from backend.app.api.v1.endpoints.auth import router as auth_router
+# from backend.app.api.v1.endpoints.auth import router as auth_router
 from backend.app.api.v1.endpoints.users import router as users_router
+from app.routers.auth import router as auth_router_v2
 from app.core.config import settings
 from app.core.limiter import limiter
 
@@ -35,9 +39,25 @@ app.add_middleware(
 )
 
 # Includi i router
-app.include_router(auth_router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
+# app.include_router(auth_router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
 app.include_router(users_router, prefix=settings.API_V1_STR + "/users", tags=["users"])
+app.include_router(auth_router_v2, prefix=settings.API_V1_STR + "/auth", tags=["auth-v2"])
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to Eterna Home API"}
+
+@app.get("/debug-db")
+def debug_db(session: Session = Depends(get_session)):
+    url = str(session.get_bind().url)
+    insp = sqlalchemy.inspect(session.get_bind())
+    tables = insp.get_table_names()
+    with session.connection() as conn:
+        current_schema = conn.execute(sqlalchemy.text("SELECT current_schema()")).scalar()
+        search_path = conn.execute(sqlalchemy.text("SHOW search_path")).scalar()
+    return JSONResponse({
+        "db_url": url,
+        "tables": tables,
+        "current_schema": current_schema,
+        "search_path": search_path
+    })

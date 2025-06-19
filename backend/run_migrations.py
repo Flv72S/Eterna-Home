@@ -1,3 +1,5 @@
+# [DISABILITATO TEMPORANEAMENTE: Alembic]
+# Tutto il file disabilitato temporaneamente
 from alembic.config import Config
 from alembic import command
 import os

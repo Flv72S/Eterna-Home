@@ -2,9 +2,10 @@ import os
 import sys
 from pathlib import Path
 import sqlite3
-from alembic.config import Config
-from alembic import command
-from alembic.script import ScriptDirectory
+# [DISABILITATO TEMPORANEAMENTE: Alembic]
+# from alembic.config import Config
+# from alembic import command
+# from alembic.script import ScriptDirectory
 
 def check_database():
     """Verifica la configurazione del database"""
@@ -50,10 +51,10 @@ def check_migrations():
         print("✅ Directory versions trovata")
 
         # Verifica migrazioni
-        alembic_cfg = Config("alembic.ini")
-        script = ScriptDirectory.from_config(alembic_cfg)
-        revisions = list(script.walk_revisions())
-        print(f"✅ {len(revisions)} migrazioni trovate")
+        # alembic_cfg = Config("alembic.ini")
+        # script = ScriptDirectory.from_config(alembic_cfg)
+        # revisions = list(script.walk_revisions())
+        # print(f"✅ {len(revisions)} migrazioni trovate")
         return True
     except Exception as e:
         print(f"❌ Errore nella verifica delle migrazioni: {str(e)}")
@@ -84,7 +85,7 @@ def check_dependencies():
     try:
         import fastapi
         import sqlmodel
-        import alembic
+        # import alembic
         import pydantic
         print("✅ Tutte le dipendenze principali sono installate")
         return True

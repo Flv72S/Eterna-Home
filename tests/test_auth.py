@@ -1,12 +1,26 @@
 TEST_USER = {
     "email": "testuser@example.com",
-    "password": "testpassword123"
+    "username": "testuser",
+    "password": "TestPassword123!",
+    "full_name": "Test User"
 }
 
 import pytest
+from sqlalchemy import inspect, text
 
 def test_login_success(client, db_session):
     """Test successful login."""
+    # Debug: info database
+    print("[DEBUG] DB URL:", db_session.bind.url)
+    result = db_session.execute(text("SHOW search_path;"))
+    print("[DEBUG] search_path:", result.fetchone())
+    inspector = inspect(db_session.bind)
+    print("[DEBUG] Tabelle visibili:", inspector.get_table_names())
+
+    # Debug: chiama /debug-db e stampa il risultato
+    debug_resp = client.get("/debug-db")
+    print(f"[DEBUG] /debug-db: {debug_resp.json()}")
+
     # Register user first
     reg_response = client.post("/api/v1/auth/register", json=TEST_USER)
     reg_status = reg_response.status_code

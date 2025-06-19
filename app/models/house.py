@@ -23,7 +23,7 @@ class House(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     address: str
-    owner_id: int = Field(foreign_key="user.id")
+    owner_id: int = Field(foreign_key="users.id")
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

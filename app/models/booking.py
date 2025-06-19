@@ -19,7 +19,7 @@ class Booking(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     room_id: int = Field(foreign_key="rooms.id")
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")
     start_time: datetime
     end_time: datetime
     status: str = Field(default="pending")  # pending, confirmed, cancelled

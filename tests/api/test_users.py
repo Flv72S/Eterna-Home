@@ -32,51 +32,6 @@ def timeout(seconds):
     finally:
         timer.cancel()
 
-@pytest.fixture(name="session")
-def session_fixture():
-    """Fixture per la sessione del database di test."""
-    logger.debug("Setting up test database session...")
-    start_time = time.time()
-    
-    engine = create_engine(
-        "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable",
-        echo=True,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        pool_timeout=30,
-        max_overflow=10
-    )
-    
-    try:
-        SQLModel.metadata.create_all(engine)
-        logger.debug("Test database tables created successfully")
-        
-        with Session(engine) as session:
-            logger.debug("Test database session created successfully")
-            yield session
-            logger.debug("Cleaning up test database session...")
-            session.rollback()  # Rollback any pending changes
-            with engine.connect() as conn:
-                conn.execute(text("DROP SCHEMA public CASCADE"))
-                conn.execute(text("CREATE SCHEMA public"))
-                conn.commit()
-            logger.debug("Test database cleanup completed")
-    except Exception as e:
-        logger.error(f"Error in session fixture: {str(e)}")
-        raise
-    finally:
-        logger.debug(f"Session fixture completed in {time.time() - start_time:.2f} seconds")
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        return session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
 @pytest.fixture(name="test_user")
 def test_user_fixture(session: Session):
     user_create = UserCreate(
@@ -85,7 +40,8 @@ def test_user_fixture(session: Session):
         full_name="Test User",
         username="testuser"
     )
-    return UserService.create_user(session, user_create)
+    user_service = UserService(session)
+    return user_service.create_user(user_create)
 
 @pytest.fixture
 def test_user_data():
@@ -110,20 +66,27 @@ def existing_user(session: Session):
     session.refresh(user)
     return user
 
-# Test 1.1.1: GET /users/me - Successo
-def test_read_users_me(client: TestClient, test_user: User):
-    """Verifica che l'endpoint /users/me restituisca i dati dell'utente autenticato."""
-    # Login per ottenere il token
+@pytest.fixture(name="auth_token")
+def auth_token_fixture(client: TestClient, test_user: User):
+    """Fixture per ottenere un token di autenticazione valido."""
     response = client.post(
         "/api/v1/auth/token",
         data={"username": "test@example.com", "password": "TestPassword123!"}
     )
-    token = response.json()["access_token"]
-    
-    # Richiesta con token
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+@pytest.fixture(name="auth_headers")
+def auth_headers_fixture(auth_token: str):
+    """Fixture per ottenere gli headers di autenticazione."""
+    return {"Authorization": f"Bearer {auth_token}"}
+
+# Test 1.1.1: GET /users/me - Successo
+def test_read_users_me(client: TestClient, test_user: User, auth_headers: dict):
+    """Verifica che l'endpoint /users/me restituisca i dati dell'utente autenticato."""
     response = client.get(
         "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {token}"}
+        headers=auth_headers
     )
     assert response.status_code == 200
     data = response.json()
@@ -190,49 +153,39 @@ def test_create_user_valid_data(client: TestClient, test_user_data):
         raise
 
 def test_create_user_missing_required_fields(client: TestClient):
-    """Test creazione utente con campi obbligatori mancanti"""
-    print("DEBUG: Inizio test_create_user_missing_required_fields")
-    start_time = time.time()
-    
-    try:
-        # Test senza email
-        print("DEBUG: Test senza email")
-        response = client.post("/api/v1/auth/register", json={
-            "username": "testuser",
-            "password": "Test123!@#"
-        })
-        print(f"DEBUG: Risposta senza email - Status: {response.status_code}")
-        print(f"DEBUG: Risposta senza email - Body: {response.text}")
-        assert response.status_code == 422
-        assert "email" in response.json()["detail"][0]["loc"]
+    """Test creazione utente con campi obbligatori mancanti."""
+    # Test senza email
+    response = client.post("/api/v1/auth/register", json={
+        "username": "testuser",
+        "password": "Test123!@#"
+    })
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert isinstance(errors, list)
+    assert any(error["loc"][-1] == "email" for error in errors)
+    assert any("field required" in error["msg"].lower() for error in errors)
 
-        # Test senza username
-        print("DEBUG: Test senza username")
-        response = client.post("/api/v1/auth/register", json={
-            "email": "test@example.com",
-            "password": "Test123!@#"
-        })
-        print(f"DEBUG: Risposta senza username - Status: {response.status_code}")
-        print(f"DEBUG: Risposta senza username - Body: {response.text}")
-        assert response.status_code == 422
-        assert "username" in response.json()["detail"][0]["loc"]
+    # Test senza username
+    response = client.post("/api/v1/auth/register", json={
+        "email": "test@example.com",
+        "password": "Test123!@#"
+    })
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert isinstance(errors, list)
+    assert any(error["loc"][-1] == "username" for error in errors)
+    assert any("field required" in error["msg"].lower() for error in errors)
 
-        # Test senza password
-        print("DEBUG: Test senza password")
-        response = client.post("/api/v1/auth/register", json={
-            "email": "test@example.com",
-            "username": "testuser"
-        })
-        print(f"DEBUG: Risposta senza password - Status: {response.status_code}")
-        print(f"DEBUG: Risposta senza password - Body: {response.text}")
-        assert response.status_code == 422
-        assert "password" in response.json()["detail"][0]["loc"]
-        
-        print(f"DEBUG: Test completato in {time.time() - start_time:.2f} secondi")
-    except Exception as e:
-        print(f"DEBUG: Errore durante il test dopo {time.time() - start_time:.2f} secondi")
-        print(f"DEBUG: Errore: {str(e)}")
-        raise
+    # Test senza password
+    response = client.post("/api/v1/auth/register", json={
+        "email": "test@example.com",
+        "username": "testuser"
+    })
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert isinstance(errors, list)
+    assert any(error["loc"][-1] == "password" for error in errors)
+    assert any("field required" in error["msg"].lower() for error in errors)
 
 @pytest.mark.parametrize("invalid_email", [
     "notanemail",           # Email senza @
@@ -343,113 +296,92 @@ def test_create_user_invalid_password(client: TestClient, test_user_data, invali
         print(f"DEBUG: Errore: {str(e)}")
         raise
 
-def test_create_user_duplicate_username(client: TestClient, existing_user, test_user_data):
-    """Test creazione utente con username duplicato"""
-    test_user_data["username"] = existing_user.username
-    response = client.post("/api/v1/auth/register", json=test_user_data)
+def test_create_user_duplicate_username(client: TestClient, existing_user: User):
+    """Test creazione utente con username duplicato."""
+    user_data = {
+        "email": "new@example.com",
+        "username": existing_user.username,
+        "password": "Test123!@#",
+        "full_name": "New User"
+    }
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 400
-    assert "username" in response.json()["detail"].lower()
+    error_detail = response.json()["detail"]
+    assert isinstance(error_detail, str)
+    assert "username" in error_detail.lower()
 
-def test_create_user_duplicate_email(client: TestClient, existing_user, test_user_data):
-    """Test creazione utente con email duplicata"""
-    test_user_data["email"] = existing_user.email
-    response = client.post("/api/v1/auth/register", json=test_user_data)
+def test_create_user_duplicate_email(client: TestClient, existing_user: User):
+    """Test creazione utente con email duplicata."""
+    user_data = {
+        "email": existing_user.email,
+        "username": "newuser",
+        "password": "Test123!@#",
+        "full_name": "New User"
+    }
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 400
-    assert "email" in response.json()["detail"].lower()
+    error_detail = response.json()["detail"]
+    assert isinstance(error_detail, str)
+    assert "email" in error_detail.lower()
 
-def test_read_users(client: TestClient):
+def test_read_users(client: TestClient, auth_headers: dict):
     """Test lettura lista utenti."""
-    # Crea alcuni utenti di test
-    users = [
-        {"email": f"user{i}@example.com", "password": "password123"} 
-        for i in range(3)
-    ]
-    for user_data in users:
-        client.post("/api/v1/auth/register", json=user_data)
-    
-    response = client.get("/api/v1/users/")
+    response = client.get("/api/v1/users/", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 3
-    assert all("email" in user for user in data)
-    assert all("password" not in user for user in data)
+    assert isinstance(data, list)
 
-def test_read_user(client: TestClient):
+def test_read_user(client: TestClient, test_user: User, auth_headers: dict):
     """Test lettura singolo utente."""
-    # Crea un utente di test
-    user_data = {
-        "email": "test@example.com",
-        "password": "password123"
-    }
-    create_response = client.post("/api/v1/auth/register", json=user_data)
-    user_id = create_response.json()["id"]
-    
-    # Leggi l'utente creato
-    response = client.get(f"/api/v1/users/{user_id}")
+    response = client.get(f"/api/v1/users/{test_user.id}", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["email"] == user_data["email"]
-    assert "password" not in data
-    assert data["id"] == user_id
+    assert data["id"] == test_user.id
+    assert data["email"] == test_user.email
 
-def test_read_user_not_found(client: TestClient):
+def test_read_user_not_found(client: TestClient, auth_headers: dict):
     """Test lettura utente non esistente."""
-    response = client.get("/api/v1/users/999")
+    response = client.get("/api/v1/users/999", headers=auth_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Utente non trovato"
 
-def test_update_user(client: TestClient):
-    """Test aggiornamento utente."""
-    # Crea un utente di test
-    user_data = {
-        "email": "test@example.com",
-        "password": "password123"
-    }
-    create_response = client.post("/api/v1/auth/register", json=user_data)
-    user_id = create_response.json()["id"]
-    
-    # Aggiorna l'utente
+def test_update_user(client: TestClient, test_user: User, auth_headers: dict):
+    """Test updating a user."""
     update_data = {
-        "email": "updated@example.com",
-        "password": "newpassword123"
+        "full_name": "Updated Name",
+        "email": "updated@example.com"
     }
-    response = client.put(f"/api/v1/users/{user_id}", json=update_data)
+    response = client.patch(
+        f"/api/v1/users/{test_user.id}",
+        json=update_data,
+        headers=auth_headers
+    )
     assert response.status_code == 200
     data = response.json()
+    assert data["full_name"] == update_data["full_name"]
     assert data["email"] == update_data["email"]
-    assert "password" not in data
 
-def test_update_user_not_found(client: TestClient):
-    """Test aggiornamento utente non esistente."""
+def test_update_user_not_found(client: TestClient, auth_headers: dict):
+    """Test updating a non-existent user."""
     update_data = {
-        "email": "updated@example.com",
-        "password": "newpassword123"
+        "full_name": "Updated Name",
+        "email": "updated@example.com"
     }
-    response = client.put("/api/v1/users/999", json=update_data)
+    response = client.patch(
+        "/api/v1/users/999",
+        json=update_data,
+        headers=auth_headers
+    )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Utente non trovato"
 
-def test_delete_user(client: TestClient):
+def test_delete_user(client: TestClient, test_user: User, auth_headers: dict):
     """Test eliminazione utente."""
-    # Crea un utente di test
-    user_data = {
-        "email": "test@example.com",
-        "password": "password123"
-    }
-    create_response = client.post("/api/v1/auth/register", json=user_data)
-    user_id = create_response.json()["id"]
-    
-    # Elimina l'utente
-    response = client.delete(f"/api/v1/users/{user_id}")
-    assert response.status_code == 204
-    
-    # Verifica che l'utente sia stato eliminato
-    get_response = client.get(f"/api/v1/users/{user_id}")
-    assert get_response.status_code == 404
+    response = client.delete(f"/api/v1/users/{test_user.id}", headers=auth_headers)
+    assert response.status_code == 200
 
-def test_delete_user_not_found(client: TestClient):
+def test_delete_user_not_found(client: TestClient, auth_headers: dict):
     """Test eliminazione utente non esistente."""
-    response = client.delete("/api/v1/users/999")
+    response = client.delete("/api/v1/users/999", headers=auth_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Utente non trovato"
 

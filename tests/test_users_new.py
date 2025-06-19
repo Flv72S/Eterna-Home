@@ -24,8 +24,9 @@ def test_create_user(client: TestClient):
     """Test creating a new user."""
     user_data = {
         "email": "test@example.com",
-        "password": "testpassword123",
-        "full_name": "Test User"
+        "password": "TestPassword123!",
+        "full_name": "Test User",
+        "username": "testuser"
     }
     
     response = client.post("/api/v1/auth/register", json=user_data)
@@ -40,8 +41,9 @@ def test_create_user_duplicate_email(client: TestClient, test_db_session: Sessio
     # Create first user
     user_data = {
         "email": "test@example.com",
-        "password": "testpassword123",
-        "full_name": "Test User"
+        "password": "TestPassword123!",
+        "full_name": "Test User",
+        "username": "testuser"
     }
     response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 201
@@ -55,8 +57,9 @@ def test_create_user_invalid_email(client: TestClient):
     """Test creating a user with invalid email."""
     user_data = {
         "email": "invalid-email",
-        "password": "testpassword123",
-        "full_name": "Test User"
+        "password": "TestPassword123!",
+        "full_name": "Test User",
+        "username": "testuser"
     }
     
     response = client.post("/api/v1/auth/register", json=user_data)

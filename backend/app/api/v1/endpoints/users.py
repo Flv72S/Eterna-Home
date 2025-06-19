@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
-from app.db.session import get_session
+from app.database import get_session
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate, UserResponse
 from app.services.user import UserService

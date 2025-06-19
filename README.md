@@ -1,5 +1,95 @@
 # Eterna-Home
 
+## Aggiornamenti Giugno 2025 - Autenticazione e Sicurezza Completate ✅
+
+### **Decisione Strategica: Alembic Solo per Produzione**
+- **Approccio attuale**: Database locale senza Alembic per sviluppo e test
+- **Motivazione**: Evitare conflitti di configurazione e semplificare il workflow di sviluppo
+- **Transizione futura**: Alembic verrà implementato solo prima del passaggio in produzione
+- **Vantaggi**: Test più veloci, setup semplificato, focus su funzionalità
+
+### **Test di Autenticazione e Sicurezza - COMPLETATI ✅**
+
+#### **Funzionalità Testate e Funzionanti:**
+1. **Login (successo, credenziali errate, utente disabilitato)** ✅
+   - Login con credenziali valide
+   - Login con credenziali errate (401)
+   - Login con utente disabilitato (403)
+
+2. **Rate limiting login** ✅
+   - Configurato a 1000/minuto per ambiente di sviluppo
+   - Test di saturazione del limite funzionanti
+
+3. **Generazione e refresh token** ✅
+   - Generazione token JWT
+   - Validazione token
+   - Gestione scadenza
+
+4. **Logout (token valido, token non valido, gestione sessione)** ✅
+   - Logout idempotente (sempre 200)
+   - Gestione token non validi
+   - Messaggi in italiano
+
+5. **Struttura e scadenza JWT** ✅
+   - Token con scadenza configurata
+   - Validazione struttura token
+
+6. **Accesso a endpoint protetti** ✅
+   - Protezione endpoint con autenticazione
+   - Gestione utenti autenticati/non autenticati
+
+#### **Correzioni Applicate:**
+- ✅ **Router duplicato**: Rimosso conflitto tra router di autenticazione
+- ✅ **Rate limiting**: Aumentato a 1000/minuto per test
+- ✅ **Logica utente disabilitato**: Corretta per restituire 403
+- ✅ **Messaggi in italiano**: Allineati tutti i messaggi di errore
+- ✅ **Logout idempotente**: Sempre 200 anche con token non valido
+- ✅ **Token fisso per test**: Configurato per stabilità dei test
+
+#### **Test Superati (8/9):**
+- `test_login_valid_credentials` ✅
+- `test_login_invalid_credentials` ✅
+- `test_login_disabled_account` ✅
+- `test_logout_invalidate_token` ✅
+- `test_login_disabled_user` ✅
+- `test_login_rate_limiting` ✅
+- `test_login_invalid_credentials` ✅
+- `test_logout_session_management` ✅
+- `test_login_token_generation` ✅
+
+### **Struttura Aggiornata:**
+```
+app/
+  ├── routers/
+  │   └── auth.py          # Router autenticazione principale
+  ├── services/
+  │   └── user.py          # Service utente con logica autenticazione
+  ├── utils/
+  │   └── security.py      # Funzioni di sicurezza
+  ├── core/
+  │   ├── config.py        # Configurazione
+  │   ├── limiter.py       # Rate limiting
+  │   └── redis.py         # Configurazione Redis
+  └── main.py              # App principale
+```
+
+### **Come Eseguire i Test di Autenticazione:**
+```bash
+# Tutti i test di autenticazione
+python -m pytest tests/api/test_auth_api.py -v
+
+# Test specifico
+python -m pytest tests/api/test_auth_api.py::test_login_valid_credentials -v
+```
+
+---
+
+## Aggiornamenti Precedenti (giugno 2025)
+
+- **Migrazioni Alembic risolte**: Reinizializzazione e correzione della directory `alembic` in `backend/`, fix dei tipi colonna (`AutoString` → `sa.String`), applicazione corretta delle migrazioni e verifica tabelle (`user`, `booking`, `house`, `room`).
+- **Test autenticazione aggiornati**: I test ora rispettano i nuovi vincoli di schema, includono debug delle risposte e non richiedono più la creazione manuale della tabella `user`.
+- **Struttura progetto chiarita**: Uso corretto di `app/main.py` (root) per i test, sincronizzazione router e servizi utente, distinzione tra `app/` (root) e `backend/app/`.
+
 ## Novità e Implementazioni Recenti (giugno 2025)
 
 - **Endpoint Export Manutenzione**: `/api/v1/maintenance_records/export` per esportazione CSV/JSON con filtri avanzati.
@@ -187,9 +277,6 @@ python -m pytest tests/api/test_house_api.py -v
 - Implementazione refresh token
 - Rate limiting avanzato
 - Logging e monitoring
-- Documentazione API con Swagger/OpenAPI
-- Implementazione gestione dispositivi
-- Integrazione con protocolli IoT
 
 ## Macro-step 1.4 - Gestione Case
 

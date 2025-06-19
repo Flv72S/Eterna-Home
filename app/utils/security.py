@@ -55,7 +55,9 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    user = UserService.get_user_by_email(session, email)
+    # Istanzia il service correttamente
+    user_service = UserService(session)
+    user = user_service.get_user_by_email(email)
     if user is None:
         raise credentials_exception
     if not user.is_active:

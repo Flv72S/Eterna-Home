@@ -1,7 +1,8 @@
 import pytest
 from sqlalchemy import inspect, text
-from alembic import command
-from alembic.config import Config
+# [DISABILITATO TEMPORANEAMENTE: Alembic]
+# from alembic import command
+# from alembic.config import Config
 
 def test_migration_upgrade(alembic_runner, alembic_engine):
     """Test that the migration can be applied."""

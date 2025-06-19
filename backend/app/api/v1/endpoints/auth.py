@@ -6,7 +6,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.config import settings
-from app.db.session import get_session
+from app.database import get_session
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead, UserResponse
@@ -79,4 +79,10 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_user)
 ):
     """Get current user info."""
-    return current_user 
+    return current_user
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(current_user: User = Depends(get_current_user)):
+    """Logout the current user."""
+    # In una implementazione reale, qui potremmo invalidare il token
+    return {"message": "Successfully logged out"} 

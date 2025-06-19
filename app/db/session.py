@@ -35,7 +35,9 @@ def get_session():
     try:
         session = Session(engine)
         logger.debug(f"Sessione creata in {time.time() - start_time:.2f} secondi")
+        logger.debug(f"Session type in get_session: {type(session)}")
         try:
+            logger.debug("Yielding session from get_session")
             yield session
         finally:
             session.close()

@@ -36,7 +36,7 @@ class Document(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
-    owner_id: int = Field(foreign_key="user.id", index=True)
+    owner_id: int = Field(foreign_key="users.id", index=True)
     
     # Relationships
     owner: "User" = Relationship(back_populates="documents")

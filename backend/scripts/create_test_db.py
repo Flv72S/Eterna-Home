@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, text
-from alembic.config import Config
-from alembic import command
+# [DISABILITATO TEMPORANEAMENTE: Alembic]
+# from alembic.config import Config
+# from alembic import command
 import os
 
 def create_test_database():
@@ -26,10 +27,11 @@ def create_test_database():
     print("Database di test creato con successo.")
 
     # Applica le migrazioni
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", TEST_DB_URL)
-    command.upgrade(config, "head")
-    print("Migrazioni applicate con successo.")
+    # [DISABILITATO TEMPORANEAMENTE: Alembic]
+    # config = Config("alembic.ini")
+    # config.set_main_option("sqlalchemy.url", TEST_DB_URL)
+    # command.upgrade(config, "head")
+    # print("Migrazioni applicate con successo.")
 
 if __name__ == "__main__":
     create_test_database() 

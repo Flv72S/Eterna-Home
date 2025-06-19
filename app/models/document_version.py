@@ -28,7 +28,7 @@ class DocumentVersion(SQLModel, table=True):
     
     # Foreign keys
     document_id: int = Field(foreign_key="documents.id", index=True)
-    created_by_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    created_by_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     
     # Relationships
     document: "Document" = Relationship(back_populates="versions")

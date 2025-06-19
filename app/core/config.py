@@ -39,6 +39,17 @@ class Settings(BaseModel):
     PASSWORD_MIN_LENGTH: int = 8
     PASSWORD_MAX_LENGTH: int = 100
     
+    # MinIO
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET_NAME: str = "default-bucket"
+    MINIO_REGION: str = "us-east-1"
+    MINIO_USE_SSL: bool = False
+    
+    # Token di test fisso per evitare problemi di timing nei test
+    TEST_TOKEN: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxNzM1NjgwMDAwfQ.test_signature"
+    
     model_config = ConfigDict(
         case_sensitive=True,
         env_file=".env",

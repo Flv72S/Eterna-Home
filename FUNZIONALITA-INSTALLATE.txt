@@ -1,0 +1,61 @@
+FUNZIONALITÀ INSTALLATE IN ETERNA HOME
+
+---
+
+1. Autenticazione e sicurezza
+   - Login (successo, credenziali errate, utente disabilitato)
+   - Rate limiting login
+   - Generazione e refresh token
+   - Logout (token valido, token non valido, gestione sessione)
+   - Struttura e scadenza JWT
+   - Accesso a endpoint protetti (autenticato/non autenticato)
+
+2. Gestione utenti
+   - Registrazione utente (successo, email/username duplicati, email/password non valide)
+   - Lettura, aggiornamento, cancellazione utente
+   - Recupero dati utente corrente
+   - Paginazione lista utenti
+   - Validazione campi obbligatori e opzionali
+   - Esclusione campi sensibili nelle risposte
+
+3. Gestione case e stanze
+   - Creazione, lettura, aggiornamento, cancellazione case
+   - Field filtering e filtri avanzati
+   - Relazioni tra User e House
+   - Creazione, lettura, aggiornamento, cancellazione stanze
+
+4. Gestione nodi
+   - CRUD nodi (creazione, lettura, aggiornamento, cancellazione)
+   - Filtri, ricerca, gestione NFC duplicati
+   - Relazioni tra Node e House/Room
+   - Test con database vuoto, accessi non autenticati
+
+5. Gestione documenti
+   - Upload, download, versioning documenti
+   - Associazione documenti a case/nodi
+   - Gestione errori MinIO, file duplicati, file mancanti
+   - Verifica integrità modello dopo upload
+
+6. Gestione manutenzioni
+   - Creazione, lettura, aggiornamento record di manutenzione
+   - Relazioni con Node e Document
+   - Vincoli e integrità dati
+
+7. Gestione booking
+   - Creazione, lettura, aggiornamento, cancellazione prenotazioni
+
+8. MinIO e storage
+   - Upload/download file su MinIO
+   - Gestione bucket, policy, SSL, errori credenziali
+   - Verifica esistenza oggetti e policy di lifecycle
+
+9. Test di configurazione e ambiente
+   - Verifica presenza tabelle, connessione DB, configurazione MinIO
+
+10. Test di integrazione e smoke
+    - Flussi completi utente-case-documento
+    - Test "smoke" di avvio rapido
+
+---
+
+(aggiornato al 18/06/2025) 

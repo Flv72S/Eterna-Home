@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-from alembic.config import Config
-from alembic import command
+# from alembic.config import Config
+# from alembic import command
 from app.core.config import settings
 from tests.test_session import get_test_session
 
@@ -39,9 +39,9 @@ def clean_db(test_engine):
     
     # Riapplica le migration dopo la pulizia
     print("[DEBUG] Reapplying migrations...")
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
-    command.upgrade(alembic_cfg, "head")
+    # alembic_cfg = Config("alembic.ini")
+    # alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+    # command.upgrade(alembic_cfg, "head")
     print("[DEBUG] Migrations reapplied")
 
 @pytest.fixture(scope="session", autouse=True)
@@ -59,12 +59,12 @@ def create_test_db(test_engine):
 
     # Configura Alembic per usare il database di test
     print("[DEBUG] Configuring Alembic...")
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
+    # alembic_cfg = Config("alembic.ini")
+    # alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
 
     # Applica le migrazioni
     print("[DEBUG] Applying migrations...")
-    command.upgrade(alembic_cfg, "head")
+    # command.upgrade(alembic_cfg, "head")
     print("[DEBUG] Migrations applied successfully")
 
     yield
