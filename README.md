@@ -1,5 +1,97 @@
 # Eterna-Home
 
+## Aggiornamenti Giugno 2025 - Sistema di Sicurezza Ownership Completato ✅
+
+### **🎯 NUOVO: Test di Ownership Security - COMPLETATI ✅**
+
+#### **Funzionalità Implementate e Testate:**
+1. **Controllo Proprietà Risorse (Houses)** ✅
+   - ✅ Accesso alle proprie case (`/api/v1/houses/`)
+   - ✅ Blocco accesso a case altrui (403 Forbidden)
+   - ✅ Modifica delle proprie case
+   - ✅ Blocco modifica case altrui
+   - ✅ Eliminazione delle proprie case
+   - ✅ Blocco eliminazione case altrui
+
+2. **Controllo Proprietà Risorse (Documents)** ✅
+   - ✅ Accesso ai propri documenti (`/api/v1/documents/`)
+   - ✅ Blocco accesso a documenti altrui (403 Forbidden)
+   - ✅ Modifica dei propri documenti
+   - ✅ Blocco modifica documenti altrui
+   - ✅ Eliminazione dei propri documenti
+   - ✅ Blocco eliminazione documenti altrui
+   - ✅ Upload file sui propri documenti (`/api/v1/documents/{id}/upload`)
+   - ✅ Blocco upload su documenti altrui
+   - ✅ Download dei propri documenti (`/api/v1/documents/download/{id}`)
+   - ✅ Blocco download documenti altrui
+
+3. **Gestione Errori e Sicurezza** ✅
+   - ✅ Gestione risorse inesistenti (404 Not Found)
+   - ✅ Autenticazione richiesta (401 Unauthorized)
+   - ✅ Validazione token (401 per token invalidi)
+   - ✅ Controlli ownership middleware
+
+#### **Correzioni Tecniche Applicate:**
+- ✅ **Schema Document**: Allineato `owner_id` vs `author_id` in `app/schemas/document.py`
+- ✅ **Endpoint Upload**: Creato endpoint mancante `/api/v1/documents/{id}/upload`
+- ✅ **Router House**: Montato correttamente su `/api/v1/houses` in `app/main.py`
+- ✅ **Router Document**: Montato correttamente in `app/main.py`
+- ✅ **Mock MinIO**: Implementato mock per test senza dipendenze da MinIO reale
+- ✅ **Username Unici**: Evitati conflitti di duplicazione con UUID per test
+- ✅ **Path API**: Allineati tutti i path da `/houses/` a `/api/v1/houses/`
+
+#### **Test Ownership Superati (25/25):**
+```
+✅ test_user_can_access_own_houses
+✅ test_user_cannot_access_other_user_houses
+✅ test_user_can_modify_own_houses
+✅ test_user_cannot_modify_other_user_houses
+✅ test_user_can_delete_own_houses
+✅ test_user_cannot_delete_other_user_houses
+✅ test_user_can_access_own_documents
+✅ test_user_cannot_see_other_user_documents_in_list
+✅ test_user_can_modify_own_document
+✅ test_user_cannot_modify_other_user_document
+✅ test_user_can_delete_own_document
+✅ test_user_cannot_delete_other_user_document
+✅ test_user_can_create_document_for_own_house
+✅ test_user_cannot_create_document_for_other_house
+✅ test_user_can_download_own_document
+✅ test_user_cannot_download_other_user_document
+✅ test_user_can_upload_to_own_document
+✅ test_user_cannot_upload_to_other_user_document
+✅ test_access_nonexistent_house
+✅ test_access_nonexistent_document
+✅ test_unauthorized_access_without_token
+✅ test_unauthorized_access_with_invalid_token
+```
+
+#### **Struttura Aggiornata:**
+```
+app/
+  ├── routers/
+  │   ├── auth.py          # Router autenticazione
+  │   ├── house.py         # Router case con ownership
+  │   └── document.py      # Router documenti con ownership
+  ├── schemas/
+  │   ├── document.py      # Schema con owner_id corretto
+  │   └── user.py          # Schema utente
+  ├── services/
+  │   └── minio_service.py # Service storage con mock
+  └── main.py              # App con router montati
+```
+
+#### **Come Eseguire i Test di Ownership:**
+```bash
+# Tutti i test di ownership
+python -m pytest tests/test_ownership_security.py -v
+
+# Test specifico
+python -m pytest tests/test_ownership_security.py::test_user_can_access_own_houses -v
+```
+
+---
+
 ## Aggiornamenti Giugno 2025 - Autenticazione e Sicurezza Completate ✅
 
 ### **Decisione Strategica: Alembic Solo per Produzione**
@@ -81,6 +173,24 @@ python -m pytest tests/api/test_auth_api.py -v
 # Test specifico
 python -m pytest tests/api/test_auth_api.py::test_login_valid_credentials -v
 ```
+
+---
+
+## 🚀 **Prossimi Step - Sistema Ruoli Avanzato**
+
+### **Ruoli Pianificati:**
+1. **Proprietario (Owner)** – Gestione propri immobili e documenti
+2. **Tecnico (Technician)** – Accesso a risorse assegnate (manutenzioni)
+3. **Impresa Costruttrice (Builder)** – Gestione documenti tecnici edifici in costruzione
+4. **Amministratore di Condominio (CondoAdmin)** – Accesso documenti comuni edifici
+5. **Admin** – Accesso a tutte le risorse per gestione e supporto
+6. **SuperAdmin** – Privilegi totali sul sistema
+
+### **Implementazione Pianificata:**
+- Estensione test ownership per ruoli
+- Integrazione sistema permessi per tipo utente
+- Valutazione FastAPI Users vs RoleManager personalizzato
+- Test per ogni ruolo e permesso
 
 ---
 

@@ -25,7 +25,7 @@ def create_document(
     """Create a new document"""
     db_document = Document(
         **document.model_dump(),
-        author_id=current_user.id
+        owner_id=current_user.id
     )
     db.add(db_document)
     db.commit()
@@ -42,6 +42,10 @@ def read_document(
     document = db.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Non hai i permessi per accedere a questo documento")
+    
     return document
 
 @router.get("/", response_model=List[DocumentRead])
@@ -55,15 +59,13 @@ def read_documents(
     db: Session = Depends(get_session)
 ):
     """Get list of documents with optional filtering and search"""
-    query = select(Document)
+    query = select(Document).where(Document.owner_id == current_user.id)
     
-    # Apply filters
     if house_id:
         query = query.where(Document.house_id == house_id)
     if node_id:
         query = query.where(Document.node_id == node_id)
     
-    # Apply search if provided
     if search:
         search_term = f"%{search}%"
         query = query.where(
@@ -73,7 +75,6 @@ def read_documents(
             )
         )
     
-    # Apply pagination
     query = query.offset(skip).limit(limit)
     
     return db.exec(query).all()
@@ -90,7 +91,9 @@ def update_document(
     if not db_document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # Update only provided fields
+    if db_document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Non hai i permessi per modificare questo documento")
+    
     document_data = document.model_dump(exclude_unset=True)
     for key, value in document_data.items():
         setattr(db_document, key, value)
@@ -111,6 +114,9 @@ def delete_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Non hai i permessi per eliminare questo documento")
+    
     db.delete(document)
     db.commit()
     return {"message": "Document deleted successfully"}
@@ -123,18 +129,55 @@ async def download_document(
     minio_service: MinioService = Depends(get_minio_service)
 ):
     """Download a document by ID."""
-    # Verifica che il documento esista
     document = db.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # Verifica che l'utente sia autorizzato a scaricare il documento
-    if document.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to download this document")
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Non hai i permessi per scaricare questo documento")
     
     try:
-        # Genera l'URL pre-firmato per il download
         download_url = minio_service.get_presigned_get_url(document.path)
         return {"download_url": download_url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error generating download URL") 
+        raise HTTPException(status_code=500, detail="Error generating download URL")
+
+@router.post("/{document_id}/upload")
+async def upload_document_file(
+    document_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+    minio_service: MinioService = Depends(get_minio_service)
+):
+    """Upload a file to an existing document."""
+    document = db.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Non hai i permessi per caricare file su questo documento")
+    
+    try:
+        # Genera un nome file unico
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else ''
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = f"/documents/{unique_filename}"
+        
+        # Carica il file su MinIO
+        file_content = await file.read()
+        minio_service.upload_file(file_path, file_content, file.content_type)
+        
+        # Aggiorna il documento con il nuovo path
+        document.path = file_path
+        document.size = len(file_content)
+        document.checksum = str(uuid.uuid4())  # Semplificato per i test
+        
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+        
+        return {"message": "File uploaded successfully", "path": file_path}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}") 

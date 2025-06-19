@@ -11,6 +11,8 @@ from backend.app.api.v1.endpoints.users import router as users_router
 from app.routers.auth import router as auth_router_v2
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.routers.house import router as house_router
+from app.routers.document import router as document_router
 
 app = FastAPI(
     title="Eterna Home API",
@@ -42,6 +44,8 @@ app.add_middleware(
 # app.include_router(auth_router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
 app.include_router(users_router, prefix=settings.API_V1_STR + "/users", tags=["users"])
 app.include_router(auth_router_v2, prefix=settings.API_V1_STR + "/auth", tags=["auth-v2"])
+app.include_router(house_router, prefix="/api/v1/houses", tags=["houses"])
+app.include_router(document_router, tags=["documents"])
 
 @app.get("/")
 async def root():

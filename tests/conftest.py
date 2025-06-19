@@ -8,6 +8,11 @@ from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from fastapi.testclient import TestClient
+from unittest.mock import Mock, patch
+from sqlalchemy.pool import StaticPool
+from app.core.redis import get_redis_client
+import redis
+from fakeredis import FakeRedis
 # [DISABILITATO TEMPORANEAMENTE: Alembic]
 # from alembic.config import Config
 # from alembic import command
@@ -21,6 +26,7 @@ from app.models.document import Document
 from app.models.maintenance import MaintenanceRecord
 from app.core.config import settings
 from app.core.security import get_password_hash
+from app.services.minio_service import get_minio_service
 
 # Configurazione del logging
 logging.basicConfig(level=logging.DEBUG)
@@ -204,3 +210,27 @@ def reset_rate_limiting():
         
         if keys_to_delete:
             redis_client.delete(*keys_to_delete)
+
+@pytest.fixture
+def mock_minio_service():
+    """Mock del servizio MinIO per i test."""
+    mock_service = Mock()
+    
+    # Mock dei metodi principali
+    mock_service.upload_file.return_value = True
+    mock_service.get_presigned_get_url.return_value = "https://mock-minio.com/test-file.pdf"
+    mock_service.get_presigned_put_url.return_value = "https://mock-minio.com/upload-url"
+    mock_service.delete_file.return_value = True
+    mock_service.file_exists.return_value = True
+    
+    return mock_service
+
+@pytest.fixture
+def override_minio_service(mock_minio_service):
+    """Override del servizio MinIO con mock per i test."""
+    def _get_mock_minio_service():
+        return mock_minio_service
+    
+    app.dependency_overrides[get_minio_service] = _get_mock_minio_service
+    yield
+    app.dependency_overrides.pop(get_minio_service, None)

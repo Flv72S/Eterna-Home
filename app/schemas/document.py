@@ -54,7 +54,7 @@ class DocumentUpdate(BaseModel):
 class DocumentRead(DocumentBase):
     """Schema for reading a document"""
     id: int
-    author_id: int
+    owner_id: int
     created_at: datetime
     updated_at: datetime
 
