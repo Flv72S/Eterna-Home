@@ -4,6 +4,7 @@ import pytest
 import logging
 from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -24,6 +25,8 @@ from app.models.house import House
 from app.models.node import Node
 from app.models.document import Document
 from app.models.maintenance import MaintenanceRecord
+from app.models.role import Role
+from app.models.user_role import UserRole
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.services.minio_service import get_minio_service
@@ -54,6 +57,42 @@ def create_test_database():
         conn.close()
     except Exception as e:
         raise RuntimeError(f"[TEST] Il database di test {TEST_DATABASE_NAME} non esiste o non è raggiungibile. Esegui prima reset_and_seed.py. Errore: {e}")
+
+@pytest.fixture(scope="session", autouse=True)
+def create_tables(engine):
+    """Crea automaticamente tutte le tabelle necessarie per i test."""
+    logger.debug("[TEST] Creazione automatica delle tabelle per i test...")
+    try:
+        # Crea tutte le tabelle basate sui modelli SQLModel
+        SQLModel.metadata.create_all(engine)
+        logger.debug("[TEST] Tabelle create con successo")
+    except Exception as e:
+        logger.error(f"[TEST] Errore durante la creazione delle tabelle: {e}")
+        raise
+
+@pytest.fixture(autouse=True)
+def clean_database(engine):
+    """Pulisce automaticamente il database dopo ogni test."""
+    yield
+    # Cleanup dopo ogni test usando una sessione separata
+    try:
+        with Session(engine) as cleanup_session:
+            # Elimina tutti i dati dalle tabelle in ordine inverso per rispettare le foreign key
+            cleanup_session.execute(text("DELETE FROM user_roles"))
+            cleanup_session.execute(text("DELETE FROM roles"))
+            cleanup_session.execute(text("DELETE FROM maintenance_records"))
+            cleanup_session.execute(text("DELETE FROM bookings"))
+            cleanup_session.execute(text("DELETE FROM rooms"))
+            cleanup_session.execute(text("DELETE FROM nodes"))
+            cleanup_session.execute(text("DELETE FROM documents"))
+            cleanup_session.execute(text("DELETE FROM document_versions"))
+            cleanup_session.execute(text("DELETE FROM houses"))
+            cleanup_session.execute(text("DELETE FROM users"))
+            cleanup_session.commit()
+            logger.debug("[TEST] Database pulito dopo il test")
+    except Exception as e:
+        logger.error(f"[TEST] Errore durante la pulizia del database: {e}")
+        # Non facciamo rollback qui perché usiamo una sessione separata
 
 @pytest.fixture(scope="session")
 def engine():

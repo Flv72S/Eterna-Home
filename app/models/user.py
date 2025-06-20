@@ -3,12 +3,16 @@ from typing import Optional, List, TYPE_CHECKING
 
 from pydantic import ConfigDict, EmailStr
 from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
+from app.models.user_role import UserRole
 
 if TYPE_CHECKING:
     from app.models.house import House
     from app.models.document import Document
     from app.models.document_version import DocumentVersion
     from app.models.booking import Booking
+    from app.models.role import Role
+else:
+    from app.models.role import UserRole
 
 class User(SQLModel, table=True):
     """
@@ -88,6 +92,16 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    
+    # Relazione many-to-many con Role
+    roles: List["Role"] = Relationship(
+        back_populates="users",
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            "primaryjoin": "User.id == UserRole.user_id",
+            "secondaryjoin": "UserRole.role_id == Role.id"
+        }
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
@@ -100,4 +114,16 @@ class User(SQLModel, table=True):
     @property
     def is_anonymous(self) -> bool:
         """Indica se l'utente è anonimo."""
-        return False 
+        return False
+        
+    def has_role(self, role_name: str) -> bool:
+        """Verifica se l'utente ha un ruolo specifico."""
+        return any(role.name == role_name and role.is_active for role in self.roles)
+        
+    def has_any_role(self, role_names: List[str]) -> bool:
+        """Verifica se l'utente ha almeno uno dei ruoli specificati."""
+        return any(self.has_role(role_name) for role_name in role_names)
+        
+    def get_role_names(self) -> List[str]:
+        """Restituisce la lista dei nomi dei ruoli attivi dell'utente."""
+        return [role.name for role in self.roles if role.is_active] 

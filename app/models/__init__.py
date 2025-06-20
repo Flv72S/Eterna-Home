@@ -6,6 +6,7 @@ from .node import Node
 from .room import Room
 from .booking import Booking
 from .maintenance import MaintenanceRecord
+from .role import Role, UserRole
 
 __all__ = [
     'User',
@@ -15,5 +16,7 @@ __all__ = [
     'Node',
     'Room',
     'Booking',
-    'MaintenanceRecord'
+    'MaintenanceRecord',
+    'Role',
+    'UserRole'
 ] 
