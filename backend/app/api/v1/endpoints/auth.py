@@ -6,7 +6,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.config import settings
-from app.database import get_session
+from app.db.session import get_session
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead, UserResponse

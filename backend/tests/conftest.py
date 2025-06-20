@@ -13,6 +13,28 @@ from tests.test_session import get_test_session
 # URL del database di test
 TEST_DATABASE_URL = settings.DATABASE_URL
 
+def execute_sql_script(engine, script_path):
+    """Esegue uno script SQL sul database."""
+    if os.path.exists(script_path):
+        with open(script_path, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
+        
+        with engine.connect() as conn:
+            # Esegue ogni statement separatamente
+            statements = sql_content.split(';')
+            for statement in statements:
+                statement = statement.strip()
+                if statement:
+                    try:
+                        conn.execute(text(statement))
+                    except Exception as e:
+                        print(f"[WARNING] Error executing SQL: {e}")
+                        # Continua con gli altri statement
+            conn.commit()
+        print(f"[DEBUG] SQL script executed: {script_path}")
+    else:
+        print(f"[WARNING] SQL script not found: {script_path}")
+
 @pytest.fixture(scope="session")
 def test_engine():
     """Crea un engine di test."""
@@ -42,6 +64,11 @@ def clean_db(test_engine):
     # alembic_cfg = Config("alembic.ini")
     # alembic_cfg.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
     # command.upgrade(alembic_cfg, "head")
+    
+    # Esegue lo script SQL per creare tutte le tabelle
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "create_all_tables.sql")
+    execute_sql_script(test_engine, script_path)
+    
     print("[DEBUG] Migrations reapplied")
 
 @pytest.fixture(scope="session", autouse=True)
@@ -65,6 +92,11 @@ def create_test_db(test_engine):
     # Applica le migrazioni
     print("[DEBUG] Applying migrations...")
     # command.upgrade(alembic_cfg, "head")
+    
+    # Esegue lo script SQL per creare tutte le tabelle
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "create_all_tables.sql")
+    execute_sql_script(test_engine, script_path)
+    
     print("[DEBUG] Migrations applied successfully")
 
     yield

@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.users import router as users_router
+from app.routers.roles import router as roles_router
 from app.db.session import get_session
 from tests.test_session import get_test_session
 
@@ -48,6 +49,11 @@ app.include_router(
     users_router,
     prefix=f"{settings.API_V1_STR}/users",
     tags=["users"]
+)
+app.include_router(
+    roles_router,
+    prefix=f"{settings.API_V1_STR}",
+    tags=["roles"]
 )
 
 @app.on_event("startup")
