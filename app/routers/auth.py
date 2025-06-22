@@ -16,7 +16,7 @@ from app.utils.security import get_current_user
 
 router = APIRouter()
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserCreate,
     session: Session = Depends(get_session)
@@ -26,12 +26,20 @@ async def register_user(
     """
     user_service = UserService(session)
     
-    # Check if user already exists
+    # Check if user already exists by email
     existing_user = user_service.get_user_by_email(user_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
+        )
+    
+    # Check if username already exists
+    existing_username = user_service.get_user_by_username(user_data.username)
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
         )
     
     # Create new user
@@ -50,7 +58,7 @@ async def login_for_access_token(
     """
     user_service = UserService(session)
     result = user_service.authenticate_user(
-        email=form_data.username, password=form_data.password
+        email_or_username=form_data.username, password=form_data.password
     )
     if result["error"] == "not_found" or result["error"] == "wrong_password":
         raise HTTPException(
@@ -67,7 +75,24 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Restituisci anche le informazioni dell'utente con role_display
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
+            "role": user.role,
+            "role_display": user.get_display_role(),
+            "created_at": user.created_at,
+            "updated_at": user.updated_at
+        }
+    }
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(

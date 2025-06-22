@@ -41,7 +41,8 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    user = UserService.get_user_by_email(session, email)
+    user_service = UserService(session)
+    user = user_service.get_user_by_email(email)
     if user is None:
         raise credentials_exception
     return user
@@ -54,21 +55,27 @@ async def login_for_access_token(
     session: Session = Depends(get_session)
 ):
     """Endpoint per il login e la generazione del token JWT."""
-    user = UserService.authenticate_user(
-        session, form_data.username, form_data.password
+    print(f"DEBUG LOGIN: username={form_data.username}, password={form_data.password}")
+    user_service = UserService(session)
+    print(f"DEBUG LOGIN: UserService created")
+    auth_result = user_service.authenticate_user(
+        form_data.username, form_data.password
     )
-    if not user:
+    print(f"DEBUG LOGIN: auth_result={auth_result}")
+    
+    if auth_result["error"] == "not_found" or auth_result["error"] == "wrong_password":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenziali non valide",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not user.is_active:
+    elif auth_result["error"] == "disabled":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Utente disabilitato"
         )
     
+    user = auth_result["user"]
     access_token = create_access_token(user)
     return {
         "access_token": access_token,

@@ -41,7 +41,7 @@ class UserService:
         if not user:
             return None
         
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update.model_dump(exclude_unset=True)
         
         # Hash password if it's being updated
         if 'password' in update_data:

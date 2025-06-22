@@ -46,6 +46,7 @@ class Settings(BaseModel):
     MINIO_BUCKET_NAME: str = "default-bucket"
     MINIO_REGION: str = "us-east-1"
     MINIO_USE_SSL: bool = False
+    MINIO_LIFECYCLE_DAYS: int = 30
     
     # Token di test fisso per evitare problemi di timing nei test
     TEST_TOKEN: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxNzM1NjgwMDAwfQ.test_signature"

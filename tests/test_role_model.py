@@ -117,9 +117,10 @@ def test_user_role_methods(db_session: Session):
     assert user.has_any_role(["superuser", "guest"]) is False
     
     role_names = user.get_role_names()
-    assert "admin" in role_names
-    assert "tecnico" in role_names
-    assert len(role_names) == 2
+    assert "owner" in role_names  # Ruolo principale
+    assert "admin" in role_names  # Ruolo assegnato
+    assert "tecnico" in role_names  # Ruolo assegnato
+    assert len(role_names) == 3  # owner + admin + tecnico
 
 
 def test_role_schema_validation():

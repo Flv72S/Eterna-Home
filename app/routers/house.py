@@ -9,7 +9,7 @@ from app.schemas.house import HouseCreate, HouseUpdate, HouseResponse, HouseList
 from app.db.session import get_session
 from app.utils.security import get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/houses", tags=["houses"])
 
 @router.post("/", response_model=HouseResponse, status_code=201)
 def create_house(

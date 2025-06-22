@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -15,6 +15,27 @@ from app.utils.password import get_password_hash, verify_password
 # Configurazione del contesto per l'hashing delle password
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+# Cache semplice per gli utenti (in produzione usare Redis)
+_user_cache: Dict[str, Dict[str, Any]] = {}
+
+def get_cached_user(email: str) -> Optional[Dict[str, Any]]:
+    """Ottiene un utente dalla cache"""
+    return _user_cache.get(email)
+
+def cache_user(user: User, email: str) -> None:
+    """Salva un utente nella cache"""
+    _user_cache[email] = {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "is_superuser": user.is_superuser,
+        "role": user.role,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at
+    }
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Crea un JWT token con i dati forniti."""

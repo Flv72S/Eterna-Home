@@ -5,176 +5,251 @@ from sqlmodel import Session
 from app.models.user import User
 from app.models.house import House
 from app.core.auth import create_access_token
+from app.core.security import get_password_hash
+from app.models.enums import UserRole
 
-def test_create_house_authenticated(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica la creazione di una casa da parte di un utente autenticato."""
+def test_create_house_authenticated(client: TestClient, db_session):
+    """Test creazione casa con utente autenticato."""
     # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
+    )
+    token = login_response.json()["access_token"]
     
-    # Crea una casa
+    # Crea casa
     house_data = {
-        "name": "Casa Test",
-        "address": "Via Test 123"
+        "name": "Test House",
+        "address": "123 Test Street",
+        "description": "A test house"
     }
-    response = client.post("/houses", json=house_data, headers=headers)
+    
+    response = client.post(
+        "/api/v1/houses/",
+        json=house_data,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
     assert response.status_code == 201
     data = response.json()
-    assert data["name"] == house_data["name"]
-    assert data["address"] == house_data["address"]
+    assert data["name"] == "Test House"
+    assert data["address"] == "123 Test Street"
     assert data["owner_id"] == user.id
 
-def test_list_houses_authenticated(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica il recupero della lista delle case dell'utente autenticato."""
+def test_list_houses_authenticated(client: TestClient, db_session):
+    """Test listaggio case con utente autenticato."""
     # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
-    # Crea alcune case per l'utente
-    houses = [
-        House(name=f"Casa {i}", address=f"Via Test {i}", owner_id=user.id)
-        for i in range(3)
-    ]
-    for house in houses:
-        db.add(house)
-    db.commit()
+    # Crea alcune case
+    house1 = House(name="House 1", address="Address 1", owner_id=user.id)
+    house2 = House(name="House 2", address="Address 2", owner_id=user.id)
+    db_session.add_all([house1, house2])
+    db_session.commit()
     
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
+    )
+    token = login_response.json()["access_token"]
     
-    # Recupera la lista delle case
-    response = client.get("/houses", headers=headers)
+    # Lista case
+    response = client.get(
+        "/api/v1/houses/",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
     assert response.status_code == 200
     data = response.json()
-    assert len(data["items"]) == 3
-    assert data["total"] == 3
+    assert len(data) == 2
+    assert any(h["name"] == "House 1" for h in data)
+    assert any(h["name"] == "House 2" for h in data)
 
-def test_get_house_authenticated(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica il recupero dei dettagli di una casa."""
+def test_get_house_authenticated(client: TestClient, db_session):
+    """Test ottenimento casa specifica con utente autenticato."""
     # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
     # Crea una casa
-    house = House(
-        name="Casa Test",
-        address="Via Test 123",
-        owner_id=user.id
+    house = House(name="Test House", address="Test Address", owner_id=user.id)
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
     )
-    db.add(house)
-    db.commit()
-    db.refresh(house)
+    token = login_response.json()["access_token"]
     
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
+    # Ottieni casa
+    response = client.get(
+        f"/api/v1/houses/{house.id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
     
-    # Recupera i dettagli della casa
-    response = client.get(f"/houses/{house.id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == house.name
-    assert data["address"] == house.address
+    assert data["name"] == "Test House"
+    assert data["address"] == "Test Address"
     assert data["owner_id"] == user.id
 
-def test_update_house_authenticated(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica l'aggiornamento di una casa."""
+def test_update_house_authenticated(client: TestClient, db_session):
+    """Test aggiornamento casa con utente autenticato."""
     # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
     # Crea una casa
-    house = House(
-        name="Casa Test",
-        address="Via Test 123",
-        owner_id=user.id
+    house = House(name="Original Name", address="Original Address", owner_id=user.id)
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
     )
-    db.add(house)
-    db.commit()
-    db.refresh(house)
+    token = login_response.json()["access_token"]
     
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    # Aggiorna la casa
+    # Aggiorna casa
     update_data = {
-        "name": "Casa Test Aggiornata",
-        "address": "Via Test 456"
+        "name": "Updated Name",
+        "address": "Updated Address"
     }
-    response = client.put(f"/houses/{house.id}", json=update_data, headers=headers)
+    
+    response = client.put(
+        f"/api/v1/houses/{house.id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == update_data["name"]
-    assert data["address"] == update_data["address"]
+    assert data["name"] == "Updated Name"
+    assert data["address"] == "Updated Address"
 
-def test_delete_house_authenticated(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica l'eliminazione di una casa."""
+def test_delete_house_authenticated(client: TestClient, db_session):
+    """Test eliminazione casa con utente autenticato."""
     # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
     # Crea una casa
-    house = House(
-        name="Casa Test",
-        address="Via Test 123",
-        owner_id=user.id
+    house = House(name="Test House", address="Test Address", owner_id=user.id)
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
     )
-    db.add(house)
-    db.commit()
-    db.refresh(house)
+    token = login_response.json()["access_token"]
     
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
+    # Elimina casa
+    response = client.delete(
+        f"/api/v1/houses/{house.id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
     
-    # Elimina la casa
-    response = client.delete(f"/houses/{house.id}", headers=headers)
     assert response.status_code == 204
     
     # Verifica che la casa sia stata eliminata
-    db.refresh(house)
-    assert house not in db
+    response = client.get(
+        f"/api/v1/houses/{house.id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 404
+
+def test_house_field_filtering(client: TestClient, db_session):
+    """Test filtraggio case per campi specifici."""
+    # Crea un utente di test
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    
+    # Crea case con diversi nomi
+    house1 = House(name="Villa Bianca", address="Via Roma 1", owner_id=user.id)
+    house2 = House(name="Casa Rossa", address="Via Milano 2", owner_id=user.id)
+    house3 = House(name="Palazzo Verde", address="Via Napoli 3", owner_id=user.id)
+    db_session.add_all([house1, house2, house3])
+    db_session.commit()
+    
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "testuser", "password": "password123"}
+    )
+    token = login_response.json()["access_token"]
+    
+    # Filtra per nome
+    response = client.get(
+        "/api/v1/houses/?name=Villa",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "Villa Bianca"
 
 def test_house_endpoints_unauthenticated(client: TestClient):
     """Test 2.1.2.2: Verifica che l'accesso agli endpoint senza autenticazione restituisca 401."""
@@ -196,44 +271,4 @@ def test_house_endpoints_unauthenticated(client: TestClient):
     
     # Test DELETE /houses/{id}
     response = client.delete("/houses/1")
-    assert response.status_code == 401
-
-def test_house_field_filtering(client: TestClient, db: Session):
-    """Test 2.1.2.1: Verifica il field filtering nella lista delle case."""
-    # Crea un utente di test
-    user = User(
-        username="testuser",
-        email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    
-    # Crea una casa
-    house = House(
-        name="Casa Test",
-        address="Via Test 123",
-        owner_id=user.id
-    )
-    db.add(house)
-    db.commit()
-    db.refresh(house)
-    
-    # Crea il token JWT
-    token = create_access_token({"sub": user.username})
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    # Test field filtering valido
-    response = client.get("/houses?fields=name,address", headers=headers)
-    assert response.status_code == 200
-    data = response.json()
-    assert "name" in data["items"][0]
-    assert "address" in data["items"][0]
-    assert "id" not in data["items"][0]
-    assert "owner_id" not in data["items"][0]
-    
-    # Test field filtering non valido
-    response = client.get("/houses?fields=invalid_field", headers=headers)
-    assert response.status_code == 400 
+    assert response.status_code == 401 

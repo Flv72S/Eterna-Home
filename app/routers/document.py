@@ -9,9 +9,10 @@ from app.db import get_session
 from app.services.minio_service import MinioService, get_minio_service
 from app.core.config import settings
 import uuid
+import hashlib
 
 router = APIRouter(
-    prefix="/api/v1/documents",
+    prefix="/documents",
     tags=["documents"],
     dependencies=[Depends(get_current_user)]
 )
@@ -171,13 +172,17 @@ async def upload_document_file(
         # Aggiorna il documento con il nuovo path
         document.path = file_path
         document.size = len(file_content)
-        document.checksum = str(uuid.uuid4())  # Semplificato per i test
+        document.checksum = hashlib.sha256(file_content).hexdigest()
         
         db.add(document)
         db.commit()
         db.refresh(document)
         
-        return {"message": "File uploaded successfully", "path": file_path}
+        return {
+            "message": "File uploaded successfully", 
+            "path": file_path,
+            "checksum": document.checksum
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}") 

@@ -9,7 +9,7 @@ def test_user_create_valid_data():
     """Verifica l'accettazione di dati corretti."""
     data = {
         "email": "test@example.com",
-        "password": "validpassword123",
+        "password": "ValidPassword123!",
         "full_name": "Test User",
         "username": "testuser",
         "is_active": True,
@@ -27,7 +27,7 @@ def test_user_create_invalid_email():
     """Verifica il rifiuto di email non valide."""
     data = {
         "email": "invalid-email",
-        "password": "validpassword123",
+        "password": "ValidPassword123!",
         "full_name": "Test User",
         "username": "testuser"
     }
@@ -71,10 +71,11 @@ def test_user_read_excludes_sensitive_fields():
         "is_superuser": False,
         "created_at": datetime.now(),
         "updated_at": datetime.now(),
-        "hashed_password": "hashed_password_here"
+        "role": "owner",
+        "role_display": "Proprietario (utente privato)"
     }
     user_read = UserRead(**data)
-    user_dict = user_read.dict()
+    user_dict = user_read.model_dump()
     assert "hashed_password" not in user_dict
     assert "password" not in user_dict
 
@@ -89,10 +90,11 @@ def test_sensitive_field_not_exposed():
         "is_superuser": False,
         "created_at": datetime.now(),
         "updated_at": datetime.now(),
-        "hashed_password": "hashed_password_here"
+        "role": "owner",
+        "role_display": "Proprietario (utente privato)"
     }
     user_read = UserRead(**data)
-    json_data = user_read.json()
+    json_data = user_read.model_dump_json()
     assert "hashed_password" not in json_data
     assert "password" not in json_data
 
@@ -107,15 +109,16 @@ def test_model_dump_excludes_sensitive_data():
         "is_superuser": False,
         "created_at": datetime.now(),
         "updated_at": datetime.now(),
-        "hashed_password": "hashed_password_here"
+        "role": "owner",
+        "role_display": "Proprietario (utente privato)"
     }
     user_read = UserRead(**data)
-    dumped_data = user_read.dict()
+    dumped_data = user_read.model_dump()
     print("UserRead dict:", dumped_data)
     assert "hashed_password" not in dumped_data
     assert "password" not in dumped_data
     # Adatto la verifica alle chiavi effettivamente presenti
-    expected_keys = {"id", "email", "full_name", "is_active", "is_superuser", "created_at", "updated_at"}
+    expected_keys = {"id", "email", "full_name", "is_active", "is_superuser", "created_at", "updated_at", "role", "role_display"}
     assert expected_keys.issubset(set(dumped_data.keys()))
 
 # Test di Compatibilità ORM
@@ -132,17 +135,18 @@ def test_user_read_from_orm_model():
             self.created_at = datetime.now()
             self.updated_at = datetime.now()
             self.hashed_password = "hashed_password_here"
+            self.role = "owner"
+            self.role_display = "Proprietario (utente privato)"
 
     orm_user = MockORMUser()
-    # Uso from_orm e aggiungo la Config necessaria se manca
-    user_read = UserRead.from_orm(orm_user)
+    # Uso model_validate invece di from_orm
+    user_read = UserRead.model_validate(orm_user)
     assert user_read.id == orm_user.id
     assert user_read.email == orm_user.email
     assert user_read.full_name == orm_user.full_name
-    # username potrebbe non essere incluso nello schema UserRead, quindi controllo solo se presente
     if hasattr(user_read, "username"):
         assert user_read.username == orm_user.username
-    assert "hashed_password" not in user_read.dict()
+    assert "hashed_password" not in user_read.model_dump()
 
 def test_user_update_applies_changes():
     """Verifica la corretta applicazione degli aggiornamenti."""
@@ -158,7 +162,7 @@ def test_user_update_applies_changes():
         "full_name": "Updated User"
     }
     user_update = UserUpdate(**update_data)
-    updated_data = {**original_data, **user_update.dict(exclude_unset=True)}
+    updated_data = {**original_data, **user_update.model_dump(exclude_unset=True)}
     assert updated_data["email"] == "updated@example.com"
     assert updated_data["full_name"] == "Updated User"
     assert updated_data["username"] == "originaluser"
@@ -181,13 +185,13 @@ def test_user_update_empty_payload():
     """Verifica l'accettazione di payload vuoti."""
     data = {}
     user_update = UserUpdate(**data)
-    assert user_update.dict(exclude_unset=True) == {}
+    assert user_update.model_dump(exclude_unset=True) == {}
 
 def test_invalid_types():
     """Verifica il rifiuto di tipi di dati non validi."""
     data = {
         "email": 123,  # dovrebbe essere stringa
-        "password": "validpassword123",
+        "password": "ValidPassword123!",
         "full_name": "Test User",
         "username": "testuser",
         "is_active": "not_a_boolean"  # dovrebbe essere boolean

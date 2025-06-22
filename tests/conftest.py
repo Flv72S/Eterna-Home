@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy.pool import StaticPool
 from app.core.redis import get_redis_client
 import redis
@@ -39,7 +39,10 @@ logger = logging.getLogger(__name__)
 from tests.conftest_redis import redis_client, override_redis_client
 
 # Configurazione del database di test
-TEST_DATABASE_URL = settings.DATABASE_URL
+# Sovrascrive la configurazione per usare il database di test
+os.environ["DATABASE_URL"] = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
+
+TEST_DATABASE_URL = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
 TEST_DATABASE_NAME = "eterna_home_test"
 
 @pytest.fixture(scope="session", autouse=True)
@@ -96,8 +99,8 @@ def clean_database(engine):
 
 @pytest.fixture(scope="session")
 def engine():
-    from app.database import get_engine
-    return get_engine()
+    from sqlmodel import create_engine
+    return create_engine(TEST_DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10, echo=True)
 
 @pytest.fixture(scope="function")
 def db_session(engine):
@@ -121,17 +124,45 @@ def session(engine):
         session.close()
         logger.debug("Session fixture completed")
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def override_get_session(engine):
+    """Override della dipendenza get_session per i test."""
+    # Crea una sessione persistente che non fa rollback automatico
+    session = Session(engine)
+    
+    def _get_session():
+        yield session
+        # NON fare rollback automatico - lascia i dati nel database per l'autenticazione
+    
+    app.dependency_overrides[get_session] = _get_session
+    yield
+    # Cleanup alla fine del test
+    session.close()
+    app.dependency_overrides.clear()
+
+@pytest.fixture()
+def override_get_session_no_rollback(engine):
+    """Fixture per test di autenticazione che non fa rollback automatico."""
     def _get_session():
         with Session(engine) as session:
             yield session
+            # NON fare rollback automatico - lascia i dati nel database per l'autenticazione
     app.dependency_overrides[get_session] = _get_session
     yield
     app.dependency_overrides.clear()
 
+@pytest.fixture(autouse=True)
+def override_get_db(engine):
+    def _get_db():
+        with Session(engine) as session:
+            yield session
+    from app.core.deps import get_db
+    app.dependency_overrides[get_db] = _get_db
+    yield
+    app.dependency_overrides.clear()
+
 @pytest.fixture(name="client")
-def test_client(override_get_session):
+def test_client(override_get_session, override_get_db):
     logger.debug("Creating test client...")
     from app.main import app
     from fastapi.testclient import TestClient
@@ -139,33 +170,85 @@ def test_client(override_get_session):
         yield client
         logger.debug("Test client closed")
 
+@pytest.fixture(name="auth_client")
+def auth_client(engine):
+    from app.main import app
+    from sqlmodel import Session
+    session = Session(engine)
+    def _get_session():
+        yield session
+    app.dependency_overrides[get_session] = _get_session
+    from fastapi.testclient import TestClient
+    with TestClient(app) as client:
+        yield client, session
+    session.close()
+    app.dependency_overrides.clear()
+
+def create_test_user(session):
+    import time
+    from app.models.user import User
+    from app.utils.password import get_password_hash
+    timestamp = int(time.time() * 1000)
+    user = User(
+        email=f"testuser_{timestamp}@example.com",
+        username=f"testuser_{timestamp}",
+        hashed_password=get_password_hash("TestPassword123!"),
+        full_name="Test User",
+        role="guest",
+        is_superuser=False,
+        is_active=True
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
 @pytest.fixture(scope="function")
-def test_user(db_session):
-    """Crea un utente di test."""
-    logger.debug("Creating test user...")
+def auth_test_session(engine):
+    """Sessione specifica per i test di autenticazione che non fa rollback automatico."""
+    with Session(engine) as session:
+        yield session
+        # NON fare rollback - lascia i dati nel database per l'autenticazione
+
+@pytest.fixture(scope="function")
+def test_user_auth(auth_test_session):
+    """Crea un utente di test usando la sessione di autenticazione."""
+    import time
+    logger.debug("Creating test user for auth...")
     try:
+        # Usa timestamp per username unico
+        timestamp = int(time.time() * 1000)
+        username = f"testuser_{timestamp}"
+        email = f"testuser_{timestamp}@example.com"
+        
         user = User(
-            email="testuser@example.com",
-            username="testuser",
+            email=email,
+            username=username,
             full_name="Test User",
             hashed_password=get_password_hash("TestPassword123!"),
             is_active=True,
             is_superuser=False
         )
-        logger.debug("Adding user to session...")
-        db_session.add(user)
-        logger.debug("Committing user to database...")
-        db_session.commit()
-        logger.debug("Refreshing user from database...")
-        db_session.refresh(user)
+        
+        # Usa la stessa sessione che viene usata dall'app
+        auth_test_session.add(user)
+        auth_test_session.commit()
+        auth_test_session.refresh(user)
+        
         logger.debug(f"Test user created with ID: {user.id}")
-        logger.debug(f"User hashed password: {user.hashed_password}")
-        return user
+        yield user
+        
     except Exception as e:
-        logger.error(f"Error creating test user: {str(e)}")
-        import traceback
-        logger.error(''.join(traceback.format_exception(type(e), e, e.__traceback__)))
+        logger.error(f"Error creating test user: {e}")
         raise
+    finally:
+        # Cleanup: rimuovi l'utente dalla sessione
+        try:
+            if user and user.id:
+                auth_test_session.delete(user)
+                auth_test_session.commit()
+        except Exception as e:
+            logger.warning(f"Error cleaning up test user: {e}")
 
 @pytest.fixture(scope="function")
 def test_document(db_session, test_user):
@@ -173,10 +256,9 @@ def test_document(db_session, test_user):
     logger.debug("Creating test document...")
     try:
         document = Document(
-            title="Test Document",
+            name="Test Document",
             description="A test document",
             owner_id=test_user.id,
-            name="manuale_test.pdf",
             type="application/pdf",
             size=12345,
             upload_date=datetime.now(timezone.utc),
@@ -250,26 +332,16 @@ def reset_rate_limiting():
         if keys_to_delete:
             redis_client.delete(*keys_to_delete)
 
-@pytest.fixture
-def mock_minio_service():
-    """Mock del servizio MinIO per i test."""
-    mock_service = Mock()
-    
-    # Mock dei metodi principali
-    mock_service.upload_file.return_value = True
-    mock_service.get_presigned_get_url.return_value = "https://mock-minio.com/test-file.pdf"
-    mock_service.get_presigned_put_url.return_value = "https://mock-minio.com/upload-url"
-    mock_service.delete_file.return_value = True
-    mock_service.file_exists.return_value = True
-    
-    return mock_service
-
-@pytest.fixture
-def override_minio_service(mock_minio_service):
-    """Override del servizio MinIO con mock per i test."""
-    def _get_mock_minio_service():
-        return mock_minio_service
-    
-    app.dependency_overrides[get_minio_service] = _get_mock_minio_service
-    yield
-    app.dependency_overrides.pop(get_minio_service, None)
+@pytest.fixture(autouse=True, scope="session")
+def mock_minio():
+    """Mock globale per MinIO in tutti i test."""
+    with patch("app.services.minio_service.Minio") as minio_mock:
+        instance = MagicMock()
+        # Mock dei metodi principali
+        instance.fput_object.return_value = None
+        instance.get_object.return_value.read.return_value = b"mocked file content"
+        instance.remove_object.return_value = None
+        instance.bucket_exists.return_value = True
+        instance.make_bucket.return_value = None
+        minio_mock.return_value = instance
+        yield

@@ -10,7 +10,7 @@ from app.db.utils import safe_exec
 from app.models.user import User
 from app.utils.security import get_cached_user, cache_user
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def get_db():
     """Get database session."""
@@ -37,21 +37,28 @@ async def get_current_user(
             algorithms=[settings.ALGORITHM]
         )
         email: str = payload.get("sub")
+        print(f"[DEBUG] Token payload: {payload}")
+        print(f"[DEBUG] Email from token: {email}")
         if email is None:
+            print("[DEBUG] Email is None, raising credentials_exception")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"[DEBUG] JWT decode error: {e}")
         raise credentials_exception
 
     # Try to get user from cache first
     cached_user = get_cached_user(email)
     if cached_user:
+        print(f"[DEBUG] User found in cache: {cached_user}")
         return User(**cached_user)
 
     # If not in cache, get from database
     query = select(User).where(User.email == email)
     result = safe_exec(session, query)
     user = result.first()
+    print(f"[DEBUG] User from database: {user}")
     if user is None:
+        print(f"[DEBUG] User not found in database for email: {email}")
         raise credentials_exception
 
     # Cache the user for future requests

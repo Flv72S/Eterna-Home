@@ -8,7 +8,7 @@ from app.utils.security import get_current_user
 from app.database import get_session
 from app.models.user import User
 from app.models.document import Document
-from app.core.storage.minio import minio_client
+from app.core.storage.minio import get_minio_client
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ async def upload_document_file(
         )
     
     # Carica il file su MinIO
-    file_path, checksum = await minio_client.upload_file(
+    file_path, checksum = await get_minio_client().upload_file(
         file=file,
         house_id=document.house_id,
         document_id=document.id
@@ -96,7 +96,7 @@ async def download_document_file(
         )
     
     # Scarica il file da MinIO
-    file_content = minio_client.download_file(document.file_path)
+    file_content = get_minio_client().download_file(document.file_path)
     if not file_content:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

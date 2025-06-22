@@ -3,7 +3,7 @@ from typing import Optional, List, TYPE_CHECKING
 
 from pydantic import ConfigDict, EmailStr
 from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
-from app.models.user_role import UserRole
+from app.models.enums import UserRole as UserRoleEnum
 
 if TYPE_CHECKING:
     from app.models.house import House
@@ -11,8 +11,10 @@ if TYPE_CHECKING:
     from app.models.document_version import DocumentVersion
     from app.models.booking import Booking
     from app.models.role import Role
+    from app.models.user_role import UserRole
 else:
-    from app.models.role import UserRole
+    from app.models.role import Role
+    from app.models.user_role import UserRole
 
 class User(SQLModel, table=True):
     """
@@ -50,6 +52,12 @@ class User(SQLModel, table=True):
     hashed_password: str = Field()
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
+
+    # Campo ruolo principale
+    role: str = Field(
+        default=UserRoleEnum.get_default_role(),
+        description="Ruolo principale dell'utente"
+    )
 
     # Campi di stato
     is_verified: bool = Field(default=False, description="Indica se l'email dell'utente è verificata")
@@ -118,12 +126,62 @@ class User(SQLModel, table=True):
         
     def has_role(self, role_name: str) -> bool:
         """Verifica se l'utente ha un ruolo specifico."""
-        return any(role.name == role_name and role.is_active for role in self.roles)
+        # Controlla il ruolo principale
+        if self.role == role_name:
+            return True
+        
+        # Controlla i ruoli assegnati tramite la relazione many-to-many
+        if hasattr(self, 'roles') and self.roles:
+            return any(role.name == role_name and role.is_active for role in self.roles)
+        
+        return False
         
     def has_any_role(self, role_names: List[str]) -> bool:
         """Verifica se l'utente ha almeno uno dei ruoli specificati."""
-        return any(self.has_role(role_name) for role_name in role_names)
+        # Controlla il ruolo principale
+        if self.role in role_names:
+            return True
+        
+        # Controlla i ruoli assegnati tramite la relazione many-to-many
+        if hasattr(self, 'roles') and self.roles:
+            return any(role.name in role_names and role.is_active for role in self.roles)
+        
+        return False
         
     def get_role_names(self) -> List[str]:
         """Restituisce la lista dei nomi dei ruoli attivi dell'utente."""
-        return [role.name for role in self.roles if role.is_active] 
+        role_names = []
+        
+        # Aggiungi il ruolo principale se presente
+        if self.role:
+            role_names.append(self.role)
+        
+        # Aggiungi i ruoli assegnati tramite la relazione many-to-many
+        if hasattr(self, 'roles') and self.roles:
+            for role in self.roles:
+                if role.is_active and role.name not in role_names:
+                    role_names.append(role.name)
+        
+        return role_names
+    
+    def can_access_admin_features(self) -> bool:
+        """Verifica se l'utente può accedere alle funzionalità amministrative."""
+        admin_roles = UserRoleEnum.get_admin_roles()
+        return self.role in admin_roles
+    
+    def can_manage_users(self) -> bool:
+        """Verifica se l'utente può gestire gli utenti."""
+        return self.role in ["super_admin", "admin"]
+    
+    def can_manage_roles(self) -> bool:
+        """Verifica se l'utente può gestire i ruoli."""
+        return self.role == "super_admin"
+    
+    def get_display_role(self) -> str:
+        """Restituisce il nome visualizzabile del ruolo."""
+        return UserRoleEnum.get_display_name(self.role)
+    
+    @property
+    def role_display(self) -> str:
+        """Proprietà per il nome visualizzato del ruolo (usata dagli schemi Pydantic)."""
+        return UserRoleEnum.get_display_name(self.role) 

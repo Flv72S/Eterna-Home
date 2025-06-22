@@ -3,38 +3,39 @@ from sqlmodel import Session
 
 from app.models.user import User
 from app.models.house import House
+from app.models.user_role import UserRole
 
-def test_house_user_relationship_functional(db: Session):
-    """Test funzionale per verificare le relazioni ORM tra User e House."""
-    # 1. Crea un utente
+def test_house_user_relationship_functional(db_session):
+    """Test funzionale della relazione casa-utente."""
+    # Crea un utente
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password="hashed_password",
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
-    # 2. Crea una casa associata all'utente
-    house = House(
-        name="Casa Test",
-        address="Via Test 123",
-        owner_id=user.id
-    )
-    db.add(house)
-    db.commit()
+    # Crea più case per lo stesso utente
+    houses = []
+    for i in range(3):
+        house = House(
+            name=f"House {i+1}",
+            address=f"Address {i+1}",
+            owner_id=user.id
+        )
+        db_session.add(house)
+        houses.append(house)
     
-    # 3. Verifica la relazione User -> House
-    db.refresh(user)
-    assert len(user.houses) == 1
-    assert user.houses[0].name == "Casa Test"
-    assert user.houses[0].address == "Via Test 123"
+    db_session.commit()
+    for house in houses:
+        db_session.refresh(house)
     
-    # 4. Verifica la relazione House -> User
-    db.refresh(house)
-    assert house.owner is not None
-    assert house.owner.id == user.id
-    assert house.owner.username == "testuser"
-    assert house.owner.email == "test@example.com" 
+    # Verifica relazioni
+    assert len(user.houses) == 3
+    for house in houses:
+        assert house.owner == user
+        assert house.owner_id == user.id 

@@ -1,19 +1,54 @@
-from sqlmodel import SQLModel, create_engine
+#!/usr/bin/env python3
+"""
+Script per creare tutte le tabelle del database Eterna Home
+"""
+import sys
+import os
+sys.path.insert(0, os.path.abspath('.'))
+
+from sqlmodel import SQLModel
+from app.database import get_engine
 from app.models.user import User
 from app.models.house import House
+from app.models.room import Room
+from app.models.booking import Booking
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
-from app.models.booking import Booking
-from app.models.room import Room
 from app.models.node import Node
+from app.models.maintenance import MaintenanceRecord
+from app.models.role import Role
+from app.models.user_role import UserRole
 
-# Configurazione del database
-DATABASE_URL = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
-
-def create_tables():
-    engine = create_engine(DATABASE_URL)
-    SQLModel.metadata.create_all(engine)
-    print("Tabelle create con successo!")
+def create_all_tables():
+    """Crea tutte le tabelle del database."""
+    print("🚀 Creazione tabelle database...")
+    
+    try:
+        engine = get_engine()
+        
+        # Crea tutte le tabelle
+        SQLModel.metadata.create_all(engine)
+        
+        print("✅ Tutte le tabelle create con successo!")
+        print("\n📋 Tabelle create:")
+        print("  - users")
+        print("  - houses") 
+        print("  - rooms")
+        print("  - bookings")
+        print("  - documents")
+        print("  - document_versions")
+        print("  - nodes")
+        print("  - maintenance_records")
+        print("  - roles")
+        print("  - user_roles")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Errore durante la creazione delle tabelle: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
-    create_tables() 
+    create_all_tables() 

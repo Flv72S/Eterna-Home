@@ -135,7 +135,7 @@ async def update_role(
             )
     
     # Aggiorna i campi forniti
-    role_data_dict = role_data.dict(exclude_unset=True)
+    role_data_dict = role_data.model_dump(exclude_unset=True)
     for field, value in role_data_dict.items():
         setattr(role, field, value)
     

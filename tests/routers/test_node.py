@@ -7,29 +7,49 @@ from app.models.house import House
 from app.models.user import User
 from app.api.v1.auth import create_access_token
 import time
+from app.models.enums import UserRole
+from app.utils.password import get_password_hash
 
 @pytest.fixture
-def test_user(db: Session):
-    user = User(username="testuser", email="test@example.com", hashed_password="testpass")
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+def test_user(db_session):
+    """Crea un utente di test."""
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 @pytest.fixture
-def test_house(db: Session, test_user):
-    house = House(name="Casa Test", address="Via Test 1", owner_id=test_user.id)
-    db.add(house)
-    db.commit()
-    db.refresh(house)
+def test_house(db_session, test_user):
+    """Crea una casa di test."""
+    house = House(
+        name="Test House",
+        address="123 Test Street",
+        owner_id=test_user.id
+    )
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
     return house
 
 @pytest.fixture
-def test_node(db: Session, test_house):
-    node = Node(name="Nodo Test", nfc_id="NFC123", house_id=test_house.id)
-    db.add(node)
-    db.commit()
-    db.refresh(node)
+def test_node(db_session, test_house):
+    """Crea un nodo di test."""
+    node = Node(
+        name="Test Node",
+        node_type="sensor",
+        location="Living Room",
+        house_id=test_house.id
+    )
+    db_session.add(node)
+    db_session.commit()
+    db_session.refresh(node)
     return node
 
 @pytest.fixture
@@ -38,18 +58,21 @@ def client(test_user):
     return TestClient(app, headers={"Authorization": f"Bearer {token}"})
 
 @pytest.fixture
-def multiple_nodes(db: Session, test_house):
-    """Fixture che crea più nodi per i test di filtro."""
-    nodes = [
-        Node(name="Nodo A", nfc_id="NFC1", house_id=test_house.id),
-        Node(name="Nodo B", nfc_id="NFC2", house_id=test_house.id),
-        Node(name="Nodo C", nfc_id="NFC3", house_id=test_house.id),
-        Node(name="Nodo D", nfc_id="NFC4", house_id=test_house.id),
-        Node(name="Nodo E", nfc_id="NFC5", house_id=test_house.id)
-    ]
+def multiple_nodes(db_session, test_house):
+    """Crea più nodi di test."""
+    nodes = []
+    for i in range(3):
+        node = Node(
+            name=f"Node {i+1}",
+            node_type="sensor" if i % 2 == 0 else "actuator",
+            location=f"Room {i+1}",
+            house_id=test_house.id
+        )
+        db_session.add(node)
+        nodes.append(node)
+    db_session.commit()
     for node in nodes:
-        db.add(node)
-    db.commit()
+        db_session.refresh(node)
     return nodes
 
 @pytest.fixture
@@ -106,7 +129,7 @@ def test_delete_node(client, test_node):
     response = client.get(f"/nodes/{test_node.id}")
     assert response.status_code == 404
 
-def test_filter_nodes(client, db: Session, test_house):
+def test_filter_nodes(client, db_session, test_house):
     """Test funzionale: Search e Filter."""
     # Crea più nodi per il test
     nodes = [
@@ -115,8 +138,8 @@ def test_filter_nodes(client, db: Session, test_house):
         Node(name="Nodo C", nfc_id="NFC3", house_id=test_house.id)
     ]
     for node in nodes:
-        db.add(node)
-    db.commit()
+        db_session.add(node)
+    db_session.commit()
     
     # Test filtro per nome
     response = client.get("/nodes/?name=Nodo A")
@@ -237,15 +260,15 @@ def test_empty_database(client):
     assert response.status_code == 200
     assert len(response.json()) == 0
 
-def test_consecutive_deletions(client, db: Session, test_house):
+def test_consecutive_deletions(client, db_session, test_house):
     """Test rimozione consecutiva di nodi."""
     # Crea due nodi
     node1 = Node(name="Nodo 1", nfc_id="NFC1", house_id=test_house.id)
     node2 = Node(name="Nodo 2", nfc_id="NFC2", house_id=test_house.id)
-    db.add_all([node1, node2])
-    db.commit()
-    db.refresh(node1)
-    db.refresh(node2)
+    db_session.add_all([node1, node2])
+    db_session.commit()
+    db_session.refresh(node1)
+    db_session.refresh(node2)
 
     # Elimina il primo nodo
     response = client.delete(f"/nodes/{node1.id}")
@@ -265,7 +288,7 @@ def test_consecutive_deletions(client, db: Session, test_house):
     assert response.status_code == 200
     assert len(response.json()) == 0
 
-def test_bulk_operations_performance(client, db: Session, test_house):
+def test_bulk_operations_performance(client, db_session, test_house):
     """Test performance con operazioni bulk."""
     # Crea 1000 nodi
     start_time = time.time()
@@ -277,8 +300,8 @@ def test_bulk_operations_performance(client, db: Session, test_house):
             house_id=test_house.id
         )
         nodes.append(node)
-    db.add_all(nodes)
-    db.commit()
+    db_session.add_all(nodes)
+    db_session.commit()
     creation_time = time.time() - start_time
 
     # Test performance GET con filtro

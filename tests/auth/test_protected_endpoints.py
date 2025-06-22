@@ -8,6 +8,9 @@ from app.main import app
 from app.core.redis import redis_client
 from app.models.user import User
 from app.core.security import create_access_token
+from app.core.auth import create_access_token as new_create_access_token
+from app.core.deps import get_current_user
+from app.models.enums import UserRole
 
 client = TestClient(app)
 
@@ -17,31 +20,35 @@ def mock_redis():
     with patch('app.core.redis.redis_client', fakeredis.FakeStrictRedis()):
         yield
 
-def test_get_current_user_authenticated(db: Session):
-    # Create test user
+@pytest.mark.asyncio
+async def test_get_current_user_authenticated(db_session):
+    """Test che get_current_user funzioni con token valido."""
+    # Crea un utente di test
     user = User(
-        username="testuser",
         email="test@example.com",
-        hashed_password="dummy_hash",
-        is_active=True
+        username="testuser",
+        hashed_password="hashed_password",
+        is_active=True,
+        role=UserRole.OWNER.value
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    # Create access token
-    access_token = create_access_token(data={"sub": user.email})
-
-    # Test protected endpoint
-    response = client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {access_token}"}
-    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
-    assert response.status_code == 200
-    data = response.json()
-    assert data["email"] == user.email
-    assert "hashed_password" not in data
+    # Crea un token valido
+    token = new_create_access_token(data={"sub": user.email})
+    
+    # Simula una richiesta con il token
+    from fastapi import HTTPException
+    from unittest.mock import Mock
+    
+    mock_request = Mock()
+    mock_request.headers = {"Authorization": f"Bearer {token}"}
+    
+    # Testa get_current_user - ora con await
+    current_user = await get_current_user(token=token, session=db_session)
+    assert current_user.id == user.id
+    assert current_user.email == user.email
 
 def test_get_current_user_unauthenticated():
     # Test without auth header

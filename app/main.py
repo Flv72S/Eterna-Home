@@ -1,37 +1,63 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi.errors import RateLimitExceeded
-from fastapi.responses import JSONResponse
-from app.database import get_session
-from sqlmodel import Session
-import sqlalchemy
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
+import logging
+import os
+from typing import List
 
-# from backend.app.api.v1.endpoints.auth import router as auth_router
-from backend.app.api.v1.endpoints.users import router as users_router
-from app.routers.auth import router as auth_router_v2
 from app.core.config import settings
+from app.database import get_db, engine
+from app.routers import auth, users, roles, house as house_router, node as node_router, document as document_router, documents as documents_router
+from app.core.redis import redis_client
 from app.core.limiter import limiter
-from app.routers.house import router as house_router
-from app.routers.document import router as document_router
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Import all models to ensure they are registered
+from app.db.base import Base
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting up Eterna-Home API...")
+    
+    # Test Redis connection
+    try:
+        await redis_client.ping()
+        logger.info("Redis connection successful")
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
+    
+    # Test database connection
+    try:
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        logger.info("Database connection successful")
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Eterna-Home API...")
+    if redis_client:
+        await redis_client.close()
 
 app = FastAPI(
-    title="Eterna Home API",
-    description="API for Eterna Home application",
+    title="Eterna-Home API",
+    description="API per la gestione di case intelligenti",
     version="1.0.0",
+    lifespan=lifespan
 )
 
-# Aggiungi il limiter allo stato dell'app
-app.state.limiter = limiter
-
-# Gestore per le eccezioni di rate limit
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"detail": "Troppi tentativi di login. Riprova più tardi."},
-    )
-
-# Configurazione CORS
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,28 +66,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Includi i router
-# app.include_router(auth_router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
-app.include_router(users_router, prefix=settings.API_V1_STR + "/users", tags=["users"])
-app.include_router(auth_router_v2, prefix=settings.API_V1_STR + "/auth", tags=["auth-v2"])
-app.include_router(house_router, prefix="/api/v1/houses", tags=["houses"])
-app.include_router(document_router, tags=["documents"])
+# Rate limiting setup - use the correct slowapi syntax
+app.state.limiter = limiter
+
+# Include routers
+app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
+app.include_router(users.router, prefix="/api/v1", tags=["users"])
+app.include_router(roles.router, prefix="/api/v1", tags=["roles"])
+app.include_router(house_router.router, prefix="/api/v1", tags=["houses"])
+app.include_router(node_router.router, prefix="/api/v1", tags=["nodes"])
+app.include_router(document_router.router, prefix="/api/v1", tags=["documents"])
+app.include_router(documents_router.router, prefix="/api/v1", tags=["documents"])
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Eterna Home API"}
+    return {"message": "Eterna-Home API is running!"}
 
-@app.get("/debug-db")
-def debug_db(session: Session = Depends(get_session)):
-    url = str(session.get_bind().url)
-    insp = sqlalchemy.inspect(session.get_bind())
-    tables = insp.get_table_names()
-    with session.connection() as conn:
-        current_schema = conn.execute(sqlalchemy.text("SELECT current_schema()")).scalar()
-        search_path = conn.execute(sqlalchemy.text("SHOW search_path")).scalar()
-    return JSONResponse({
-        "db_url": url,
-        "tables": tables,
-        "current_schema": current_schema,
-        "search_path": search_path
-    })
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "Eterna-Home API is operational"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -152,5 +152,6 @@ class MinioClient:
             logger.error(f"Failed to delete file {object_name}: {str(e)}")
             raise
 
-# Rimuovo l'istanziazione automatica del client
-# minio_client = MinioClient() 
+# Lazy loading: provide a function to get the MinioClient instance only when needed
+def get_minio_client():
+    return MinioClient() 

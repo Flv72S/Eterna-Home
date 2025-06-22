@@ -38,7 +38,9 @@ def test_user_fixture(session: Session):
         email="test@example.com",
         password="TestPassword123!",
         full_name="Test User",
-        username="testuser"
+        username="testuser",
+        role="admin",  # Ruolo admin per accedere agli endpoint protetti
+        is_superuser=True  # Superuser per massimi permessi
     )
     user_service = UserService(session)
     return user_service.create_user(user_create)
@@ -351,7 +353,7 @@ def test_update_user(client: TestClient, test_user: User, auth_headers: dict):
         "full_name": "Updated Name",
         "email": "updated@example.com"
     }
-    response = client.patch(
+    response = client.put(
         f"/api/v1/users/{test_user.id}",
         json=update_data,
         headers=auth_headers
@@ -367,7 +369,7 @@ def test_update_user_not_found(client: TestClient, auth_headers: dict):
         "full_name": "Updated Name",
         "email": "updated@example.com"
     }
-    response = client.patch(
+    response = client.put(
         "/api/v1/users/999",
         json=update_data,
         headers=auth_headers
@@ -377,7 +379,7 @@ def test_update_user_not_found(client: TestClient, auth_headers: dict):
 def test_delete_user(client: TestClient, test_user: User, auth_headers: dict):
     """Test eliminazione utente."""
     response = client.delete(f"/api/v1/users/{test_user.id}", headers=auth_headers)
-    assert response.status_code == 200
+    assert response.status_code == 204
 
 def test_delete_user_not_found(client: TestClient, auth_headers: dict):
     """Test eliminazione utente non esistente."""

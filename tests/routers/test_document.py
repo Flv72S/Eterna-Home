@@ -7,48 +7,68 @@ from app.models.user import User
 from app.models.house import House
 from app.models.node import Node
 from app.core.auth import create_access_token
+from app.core.security import get_password_hash
+from app.models.user_role import UserRole
 
 client = TestClient(app)
 
 @pytest.fixture
-def test_user(db: Session):
-    user = User(username="testuser", email="test@example.com", hashed_password="testpass")
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+def test_user(db_session):
+    """Crea un utente di test."""
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("password123"),
+        is_active=True,
+        role=UserRole.OWNER.value
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 @pytest.fixture
-def test_house(db: Session, test_user):
-    house = House(name="Test House", address="Test Address", owner_id=test_user.id)
-    db.add(house)
-    db.commit()
-    db.refresh(house)
+def test_house(db_session, test_user):
+    """Crea una casa di test."""
+    house = House(
+        name="Test House",
+        address="123 Test Street",
+        owner_id=test_user.id
+    )
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
     return house
 
 @pytest.fixture
-def test_node(db: Session, test_house):
-    node = Node(name="Test Node", nfc_id="TEST123", house_id=test_house.id)
-    db.add(node)
-    db.commit()
-    db.refresh(node)
+def test_node(db_session, test_house):
+    """Crea un nodo di test."""
+    node = Node(
+        name="Test Node",
+        node_type="sensor",
+        location="Living Room",
+        house_id=test_house.id
+    )
+    db_session.add(node)
+    db_session.commit()
+    db_session.refresh(node)
     return node
 
 @pytest.fixture
-def test_document(db: Session, test_user, test_house):
+def test_document(db_session, test_user, test_house):
+    """Crea un documento di test."""
     document = Document(
         name="Test Document",
         type="application/pdf",
         size=1024,
-        path="/documents/test.pdf",
-        checksum="abc123",
-        description="Test document description",
-        author_id=test_user.id,
-        house_id=test_house.id
+        path="test/path",
+        checksum="test_checksum",
+        house_id=test_house.id,
+        author_id=test_user.id
     )
-    db.add(document)
-    db.commit()
-    db.refresh(document)
+    db_session.add(document)
+    db_session.commit()
+    db_session.refresh(document)
     return document
 
 @pytest.fixture

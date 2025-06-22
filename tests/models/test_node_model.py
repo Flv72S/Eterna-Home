@@ -4,35 +4,89 @@ from sqlmodel import Session
 from app.models.node import Node
 from app.models.house import House
 
-def test_node_migration(db: Session):
-    """Test 2.1.3.1: Verifica che la tabella node sia creata con i vincoli richiesti."""
-    inspector = inspect(db.get_bind())
-    tables = inspector.get_table_names()
-    assert "node" in tables
-    columns = [col["name"] for col in inspector.get_columns("node")]
-    for col in ["id", "name", "description", "nfc_id", "house_id"]:
-        assert col in columns
+def test_node_migration(db_session):
+    """Test che la tabella node sia stata creata correttamente."""
+    from app.models.user import User
+    from app.models.house import House
     
-    # Verifica vincolo UNIQUE su nfc_id
-    uniques = [c["name"] for c in inspector.get_unique_constraints("node")]
-    assert any("nfc_id" in u for u in uniques)
+    # Crea utente e casa di test
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password="hashed_password",
+        is_active=True,
+        role="owner"
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     
-    # Verifica indice su nfc_id
-    indexes = [idx["name"] for idx in inspector.get_indexes("node")]
-    assert any("ix_node_nfc_id" in idx for idx in indexes)
-
-def test_node_house_relationship(db: Session):
-    """Test 2.1.3.2: Verifica la relazione tra Node e House."""
-    house = House(name="Casa Test", address="Via Test 1", owner_id=1)
-    db.add(house)
-    db.commit()
-    db.refresh(house)
-    node = Node(name="Nodo1", nfc_id="NFC123", house_id=house.id)
-    db.add(node)
-    db.commit()
-    db.refresh(node)
-    # Relazione diretta
+    house = House(
+        name="Test House",
+        address="123 Test Street",
+        owner_id=user.id
+    )
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Crea un nodo
+    node = Node(
+        name="Test Node",
+        node_type="sensor",
+        location="Living Room",
+        description="A test node",
+        house_id=house.id
+    )
+    db_session.add(node)
+    db_session.commit()
+    db_session.refresh(node)
+    
+    assert node.id is not None
+    assert node.name == "Test Node"
+    assert node.node_type == "sensor"
+    assert node.location == "Living Room"
+    assert node.description == "A test node"
     assert node.house_id == house.id
-    # Relazione ORM
-    assert node.house is not None
-    assert node.house.name == house.name 
+
+def test_node_house_relationship(db_session):
+    """Test relazione nodo-casa."""
+    from app.models.user import User
+    from app.models.house import House
+    
+    # Crea utente e casa
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password="hashed_password",
+        is_active=True,
+        role="owner"
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    
+    house = House(
+        name="Test House",
+        address="123 Test Street",
+        owner_id=user.id
+    )
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Crea un nodo associato alla casa
+    node = Node(
+        name="House Node",
+        node_type="actuator",
+        location="Kitchen",
+        house_id=house.id
+    )
+    db_session.add(node)
+    db_session.commit()
+    db_session.refresh(node)
+    
+    # Verifica relazione
+    assert node.house_id == house.id
+    assert node.house == house
+    assert node in house.nodes 

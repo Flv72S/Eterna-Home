@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, ValidationError
+from app.models.enums import UserRole
 import re
 
 class UserBase(BaseModel):
@@ -11,6 +12,19 @@ class UserBase(BaseModel):
     is_superuser: bool = Field(default=False, description="Whether the user has superuser privileges")
     username: str = Field(..., min_length=3, max_length=50, description="User's username")
     phone_number: Optional[str] = Field(None, description="User's phone number")
+    role: str = Field(
+        default=UserRole.get_default_role(),
+        description="Ruolo principale dell'utente"
+    )
+
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v):
+        """Valida che il ruolo sia uno di quelli definiti nell'enum."""
+        valid_roles = [role.value for role in UserRole]
+        if v not in valid_roles:
+            raise ValueError(f'Ruolo non valido. Ruoli validi: {", ".join(valid_roles)}')
+        return v
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -32,6 +46,10 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="User's password")
     is_active: bool = Field(True, description="Whether the user account is active")
     phone_number: Optional[str] = Field(None, description="User's phone number")
+    role: str = Field(
+        default=UserRole.get_default_role(),
+        description="Ruolo principale dell'utente"
+    )
 
     @field_validator('password')
     @classmethod
@@ -77,6 +95,7 @@ class UserUpdate(UserBase):
     is_active: Optional[bool] = Field(None, description="Whether the user account is active")
     is_superuser: Optional[bool] = Field(None, description="Whether the user has superuser privileges")
     phone_number: Optional[str] = Field(None, description="User's new phone number")
+    role: Optional[str] = Field(None, description="Ruolo principale dell'utente")
 
 class UserInDBBase(UserBase):
     id: int = Field(..., description="User's unique identifier")
@@ -99,6 +118,8 @@ class UserRead(UserBase):
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
     username: str = Field(..., description="User's username")
+    role: str = Field(..., description="Ruolo principale dell'utente")
+    role_display: str = Field(..., description="Nome visualizzato del ruolo")
     
     # Exclude hashed_password from serialization
     model_config = ConfigDict(
@@ -113,6 +134,8 @@ class UserRead(UserBase):
                 "username": "johndoe",
                 "is_active": True,
                 "is_superuser": False,
+                "role": "owner",
+                "role_display": "Proprietario (utente privato)",
                 "created_at": "2024-01-01T00:00:00",
                 "updated_at": "2024-01-01T00:00:00"
             }
@@ -127,6 +150,8 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=100, description="User's full name")
     is_active: bool = Field(default=True, description="Whether the user account is active")
     is_superuser: bool = Field(default=False, description="Whether the user has superuser privileges")
+    role: str = Field(..., description="Ruolo principale dell'utente")
+    role_display: str = Field(..., description="Nome visualizzato del ruolo")
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
 
@@ -144,6 +169,8 @@ class UserResponse(BaseModel):
                 "full_name": "John Doe",
                 "is_active": True,
                 "is_superuser": False,
+                "role": "owner",
+                "role_display": "Proprietario (utente privato)",
                 "created_at": "2024-01-01T00:00:00",
                 "updated_at": "2024-01-01T00:00:00"
             }
