@@ -12,7 +12,7 @@ from app.utils.security import get_password_hash
 
 def get_auth_headers(client: TestClient, email: str, password: str):
     """Ottiene i token di autenticazione"""
-    response = client.post("/api/v1/auth/token", data={
+    response = client.post("/api/v1/token", data={
         "username": email,
         "password": password
     })

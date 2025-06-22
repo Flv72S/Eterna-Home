@@ -8,7 +8,6 @@ class NodeResponse(BaseModel):
     id: int
     nfc_id: str
     name: str
-    location: Optional[str] = None
-    status: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    description: Optional[str] = None
+    house_id: int
+    room_id: Optional[int] = None 
