@@ -6,6 +6,7 @@ from pydantic import ConfigDict
 if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.user import User
+    from app.models.bim_model import BIMModel
 
 class DocumentVersion(SQLModel, table=True):
     """Modello per il versionamento dei documenti."""
@@ -27,9 +28,11 @@ class DocumentVersion(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
-    document_id: int = Field(foreign_key="documents.id", index=True)
+    document_id: Optional[int] = Field(default=None, foreign_key="documents.id", index=True)
+    bim_model_id: Optional[int] = Field(default=None, foreign_key="bim_model.id", index=True)
     created_by_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     
     # Relationships
-    document: "Document" = Relationship(back_populates="versions")
+    document: Optional["Document"] = Relationship(back_populates="versions")
+    bim_model: Optional["BIMModel"] = Relationship(back_populates="versions")
     created_by: Optional["User"] = Relationship(back_populates="document_versions") 

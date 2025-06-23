@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.booking import Booking
     from app.models.role import Role
     from app.models.user_role import UserRole
+    from app.models.bim_model import BIMModel
 else:
     from app.models.role import Role
     from app.models.user_role import UserRole
@@ -97,6 +98,10 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "DocumentVersion.created_by_id", "cascade": "all, delete-orphan"}
     )
     bookings: List["Booking"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    bim_models: List["BIMModel"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

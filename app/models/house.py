@@ -5,9 +5,10 @@ from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from app.models.user import User
-    from app.models.node import Node
+    from app.models.node import Node, NodeArea, MainArea
     from app.models.document import Document
     from app.models.room import Room
+    from app.models.bim_model import BIMModel
 
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
@@ -32,8 +33,14 @@ class House(SQLModel, table=True):
     # Relazioni
     owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"})
     nodes: List["Node"] = Relationship(back_populates="house")
+    node_areas: List["NodeArea"] = Relationship(back_populates="house")
+    main_areas: List["MainArea"] = Relationship(back_populates="house")
     documents: List["Document"] = Relationship(
         back_populates="house",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    rooms: List["Room"] = Relationship(back_populates="house") 
+    rooms: List["Room"] = Relationship(back_populates="house")
+    bim_models: List["BIMModel"] = Relationship(
+        back_populates="house",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    ) 
