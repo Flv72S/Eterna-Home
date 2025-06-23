@@ -9,7 +9,7 @@ from typing import List
 
 from app.core.config import settings
 from app.database import get_db, engine
-from app.routers import auth, users, roles, house as house_router, node as node_router, document as document_router, documents as documents_router, bim as bim_router, node_areas, main_areas, area_reports
+from app.routers import auth, users, roles, house as house_router, node as node_router, document as document_router, documents as documents_router, bim as bim_router, node_areas, main_areas, area_reports, voice
 from app.core.redis import redis_client
 from app.core.limiter import limiter
 
@@ -81,6 +81,7 @@ app.include_router(bim_router.router, prefix="/api/v1", tags=["BIM Models"])
 app.include_router(node_areas.router, prefix="/api/v1/node-areas", tags=["Node Areas"])
 app.include_router(main_areas.router, prefix="/api/v1/main-areas", tags=["Main Areas"])
 app.include_router(area_reports.router, prefix="/api/v1/area-reports", tags=["Area Reports"])
+app.include_router(voice.router, tags=["Voice Commands"])
 
 @app.get("/")
 async def root():

@@ -1,57 +1,36 @@
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
-from app.models.node import Node
-from app.models.document import Document
-
-class MaintenanceStatus(str, Enum):
-    """Enum per lo stato della manutenzione"""
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-class MaintenanceType(str, Enum):
-    """Enum per il tipo di manutenzione"""
-    ROUTINE = "routine"
-    PREVENTIVE = "preventive"
-    CORRECTIVE = "corrective"
-    EMERGENCY = "emergency"
-    INSPECTION = "inspection"
+if TYPE_CHECKING:
+    from app.models.node import Node
 
 class MaintenanceRecord(SQLModel, table=True):
-    """Modello per i record di manutenzione dei nodi"""
-    
+    """Modello per la gestione dei record di manutenzione."""
     __tablename__ = "maintenance_records"
-
+    
     model_config = ConfigDict(
         from_attributes=True,
         validate_by_name=True,
-        str_strip_whitespace=True,
-        json_schema_extra={
-            "example": {
-                "node_id": 1,
-                "timestamp": "2024-03-15T10:30:00",
-                "maintenance_type": "routine",
-                "description": "Manutenzione programmata del sensore",
-                "status": "pending",
-                "notes": "Da verificare il funzionamento del sensore di temperatura",
-                "document_id": 1
-            }
-        }
+        str_strip_whitespace=True
     )
-
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    node_id: int = Field(foreign_key="nodes.id", index=True)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    maintenance_type: MaintenanceType
-    description: str
-    status: MaintenanceStatus = Field(default=MaintenanceStatus.PENDING)
-    notes: Optional[str] = None
-    document_id: Optional[int] = Field(default=None, foreign_key="documents.id")
-
+    title: str = Field(index=True)
+    description: Optional[str] = None
+    maintenance_type: str = Field(description="Tipo di manutenzione")
+    priority: str = Field(description="Priorità della manutenzione")
+    status: str = Field(default="PENDING", description="Stato della manutenzione")
+    
     # Relazioni
-    node: Node = Relationship(back_populates="maintenance_records")
-    document: Optional[Document] = Relationship(back_populates="maintenance_records") 
+    node_id: int = Field(foreign_key="nodes.id")
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    scheduled_date: Optional[datetime] = None
+    completed_date: Optional[datetime] = None
+    
+    # Relazioni
+    node: "Node" = Relationship(back_populates="maintenance_records") 

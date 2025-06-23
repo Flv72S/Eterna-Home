@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.room import Room
     from app.models.bim_model import BIMModel
+    from app.models.audio_log import AudioLog
 
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
@@ -43,4 +44,5 @@ class House(SQLModel, table=True):
     bim_models: List["BIMModel"] = Relationship(
         back_populates="house",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    ) 
+    )
+    audio_logs: List["AudioLog"] = Relationship(back_populates="house") 

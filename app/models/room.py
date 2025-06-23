@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from app.models.booking import Booking
 
 class Room(SQLModel, table=True):
-    """Modello per la rappresentazione di una stanza nel database."""
+    """Modello per la gestione delle stanze."""
     __tablename__ = "rooms"
     
     model_config = ConfigDict(
@@ -17,12 +17,14 @@ class Room(SQLModel, table=True):
         validate_by_name=True,
         str_strip_whitespace=True
     )
-
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: Optional[str] = None
-    floor: int
-    area: float  # in metri quadrati
+    room_type: str = Field(description="Tipo di stanza")
+    capacity: Optional[int] = Field(default=None, description="Capacità della stanza")
+    
+    # Relazioni
     house_id: int = Field(foreign_key="houses.id")
     
     # Timestamps
@@ -32,4 +34,7 @@ class Room(SQLModel, table=True):
     # Relazioni
     house: "House" = Relationship(back_populates="rooms")
     nodes: List["Node"] = Relationship(back_populates="room")
-    bookings: List["Booking"] = Relationship(back_populates="room") 
+    bookings: List["Booking"] = Relationship(
+        back_populates="room",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    ) 

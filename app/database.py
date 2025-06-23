@@ -7,6 +7,7 @@ from app.models.document import Document
 from app.models.maintenance import MaintenanceRecord
 from app.models.room import Room
 from app.models.booking import Booking
+from app.models.audio_log import AudioLog
 
 def get_engine():
     return create_engine(settings.DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10, echo=True)
@@ -20,4 +21,4 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-get_db = get_session
+get_db = get_session 

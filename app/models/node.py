@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from app.models.maintenance import MaintenanceRecord
     from app.models.room import Room
     from app.models.bim_model import BIMModel
+    from app.models.audio_log import AudioLog
 
 class NodeArea(SQLModel, table=True):
     """Modello per le aree specifiche associate ai nodi."""
@@ -94,4 +95,5 @@ class Node(SQLModel, table=True):
     bim_models: List["BIMModel"] = Relationship(
         back_populates="node",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    ) 
+    )
+    audio_logs: List["AudioLog"] = Relationship(back_populates="node") 

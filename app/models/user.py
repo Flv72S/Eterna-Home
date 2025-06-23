@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.role import Role
     from app.models.user_role import UserRole
     from app.models.bim_model import BIMModel
+    from app.models.audio_log import AudioLog
 else:
     from app.models.role import Role
     from app.models.user_role import UserRole
@@ -102,6 +103,10 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     bim_models: List["BIMModel"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    audio_logs: List["AudioLog"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
