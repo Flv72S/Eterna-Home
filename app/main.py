@@ -3,19 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
-import logging
 import os
 from typing import List
 
 from app.core.config import settings
+from app.core.logging import setup_logging, get_logger, set_trace_id, get_trace_id
+from app.core.middleware import LoggingMiddleware, ErrorLoggingMiddleware
 from app.database import get_db, engine
 from app.routers import auth, users, roles, house as house_router, node as node_router, document as document_router, documents as documents_router, bim as bim_router, node_areas, main_areas, area_reports, voice, local_interface, secure_area
 from app.core.redis import redis_client
 from app.core.limiter import limiter
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configura il logging strutturato
+setup_logging(
+    level=settings.LOG_LEVEL if hasattr(settings, 'LOG_LEVEL') else "INFO",
+    json_format=True,
+    include_trace_id=True
+)
+
+logger = get_logger(__name__)
 
 # Import all models to ensure they are registered
 from app.db.base import Base
@@ -26,27 +32,42 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting up Eterna-Home API...")
+    logger.info("Starting up Eterna-Home API", 
+                service="eterna-home-api",
+                version="1.0.0",
+                environment=os.getenv("ENVIRONMENT", "development"))
     
     # Test Redis connection
     try:
         await redis_client.ping()
-        logger.info("Redis connection successful")
+        logger.info("Redis connection successful", 
+                    component="redis",
+                    status="connected")
     except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
+        logger.error("Redis connection failed", 
+                     component="redis",
+                     error=str(e),
+                     exc_info=True)
     
     # Test database connection
     try:
         with engine.connect() as conn:
             conn.execute("SELECT 1")
-        logger.info("Database connection successful")
+        logger.info("Database connection successful", 
+                    component="database",
+                    status="connected")
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        logger.error("Database connection failed", 
+                     component="database",
+                     error=str(e),
+                     exc_info=True)
     
     yield
     
     # Shutdown
-    logger.info("Shutting down Eterna-Home API...")
+    logger.info("Shutting down Eterna-Home API", 
+                service="eterna-home-api",
+                trace_id=get_trace_id())
     if redis_client:
         await redis_client.close()
 
@@ -56,6 +77,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Middleware per il logging
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(ErrorLoggingMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -87,10 +112,12 @@ app.include_router(secure_area.router)
 
 @app.get("/")
 async def root():
+    logger.info("Root endpoint accessed")
     return {"message": "Eterna-Home API is running!"}
 
 @app.get("/health")
 async def health_check():
+    logger.info("Health check endpoint accessed")
     return {"status": "healthy", "message": "Eterna-Home API is operational"}
 
 if __name__ == "__main__":
