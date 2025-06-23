@@ -12,6 +12,8 @@ from app.core.queue import RabbitMQManager
 from app.core.config import settings
 from app.models.audio_log import AudioLog
 from app.services.audio_log import AudioLogService
+from app.services.speech_to_text import SpeechToTextService
+from app.services.local_interface import LocalInterfaceService
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,10 @@ class VoiceWorker:
         self.engine = create_engine(settings.DATABASE_URL)
         self.minio_client = None
         self.running = False
+        
+        # Inizializza servizi
+        self.speech_service = SpeechToTextService()
+        self.local_interface = LocalInterfaceService()
         
         # Inizializza MinIO client solo se necessario
         try:
@@ -86,7 +92,7 @@ class VoiceWorker:
                 
                 try:
                     if command_type == "audio":
-                        # Elabora file audio
+                        # Elabora file audio con servizio reale
                         await self.process_audio_message(db, audio_log, message_data)
                     else:
                         # Elabora comando testuale
@@ -100,12 +106,22 @@ class VoiceWorker:
             logger.error(f"Errore processamento messaggio: {e}")
     
     async def process_audio_message(self, db: Session, audio_log: AudioLog, message_data: Dict[str, Any]):
-        """Elabora un messaggio audio."""
+        """Elabora un messaggio audio con servizio di trascrizione reale."""
         try:
             logger.info(f"Elaborazione audio per AudioLog {audio_log.id}")
             
-            # Simula trascrizione audio (TODO: integrare servizio di trascrizione)
-            transcribed_text = await self.simulate_audio_transcription(message_data)
+            # Usa servizio di trascrizione reale se abilitato
+            if settings.USE_REAL_SPEECH_TO_TEXT and audio_log.audio_url:
+                transcribed_result = await self.speech_service.transcribe_audio(
+                    audio_log.audio_url,
+                    settings.GOOGLE_SPEECH_LANGUAGE
+                )
+                transcribed_text = transcribed_result.get("transcription", "")
+                logger.info(f"Trascrizione reale completata: {transcribed_text[:50]}...")
+            else:
+                # Fallback a simulazione
+                transcribed_text = await self.simulate_audio_transcription(message_data)
+                logger.info("Usata trascrizione simulata")
             
             # Aggiorna AudioLog con testo trascritto
             audio_log.transcribed_text = transcribed_text
@@ -114,7 +130,7 @@ class VoiceWorker:
             # Aggiorna stato a "analyzing"
             await self.update_processing_status(db, audio_log, "analyzing")
             
-            # Elabora il comando trascritto
+            # Elabora il comando trascritto con interfacce locali
             await self.process_text_message(db, audio_log, message_data)
             
         except Exception as e:
@@ -122,7 +138,7 @@ class VoiceWorker:
             raise
     
     async def process_text_message(self, db: Session, audio_log: AudioLog, message_data: Dict[str, Any]):
-        """Elabora un comando testuale."""
+        """Elabora un comando testuale con interfacce locali."""
         try:
             logger.info(f"Elaborazione testo per AudioLog {audio_log.id}")
             
@@ -134,8 +150,15 @@ class VoiceWorker:
                 await self.update_processing_status(db, audio_log, "failed")
                 return
             
-            # Simula elaborazione NLP (TODO: integrare servizio NLP/LLM)
-            response_text = await self.simulate_nlp_processing(text_to_process, message_data)
+            # Usa interfacce locali per elaborazione
+            if settings.ENABLE_LOCAL_INTERFACES:
+                result = await self.local_interface.process_voice_command(audio_log.id)
+                response_text = result.get("response", "Elaborazione completata")
+                logger.info(f"Interfaccia locale elaborata: {len(result.get('actions_executed', []))} azioni")
+            else:
+                # Fallback a elaborazione simulata
+                response_text = await self.simulate_nlp_processing(text_to_process, message_data)
+                logger.info("Usata elaborazione simulata")
             
             # Aggiorna AudioLog con risposta
             audio_log.response_text = response_text
@@ -161,8 +184,7 @@ class VoiceWorker:
             db.rollback()
     
     async def simulate_audio_transcription(self, message_data: Dict[str, Any]) -> str:
-        """Simula la trascrizione di un file audio."""
-        # TODO: Integrare servizio di trascrizione (Google Speech-to-Text, Azure Speech, etc.)
+        """Simula la trascrizione di un file audio (fallback)."""
         logger.info("Simulazione trascrizione audio...")
         
         # Simula delay di elaborazione
@@ -176,8 +198,7 @@ class VoiceWorker:
             return "Comando audio ricevuto e trascritto"
     
     async def simulate_nlp_processing(self, text: str, message_data: Dict[str, Any]) -> str:
-        """Simula l'elaborazione NLP di un comando testuale."""
-        # TODO: Integrare servizio NLP/LLM (OpenAI, Azure Cognitive Services, etc.)
+        """Simula l'elaborazione NLP di un comando testuale (fallback)."""
         logger.info(f"Simulazione elaborazione NLP per: '{text}'")
         
         # Simula delay di elaborazione
@@ -198,26 +219,34 @@ class VoiceWorker:
             return "Comandi disponibili: accendi/spegni luci, temperatura, stato sistema"
         else:
             return f"Comando ricevuto: '{text}'. Elaborazione completata."
+    
+    async def get_worker_status(self) -> Dict[str, Any]:
+        """Restituisce lo stato del worker."""
+        return {
+            "running": self.running,
+            "speech_service_status": self.speech_service.get_service_status(),
+            "local_interface_status": await self.local_interface.get_interface_status(),
+            "minio_available": self.minio_client is not None,
+            "rabbitmq_connected": self.rabbitmq_manager.is_connected if hasattr(self.rabbitmq_manager, 'is_connected') else False
+        }
 
 async def main():
-    """Funzione principale per avvio del worker."""
+    """Funzione principale per avvio worker."""
     worker = VoiceWorker()
     
     try:
         await worker.start()
+        
+        # Mantieni il worker in esecuzione
+        while worker.running:
+            await asyncio.sleep(1)
+            
     except KeyboardInterrupt:
-        logger.info("Interruzione ricevuta, arresto worker...")
+        logger.info("Interruzione richiesta dall'utente")
     except Exception as e:
-        logger.error(f"Errore worker: {e}")
+        logger.error(f"Errore nel worker: {e}")
     finally:
         await worker.stop()
 
 if __name__ == "__main__":
-    # Configurazione logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    # Avvia worker
     asyncio.run(main()) 
