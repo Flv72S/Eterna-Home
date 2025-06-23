@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
-from typing import Optional
+from typing import Optional, List, Union
 
 from app.core.config import settings
 from app.db.session import get_session
@@ -64,4 +64,78 @@ async def get_current_user(
     # Cache the user for future requests
     cache_user(user, email)
     
-    return user 
+    return user
+
+def require_roles(*required_roles: str):
+    """
+    Dependency factory per verificare che l'utente abbia uno dei ruoli richiesti.
+    
+    Args:
+        *required_roles: Ruoli richiesti (uno o più)
+    
+    Returns:
+        Dependency function che verifica i ruoli dell'utente
+    
+    Example:
+        @app.get("/admin-only")
+        def admin_endpoint(user: User = Depends(require_roles("admin", "super_admin"))):
+            return {"message": "Admin access granted"}
+    """
+    def role_checker(user: User = Depends(get_current_user)) -> User:
+        # Verifica se l'utente ha uno dei ruoli richiesti
+        if not user.has_any_role(required_roles):
+            # Log del tentativo di accesso non autorizzato
+            print(f"[SECURITY] Access denied for user {user.email} (roles: {user.get_role_names()}) "
+                  f"to endpoint requiring roles: {required_roles}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required roles: {', '.join(required_roles)}. "
+                       f"User roles: {', '.join(user.get_role_names())}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Log dell'accesso autorizzato
+        print(f"[SECURITY] Access granted for user {user.email} (roles: {user.get_role_names()}) "
+              f"to endpoint requiring roles: {required_roles}")
+        
+        return user
+    
+    return role_checker
+
+def require_single_role(required_role: str):
+    """
+    Dependency factory per verificare che l'utente abbia un ruolo specifico.
+    
+    Args:
+        required_role: Ruolo richiesto
+    
+    Returns:
+        Dependency function che verifica il ruolo dell'utente
+    
+    Example:
+        @app.get("/super-admin-only")
+        def super_admin_endpoint(user: User = Depends(require_single_role("super_admin"))):
+            return {"message": "Super admin access granted"}
+    """
+    def role_checker(user: User = Depends(get_current_user)) -> User:
+        if not user.has_role(required_role):
+            print(f"[SECURITY] Access denied for user {user.email} (roles: {user.get_role_names()}) "
+                  f"to endpoint requiring role: {required_role}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required role: {required_role}. "
+                       f"User roles: {', '.join(user.get_role_names())}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        print(f"[SECURITY] Access granted for user {user.email} (roles: {user.get_role_names()}) "
+              f"to endpoint requiring role: {required_role}")
+        
+        return user
+    
+    return role_checker
+
+# Alias per compatibilità
+require_role = require_single_role 

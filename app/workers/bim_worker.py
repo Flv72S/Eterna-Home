@@ -56,12 +56,15 @@ class BIMConversionWorker:
             logger.error(f"Errore download file {file_url}: {e}")
             raise
     
-    def upload_converted_file(self, local_path: str, original_url: str, format_suffix: str) -> str:
-        """Carica il file convertito su MinIO."""
+    async def upload_converted_file(self, local_path: str, original_url: str, format_suffix: str) -> str:
+        """Carica un file convertito su MinIO."""
         try:
+            # Estrai bucket e path dal URL originale
             bucket_name, file_path = original_url.split("/", 1)
-            base_path = os.path.splitext(file_path)[0]
-            new_file_path = f"{base_path}_{format_suffix}"
+            
+            # Crea nuovo path per il file convertito
+            base_name = file_path.rsplit(".", 1)[0]
+            new_file_path = f"{base_name}_converted.{format_suffix}"
             
             with open(local_path, "rb") as f:
                 file_data = f.read()
@@ -80,7 +83,7 @@ class BIMConversionWorker:
             raise
 
 @celery_app.task(bind=True, name="convert_ifc_to_gltf")
-def convert_ifc_to_gltf(self, model_id: int) -> Dict[str, Any]:
+async def convert_ifc_to_gltf(self, model_id: int) -> Dict[str, Any]:
     """Converte un file IFC in formato GLTF per visualizzazione web."""
     worker = BIMConversionWorker()
     
@@ -115,7 +118,7 @@ def convert_ifc_to_gltf(self, model_id: int) -> Dict[str, Any]:
         
         # Carica file convertito
         worker.update_model_status(model_id, "processing", "Upload file convertito", 80)
-        converted_url = worker.upload_converted_file(gltf_path, model.file_url, "gltf")
+        converted_url = await worker.upload_converted_file(gltf_path, model.file_url, "gltf")
         
         # Aggiorna modello con URL del file convertito
         model.converted_file_url = converted_url
@@ -144,7 +147,7 @@ def convert_ifc_to_gltf(self, model_id: int) -> Dict[str, Any]:
         raise
 
 @celery_app.task(bind=True, name="convert_rvt_to_ifc")
-def convert_rvt_to_ifc(self, model_id: int) -> Dict[str, Any]:
+async def convert_rvt_to_ifc(self, model_id: int) -> Dict[str, Any]:
     """Converte un file RVT (Revit) in formato IFC."""
     worker = BIMConversionWorker()
     
@@ -179,7 +182,7 @@ def convert_rvt_to_ifc(self, model_id: int) -> Dict[str, Any]:
         
         # Carica file convertito
         worker.update_model_status(model_id, "processing", "Upload file convertito", 80)
-        converted_url = worker.upload_converted_file(ifc_path, model.file_url, "ifc")
+        converted_url = await worker.upload_converted_file(ifc_path, model.file_url, "ifc")
         
         # Aggiorna modello con URL del file convertito
         model.converted_file_url = converted_url
@@ -208,7 +211,7 @@ def convert_rvt_to_ifc(self, model_id: int) -> Dict[str, Any]:
         raise
 
 @celery_app.task(bind=True, name="validate_bim_model")
-def validate_bim_model(self, model_id: int) -> Dict[str, Any]:
+async def validate_bim_model(self, model_id: int) -> Dict[str, Any]:
     """Valida un modello BIM e genera report di validazione."""
     worker = BIMConversionWorker()
     
@@ -279,6 +282,6 @@ def validate_bim_model(self, model_id: int) -> Dict[str, Any]:
         }
         
     except Exception as e:
-        worker.update_model_status(model_id, "validation_failed", f"Errore validazione: {str(e)}", 0)
+        worker.update_model_status(model_id, "failed", f"Errore validazione: {str(e)}", 0)
         logger.error(f"Errore validazione per modello {model_id}: {e}")
         raise 

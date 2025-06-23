@@ -1,16 +1,60 @@
-import logging
-from typing import Dict, Any, List
-from celery import current_task, chain, group
-from app.core.celery_app import celery_app
-from app.db.session import get_db
-from app.models.bim_model import BIMModel, BIMFormat
-from sqlmodel import Session, select
+"""
+Worker per la conversione asincrona di modelli BIM
+"""
+try:
+    from celery import current_task, chain, group
+    CELERY_AVAILABLE = True
+except ImportError:
+    CELERY_AVAILABLE = False
+    # Mock per quando Celery non è disponibile
+    def current_task():
+        return None
+    def chain(*args):
+        return None
+    def group(*args):
+        return None
+
 from datetime import datetime, timezone
-from app.workers.bim_worker import convert_ifc_to_gltf, convert_rvt_to_ifc, validate_bim_model
+from typing import Dict, Any, List
+import logging
+from sqlmodel import select
+
+try:
+    from app.core.celery_app import celery_app
+    CELERY_APP_AVAILABLE = True
+except ImportError:
+    CELERY_APP_AVAILABLE = False
+    # Mock per quando Celery non è disponibile
+    class MockCeleryApp:
+        def task(self, *args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+    celery_app = MockCeleryApp()
+
+from app.database import get_db
+from app.models.bim_model import BIMModel, BIMFormat
+
+try:
+    from app.workers.bim_worker import convert_ifc_to_gltf, convert_rvt_to_ifc, validate_bim_model
+    BIM_WORKER_AVAILABLE = True
+except ImportError:
+    BIM_WORKER_AVAILABLE = False
+    # Mock per quando bim_worker non è disponibile
+    def convert_ifc_to_gltf(*args, **kwargs):
+        return None
+    def convert_rvt_to_ifc(*args, **kwargs):
+        return None
+    def validate_bim_model(*args, **kwargs):
+        return None
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Verifica che Celery sia disponibile
+if not CELERY_AVAILABLE or not CELERY_APP_AVAILABLE:
+    logger.warning("Celery non disponibile - funzionalità di conversione BIM asincrona disabilitata")
 
 @celery_app.task(bind=True, name="process_bim_model")
 def process_bim_model(self, model_id: int, conversion_type: str = "auto") -> Dict[str, Any]:
@@ -151,7 +195,7 @@ def convert_with_validation(self, model_id: int, conversion_type: str = "auto") 
         raise
 
 @celery_app.task(bind=True, name="cleanup_conversion_files")
-def cleanup_conversion_files(self, model_id: int) -> Dict[str, Any]:
+async def cleanup_conversion_files(self, model_id: int) -> Dict[str, Any]:
     """Pulisce i file temporanei di conversione per un modello."""
     try:
         from app.services.minio_service import MinioService

@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_user, get_db, require_roles
 from app.models.user import User
 from app.models.enums import UserRole
 from app.schemas.user import UserResponse, UserUpdate
@@ -15,17 +15,11 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 
 @router.get("/", response_model=List[dict])
 async def get_all_roles(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles("admin", "super_admin"))
 ):
     """
     Ottieni tutti i ruoli disponibili nel sistema
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     roles = []
     for role in UserRole:
         roles.append({
@@ -46,18 +40,12 @@ async def get_users_by_role(
     role_name: str,
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Ottieni tutti gli utenti con un ruolo specifico
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role_name)
     except ValueError:
@@ -74,18 +62,12 @@ async def get_users_by_role(
 async def update_user_role(
     user_id: int,
     role: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Aggiorna il ruolo di un utente specifico
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role)
     except ValueError:
@@ -121,18 +103,12 @@ async def update_user_role(
 
 @router.get("/stats")
 async def get_role_statistics(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Ottieni statistiche sui ruoli degli utenti
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     role_distribution = {}
     total_users = 0
     
@@ -181,18 +157,12 @@ async def get_my_permissions(
 async def add_user_role(
     user_id: int,
     role: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Aggiungi un ruolo aggiuntivo a un utente (per sistemi con ruoli multipli)
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role)
     except ValueError:
@@ -222,18 +192,12 @@ async def add_user_role(
 async def remove_user_role(
     user_id: int,
     role: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Rimuovi un ruolo da un utente (per sistemi con ruoli multipli)
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role)
     except ValueError:
@@ -263,18 +227,12 @@ async def remove_user_role(
 async def add_user_role_test_endpoint(
     user_id: int,
     role_name: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Aggiungi un ruolo a un utente (endpoint per i test)
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role_name)
     except ValueError:
@@ -304,18 +262,12 @@ async def add_user_role_test_endpoint(
 async def remove_user_role_test_endpoint(
     user_id: int,
     role_name: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin", "super_admin")),
     db: Session = Depends(get_db)
 ):
     """
     Rimuovi un ruolo da un utente (endpoint per i test)
     """
-    if not current_user.has_role("admin") and not current_user.has_role("super_admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accesso negato. Richiesti permessi amministrativi."
-        )
-    
     try:
         user_role = UserRole(role_name)
     except ValueError:
