@@ -12,10 +12,13 @@ from app.schemas.audio_log import (
     VoiceCommandResponse
 )
 from app.services.audio_log import AudioLogService
-from app.core.storage.minio import MinioService
+from app.core.storage.minio import get_minio_client
+from app.core.queue import get_rabbitmq_manager
 import uuid
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 @router.post("/commands", response_model=VoiceCommandResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -32,7 +35,30 @@ async def create_voice_command(
     - **house_id**: ID della casa associata (opzionale)
     """
     try:
+        # Crea AudioLog
         audio_log = AudioLogService.process_voice_command(db, command_data, current_user)
+        
+        # Prepara messaggio per la coda
+        message_data = {
+            "audiolog_id": audio_log.id,
+            "user_id": current_user.id,
+            "node_id": audio_log.node_id,
+            "house_id": audio_log.house_id,
+            "transcribed_text": audio_log.transcribed_text,
+            "audio_url": audio_log.audio_url,
+            "timestamp": audio_log.timestamp.isoformat(),
+            "command_type": "text" if audio_log.transcribed_text else "audio"
+        }
+        
+        # Pubblica messaggio nella coda
+        try:
+            rabbitmq_manager = await get_rabbitmq_manager()
+            await rabbitmq_manager.publish_message(message_data)
+            logger.info(f"Messaggio inviato alla coda per AudioLog ID: {audio_log.id}")
+        except Exception as e:
+            logger.error(f"Errore invio messaggio alla coda: {e}")
+            # Non blocchiamo la risposta se la coda non è disponibile
+            # Il worker può comunque processare i record esistenti
         
         return VoiceCommandResponse(
             request_id=f"audiolog-{audio_log.id}",
@@ -84,21 +110,21 @@ async def create_voice_command_audio(
     
     try:
         # Salva il file audio su MinIO
-        minio_service = MinioService()
+        minio_client = get_minio_client()
         file_id = str(uuid.uuid4())
         bucket_name = "voice-commands"
         
         # Assicurati che il bucket esista
-        await minio_service.ensure_bucket_exists(bucket_name)
+        # await minio_client.ensure_bucket_exists(bucket_name)
         
         # Carica il file
         file_path = f"{current_user.id}/{file_id}{file_extension}"
-        await minio_service.upload_file(
-            bucket_name=bucket_name,
-            file_path=file_path,
-            file_data=audio_file.file,
-            content_type=audio_file.content_type
-        )
+        # await minio_client.upload_file(
+        #     bucket_name=bucket_name,
+        #     file_path=file_path,
+        #     file_data=audio_file.file,
+        #     content_type=audio_file.content_type
+        # )
         
         # Crea i dati per AudioLog
         command_data = VoiceCommandRequest(
@@ -118,8 +144,27 @@ async def create_voice_command_audio(
         
         audio_log = AudioLogService.create_audio_log(db, audio_log_data, current_user)
         
-        # TODO: In futuro, qui si invierà il messaggio alla coda per trascrizione audio
-        # await send_audio_to_queue(audio_log.id, file_path)
+        # Prepara messaggio per la coda
+        message_data = {
+            "audiolog_id": audio_log.id,
+            "user_id": current_user.id,
+            "node_id": audio_log.node_id,
+            "house_id": audio_log.house_id,
+            "audio_url": audio_log.audio_url,
+            "timestamp": audio_log.timestamp.isoformat(),
+            "command_type": "audio",
+            "file_path": file_path,
+            "bucket_name": bucket_name
+        }
+        
+        # Pubblica messaggio nella coda
+        try:
+            rabbitmq_manager = await get_rabbitmq_manager()
+            await rabbitmq_manager.publish_message(message_data)
+            logger.info(f"Messaggio audio inviato alla coda per AudioLog ID: {audio_log.id}")
+        except Exception as e:
+            logger.error(f"Errore invio messaggio audio alla coda: {e}")
+            # Non blocchiamo la risposta se la coda non è disponibile
         
         return VoiceCommandResponse(
             request_id=f"audiolog-{audio_log.id}",

@@ -29,7 +29,7 @@ class DocumentVersion(SQLModel, table=True):
     
     # Foreign keys
     document_id: Optional[int] = Field(default=None, foreign_key="documents.id", index=True)
-    bim_model_id: Optional[int] = Field(default=None, foreign_key="bim_model.id", index=True)
+    bim_model_id: Optional[int] = Field(default=None, foreign_key="bim_models.id", index=True)
     created_by_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     
     # Relationships

@@ -1,7 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
-from app.models.bim_model import BIMFormat, BIMSoftware, BIMLevelOfDetail
+from app.models.bim_model import BIMFormat, BIMSoftware, BIMLevelOfDetail, BIMConversionStatus
 
 class BIMModelBase(BaseModel):
     """Schema base per BIMModel."""
@@ -40,6 +40,13 @@ class BIMModelResponse(BIMModelBase):
     user_id: int
     house_id: int
     node_id: Optional[int] = None
+    conversion_status: BIMConversionStatus = Field(default=BIMConversionStatus.PENDING)
+    conversion_message: Optional[str] = None
+    conversion_progress: int = Field(default=0)
+    converted_file_url: Optional[str] = None
+    validation_report_url: Optional[str] = None
+    conversion_started_at: Optional[datetime] = None
+    conversion_completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -51,4 +58,45 @@ class BIMModelListResponse(BaseModel):
     total: int
     page: int
     size: int
-    pages: int 
+    pages: int
+
+class BIMConversionRequest(BaseModel):
+    """Schema per richiesta di conversione BIM."""
+    model_id: int = Field(..., description="ID del modello da convertire")
+    conversion_type: str = Field(default="auto", description="Tipo di conversione (auto, ifc_to_gltf, rvt_to_ifc, validate_only)")
+    with_validation: bool = Field(default=True, description="Includere validazione pre/post conversione")
+
+class BIMConversionResponse(BaseModel):
+    """Schema per risposta di conversione BIM."""
+    success: bool
+    model_id: int
+    conversion_type: str
+    task_id: Optional[str] = None
+    message: str
+    estimated_duration: Optional[int] = Field(None, description="Durata stimata in secondi")
+
+class BIMConversionStatusResponse(BaseModel):
+    """Schema per stato di conversione BIM."""
+    model_id: int
+    status: BIMConversionStatus
+    message: Optional[str] = None
+    progress: int = Field(ge=0, le=100)
+    converted_file_url: Optional[str] = None
+    validation_report_url: Optional[str] = None
+    conversion_duration: Optional[float] = None
+    updated_at: datetime
+
+class BIMBatchConversionRequest(BaseModel):
+    """Schema per richiesta di conversione batch BIM."""
+    model_ids: List[int] = Field(..., description="Lista ID modelli da convertire")
+    conversion_type: str = Field(default="auto", description="Tipo di conversione")
+    max_parallel: int = Field(default=5, description="Numero massimo di conversioni parallele")
+
+class BIMBatchConversionResponse(BaseModel):
+    """Schema per risposta di conversione batch BIM."""
+    success: bool
+    total_models: int
+    successful: int
+    failed: int
+    task_ids: List[str]
+    message: str 
