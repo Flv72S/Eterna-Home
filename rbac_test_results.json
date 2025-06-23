@@ -1,0 +1,43 @@
+{
+  "timestamp": "2025-06-23T19:53:06.423007",
+  "tests": {
+    "import_models": {
+      "success": true,
+      "error": null,
+      "message": "Modelli importati correttamente"
+    },
+    "database_connection": {
+      "success": true,
+      "error": null,
+      "data": {
+        "roles_count": 1,
+        "users_count": 36,
+        "user_roles_count": 1,
+        "existing_roles": [
+          {
+            "name": "test_role",
+            "description": "Ruolo di test"
+          }
+        ]
+      }
+    },
+    "rbac_functionality": {
+      "success": true,
+      "error": null,
+      "data": {
+        "user_created": false,
+        "role_created": false,
+        "role_assigned": false,
+        "has_role": true,
+        "has_any_role": true,
+        "role_names": [
+          "guest",
+          "test_role"
+        ],
+        "access_granted": true
+      }
+    }
+  },
+  "success": true,
+  "error": null
+}
