@@ -8,9 +8,14 @@ from typing import List
 
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger, set_trace_id, get_trace_id
-from app.core.middleware import LoggingMiddleware, ErrorLoggingMiddleware
+from app.core.middleware import LoggingMiddleware, ErrorLoggingMiddleware, SecurityLoggingMiddleware
 from app.database import get_db, engine
-from app.routers import auth, users, roles, house as house_router, node as node_router, document as document_router, documents as documents_router, bim as bim_router, node_areas, main_areas, area_reports, voice, local_interface, secure_area
+from app.routers import (
+    auth, users, roles, house as house_router, node as node_router, 
+    document as document_router, documents as documents_router, 
+    bim as bim_router, node_areas, main_areas, area_reports, 
+    voice, local_interface, secure_area, ai_assistant
+)
 from app.core.redis import redis_client
 from app.core.limiter import limiter
 
@@ -81,6 +86,7 @@ app = FastAPI(
 # Middleware per il logging
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(ErrorLoggingMiddleware)
+app.add_middleware(SecurityLoggingMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -109,6 +115,7 @@ app.include_router(area_reports.router, prefix="/api/v1/area-reports", tags=["Ar
 app.include_router(voice.router, tags=["Voice Commands"])
 app.include_router(local_interface.router, tags=["Local Interface"])
 app.include_router(secure_area.router)
+app.include_router(ai_assistant.router, prefix="/api/v1", tags=["AI Assistant"])
 
 @app.get("/")
 async def root():

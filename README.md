@@ -421,4 +421,12 @@ python -m pytest tests/api/test_auth_api.py::test_login_valid_credentials -v
 
 ## Contribuire
 
-Se desideri contribuire al progetto, segui le istruzioni nel file `CONTRIBUTING.md`. 
+Se desideri contribuire al progetto, segui le istruzioni nel file `CONTRIBUTING.md`.  
+ # #   S I S T E M A   L O G G I N G   M U L T I - T E N A N T   E   I N T E R A Z I O N I   A I   C O M P L E T A T O  
+ # # #   I m p l e m e n t a z i o n e   C o m p l e t a t a   -   2 3 / 0 6 / 2 0 2 5  
+ -   S i s t e m a   d i   l o g g i n g   m u l t i - t e n a n t   c o n   f o r m a t o   J S O N   s t r u t t u r a t o  
+ -   I n t e r a z i o n i   A I   i s o l a t e   p e r   t e n a n t   c o n   c o n t r o l l i   R B A C  
+ -   A u d i t   t r a i l   c o m p l e t o   c o n   l o g g i n g   v i o l a z i o n i   s i c u r e z z a  
+ -   1 1   t e s t   c o m p l e t i   e   p a s s a t i   p e r   l o g g i n g   e   i n t e r a z i o n i   A I  
+ -   S i s t e m a   p r o n t o   p e r   p r o d u z i o n e   c o n   i s o l a m e n t o   c o m p l e t o  
+ 

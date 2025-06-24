@@ -10,6 +10,12 @@ from .role import Role, UserRole
 from .user_tenant_role import UserTenantRole
 from .bim_model import BIMModel, BIMFormat, BIMSoftware, BIMLevelOfDetail
 from .audio_log import AudioLog, AudioLogCreate, AudioLogUpdate
+from .ai_interaction import (
+    AIAssistantInteraction, 
+    AIInteractionCreate, 
+    AIInteractionResponse, 
+    AIInteractionList
+)
 
 __all__ = [
     'User',
@@ -31,5 +37,9 @@ __all__ = [
     'BIMLevelOfDetail',
     'AudioLog',
     'AudioLogCreate',
-    'AudioLogUpdate'
+    'AudioLogUpdate',
+    'AIAssistantInteraction',
+    'AIInteractionCreate',
+    'AIInteractionResponse',
+    'AIInteractionList'
 ] 
