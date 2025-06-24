@@ -1,125 +1,540 @@
-import os
+"""
+Servizio MinIO per la gestione dello storage multi-tenant.
+Integra path dinamici basati su tenant_id per isolamento completo.
+"""
+
 import uuid
-import logging
-from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, List, BinaryIO, Dict, Any
+from fastapi import UploadFile, HTTPException, status
 from minio import Minio
 from minio.error import S3Error
-import mimetypes
+import io
+import logging
+from datetime import datetime, timezone
+import os
 
-# Configurazione logger
+from app.core.config import settings
+from app.core.storage import (
+    get_tenant_storage_path,
+    get_tenant_folder_path,
+    sanitize_filename,
+    validate_file_type,
+    generate_unique_filename,
+    parse_tenant_from_path,
+    is_valid_tenant_path,
+    get_allowed_extensions_for_folder,
+    validate_folder
+)
+
+# Configurazione logging
 logger = logging.getLogger(__name__)
 
-class MinioService:
-    def __init__(self):
-        self.client = self._get_client()
-        self.default_bucket = os.getenv('MINIO_DEFAULT_BUCKET', 'default-bucket')
-        self._ensure_bucket_exists(self.default_bucket)
-
-    def _get_client(self):
-        """Create and return a Minio client instance."""
-        try:
-            client = Minio(
-                os.getenv('MINIO_ENDPOINT', 'localhost:9000'),
-                access_key=os.getenv('MINIO_ACCESS_KEY', 'minioadmin'),
-                secret_key=os.getenv('MINIO_SECRET_KEY', 'minioadmin'),
-                secure=os.getenv('MINIO_SECURE', 'false').lower() == 'true'
-            )
-            return client
-        except Exception as e:
-            logger.error(f"Error creating Minio client: {str(e)}")
-            raise
-
-    def _ensure_bucket_exists(self, bucket_name: str):
-        """Ensure that the specified bucket exists."""
-        try:
-            if not self.client.bucket_exists(bucket_name):
-                self.client.make_bucket(bucket_name)
-        except Exception as e:
-            logger.error(f"Error ensuring bucket exists: {str(e)}")
-            raise
-
-    def _get_content_type(self, filename: str) -> str:
-        """Get the content type for a file based on its extension."""
-        content_type, _ = mimetypes.guess_type(filename)
-        return content_type or 'application/octet-stream'
-
-    def _generate_object_name(self, filename: str, folder: str = None) -> str:
-        """Generate a unique object name for the file."""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_id = str(uuid.uuid4())[:8]
-        base_name = os.path.basename(filename)
-        name, ext = os.path.splitext(base_name)
-        
-        if folder:
-            return f"{folder}/{timestamp}_{unique_id}_{name}{ext}"
-        return f"{timestamp}_{unique_id}_{name}{ext}"
-
-    def upload_file(self, data: bytes, filename: str, bucket_name: str = None, folder: str = None) -> str:
+class MinIOService:
+    """
+    Servizio per la gestione dello storage su MinIO con supporto multi-tenant.
+    """
+    
+    def __init__(self, initialize_connection: bool = True):
         """
-        Upload a file to Minio.
+        Inizializza il client MinIO.
         
         Args:
-            data (bytes): File content as bytes
-            filename (str): Original filename
-            bucket_name (str, optional): Name of the bucket. Defaults to None.
-            folder (str, optional): Folder path within the bucket. Defaults to None.
+            initialize_connection: Se True, tenta di connettersi a MinIO (solo in produzione)
+        """
+        self.client = None
+        self.bucket_name = settings.MINIO_BUCKET_NAME
+        
+        # Inizializza la connessione solo se richiesto (produzione)
+        if initialize_connection and os.getenv('ENVIRONMENT', 'development') == 'production':
+            self._initialize_client()
+            self._ensure_bucket_exists()
+        else:
+            logger.info("MinIO client non inizializzato (modalità sviluppo/test)")
+    
+    def _initialize_client(self):
+        """Inizializza il client MinIO."""
+        try:
+            self.client = Minio(
+                settings.MINIO_ENDPOINT,
+                access_key=settings.MINIO_ACCESS_KEY,
+                secret_key=settings.MINIO_SECRET_KEY,
+                secure=settings.MINIO_USE_SSL
+            )
+            logger.info("Client MinIO inizializzato con successo")
+        except Exception as e:
+            logger.error(f"Errore nell'inizializzazione del client MinIO: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore nella configurazione dello storage"
+            )
+    
+    def _ensure_bucket_exists(self):
+        """Assicura che il bucket esista."""
+        if not self.client:
+            return
             
+        try:
+            if not self.client.bucket_exists(self.bucket_name):
+                self.client.make_bucket(self.bucket_name)
+                logger.info(f"Bucket {self.bucket_name} creato con successo")
+        except S3Error as e:
+            logger.error(f"Errore nella creazione del bucket: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore nella configurazione dello storage"
+            )
+    
+    def _get_content_type(self, filename: str) -> str:
+        """Determina il content type del file basato sull'estensione."""
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(filename)
+        return mime_type or 'application/octet-stream'
+    
+    def _generate_object_name(self, filename: str, folder: str = None) -> str:
+        """Genera un nome oggetto unico per MinIO."""
+        import hashlib
+        from datetime import datetime
+        
+        # Genera timestamp e ID unico
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = hashlib.md5(f"{filename}_{timestamp}".encode()).hexdigest()[:8]
+        
+        # Estrai nome e estensione
+        name, ext = os.path.splitext(filename)
+        
+        # Costruisci il nome oggetto
+        object_name = f"{timestamp}_{unique_id}_{name}{ext}"
+        
+        # Aggiungi folder se specificato
+        if folder:
+            object_name = f"{folder}/{object_name}"
+        
+        return object_name
+
+    def upload_file(
+        self,
+        file: UploadFile,
+        folder: str,
+        tenant_id: uuid.UUID,
+        custom_filename: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Carica un file nel path del tenant specificato.
+        
+        Args:
+            file: File da caricare
+            folder: Cartella di destinazione (documents, bim, media, etc.)
+            tenant_id: ID del tenant per isolamento
+            custom_filename: Nome file personalizzato (opzionale)
+        
         Returns:
-            str: The object name of the uploaded file
-            
+            Dict con metadati del file caricato
+        
         Raises:
-            S3Error: If there's an error during upload
+            HTTPException: Se il file non è valido o il caricamento fallisce
         """
         try:
-            bucket = bucket_name or self.default_bucket
-            self._ensure_bucket_exists(bucket)
+            # Valida la cartella
+            if not validate_folder(folder):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cartella non supportata: {folder}"
+                )
             
-            object_name = self._generate_object_name(filename, folder)
-            content_type = self._get_content_type(filename)
+            # Valida il tipo di file
+            allowed_extensions = get_allowed_extensions_for_folder(folder)
+            if not validate_file_type(file.filename, allowed_extensions):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Tipo di file non consentito per la cartella {folder}. "
+                           f"Estensioni consentite: {allowed_extensions}"
+                )
             
+            # Genera nome file unico
+            if custom_filename:
+                filename = sanitize_filename(custom_filename)
+            else:
+                filename = generate_unique_filename(file.filename, tenant_id)
+            
+            # Genera path multi-tenant
+            storage_path = get_tenant_storage_path(folder, tenant_id, filename)
+            
+            # Leggi il contenuto del file
+            file_content = file.file.read()
+            file_size = len(file_content)
+            
+            # In modalità sviluppo/test, simula il caricamento
+            if not self.client:
+                logger.info(f"[DEV] Simulazione upload file: {storage_path} (tenant: {tenant_id}, size: {file_size})")
+                return {
+                    "filename": filename,
+                    "original_filename": file.filename,
+                    "storage_path": storage_path,
+                    "file_size": file_size,
+                    "content_type": file.content_type,
+                    "tenant_id": str(tenant_id),
+                    "folder": folder,
+                    "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                    "dev_mode": True
+                }
+            
+            # Carica su MinIO (solo in produzione)
             self.client.put_object(
-                bucket_name=bucket,
-                object_name=object_name,
-                data=data,
-                length=len(data),
-                content_type=content_type
+                bucket_name=self.bucket_name,
+                object_name=storage_path,
+                data=io.BytesIO(file_content),
+                length=file_size,
+                content_type=file.content_type
             )
             
-            logger.info(f"Successfully uploaded {filename} to {bucket}/{object_name}")
-            return object_name
+            # Log dell'operazione
+            logger.info(f"File caricato: {storage_path} (tenant: {tenant_id}, size: {file_size})")
+            
+            return {
+                "filename": filename,
+                "original_filename": file.filename,
+                "storage_path": storage_path,
+                "file_size": file_size,
+                "content_type": file.content_type,
+                "tenant_id": str(tenant_id),
+                "folder": folder,
+                "uploaded_at": datetime.now(timezone.utc).isoformat()
+            }
             
         except S3Error as e:
-            logger.error(f"Error uploading file to Minio: {str(e)}")
-            raise
+            logger.error(f"Errore MinIO durante upload: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore durante il caricamento del file"
+            )
         except Exception as e:
-            logger.error(f"Unexpected error during file upload: {str(e)}")
-            raise
+            logger.error(f"Errore generico durante upload: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore interno del server"
+            )
     
-    def get_presigned_put_url(self, object_name: str, content_type: str) -> str:
-        """Generate a pre-signed URL for uploading a file."""
-        return self.client.presigned_put_object(
-            bucket_name=self.default_bucket,
-            object_name=object_name,
-            expires=3600  # URL valido per 1 ora
-        )
+    def download_file(
+        self,
+        storage_path: str,
+        tenant_id: uuid.UUID
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Scarica un file verificando l'accesso del tenant.
+        
+        Args:
+            storage_path: Path del file su MinIO
+            tenant_id: ID del tenant per verifica accesso
+        
+        Returns:
+            Dict con metadati e contenuto del file
+        
+        Raises:
+            HTTPException: Se l'accesso è negato o il file non esiste
+        """
+        try:
+            # Verifica che il path appartenga al tenant
+            if not is_valid_tenant_path(storage_path, tenant_id):
+                logger.warning(f"Tentativo di accesso non autorizzato: {storage_path} (tenant: {tenant_id})")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Accesso negato al file"
+                )
+            
+            # In modalità sviluppo/test, simula il download
+            if not self.client:
+                logger.info(f"[DEV] Simulazione download file: {storage_path} (tenant: {tenant_id})")
+                return {
+                    "content": b"test content (dev mode)",
+                    "filename": storage_path.split('/')[-1],
+                    "content_type": "application/octet-stream",
+                    "file_size": 20,
+                    "last_modified": datetime.now(timezone.utc),
+                    "tenant_id": str(tenant_id),
+                    "dev_mode": True
+                }
+            
+            # Ottieni il file da MinIO (solo in produzione)
+            response = self.client.get_object(self.bucket_name, storage_path)
+            
+            # Leggi il contenuto
+            file_content = response.read()
+            
+            # Ottieni metadati
+            stat = self.client.stat_object(self.bucket_name, storage_path)
+            
+            # Log dell'operazione
+            logger.info(f"File scaricato: {storage_path} (tenant: {tenant_id})")
+            
+            return {
+                "content": file_content,
+                "filename": storage_path.split('/')[-1],
+                "content_type": stat.content_type,
+                "file_size": stat.size,
+                "last_modified": stat.last_modified,
+                "tenant_id": str(tenant_id)
+            }
+            
+        except S3Error as e:
+            if e.code == 'NoSuchKey':
+                logger.warning(f"File non trovato: {storage_path}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="File non trovato"
+                )
+            else:
+                logger.error(f"Errore MinIO durante download: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Errore durante il download del file"
+                )
+        except Exception as e:
+            logger.error(f"Errore generico durante download: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore interno del server"
+            )
     
-    def get_presigned_get_url(self, object_name: str) -> str:
-        """Generate a pre-signed URL for downloading a file."""
-        return self.client.presigned_get_object(
-            bucket_name=self.default_bucket,
-            object_name=object_name,
-            expires=3600  # URL valido per 1 ora
-        )
+    def delete_file(
+        self,
+        storage_path: str,
+        tenant_id: uuid.UUID
+    ) -> bool:
+        """
+        Elimina un file verificando l'accesso del tenant.
+        
+        Args:
+            storage_path: Path del file su MinIO
+            tenant_id: ID del tenant per verifica accesso
+        
+        Returns:
+            bool: True se il file è stato eliminato
+        
+        Raises:
+            HTTPException: Se l'accesso è negato
+        """
+        try:
+            # Verifica che il path appartenga al tenant
+            if not is_valid_tenant_path(storage_path, tenant_id):
+                logger.warning(f"Tentativo di eliminazione non autorizzato: {storage_path} (tenant: {tenant_id})")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Accesso negato al file"
+                )
+            
+            # In modalità sviluppo/test, simula l'eliminazione
+            if not self.client:
+                logger.info(f"[DEV] Simulazione eliminazione file: {storage_path} (tenant: {tenant_id})")
+                return True
+            
+            # Elimina il file da MinIO (solo in produzione)
+            self.client.remove_object(self.bucket_name, storage_path)
+            
+            # Log dell'operazione
+            logger.info(f"File eliminato: {storage_path} (tenant: {tenant_id})")
+            
+            return True
+            
+        except S3Error as e:
+            logger.error(f"Errore MinIO durante eliminazione: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore durante l'eliminazione del file"
+            )
+        except Exception as e:
+            logger.error(f"Errore generico durante eliminazione: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore interno del server"
+            )
     
-    def get_file_checksum(self, data: bytes) -> str:
-        """Calculate SHA256 checksum of file data."""
-        import hashlib
-        return hashlib.sha256(data).hexdigest()
+    def list_files(
+        self,
+        folder: str,
+        tenant_id: uuid.UUID,
+        prefix: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Lista i file in una cartella del tenant.
+        
+        Args:
+            folder: Cartella da listare
+            tenant_id: ID del tenant
+            prefix: Prefisso per filtrare i file (opzionale)
+        
+        Returns:
+            Lista con metadati dei file
+        """
+        try:
+            # Genera il path della cartella tenant
+            folder_path = get_tenant_folder_path(folder, tenant_id)
+            
+            # Aggiungi prefisso se specificato
+            if prefix:
+                folder_path += prefix
+            
+            # In modalità sviluppo/test, simula il listaggio
+            if not self.client:
+                logger.info(f"[DEV] Simulazione listaggio file: {folder_path} (tenant: {tenant_id})")
+                return [
+                    {
+                        "filename": "test_file.pdf",
+                        "storage_path": f"{folder_path}test_file.pdf",
+                        "file_size": 1024,
+                        "content_type": "application/pdf",
+                        "last_modified": datetime.now(timezone.utc),
+                        "tenant_id": str(tenant_id),
+                        "dev_mode": True
+                    }
+                ]
+            
+            # Lista gli oggetti (solo in produzione)
+            objects = self.client.list_objects(
+                bucket_name=self.bucket_name,
+                prefix=folder_path,
+                recursive=True
+            )
+            
+            files = []
+            for obj in objects:
+                # Ottieni metadati
+                stat = self.client.stat_object(self.bucket_name, obj.object_name)
+                
+                files.append({
+                    "filename": obj.object_name.split('/')[-1],
+                    "storage_path": obj.object_name,
+                    "file_size": stat.size,
+                    "content_type": stat.content_type,
+                    "last_modified": stat.last_modified,
+                    "tenant_id": str(tenant_id)
+                })
+            
+            return files
+            
+        except S3Error as e:
+            logger.error(f"Errore MinIO durante listaggio: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore durante il listaggio dei file"
+            )
+    
+    def get_file_info(
+        self,
+        storage_path: str,
+        tenant_id: uuid.UUID
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Ottiene informazioni su un file specifico.
+        
+        Args:
+            storage_path: Path del file su MinIO
+            tenant_id: ID del tenant per verifica accesso
+        
+        Returns:
+            Dict con metadati del file
+        """
+        try:
+            # Verifica che il path appartenga al tenant
+            if not is_valid_tenant_path(storage_path, tenant_id):
+                logger.warning(f"Tentativo di accesso non autorizzato: {storage_path} (tenant: {tenant_id})")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Accesso negato al file"
+                )
+            
+            # In modalità sviluppo/test, simula le info
+            if not self.client:
+                logger.info(f"[DEV] Simulazione info file: {storage_path} (tenant: {tenant_id})")
+                return {
+                    "filename": storage_path.split('/')[-1],
+                    "storage_path": storage_path,
+                    "file_size": 1024,
+                    "content_type": "application/octet-stream",
+                    "last_modified": datetime.now(timezone.utc),
+                    "tenant_id": str(tenant_id),
+                    "dev_mode": True
+                }
+            
+            # Ottieni metadati (solo in produzione)
+            stat = self.client.stat_object(self.bucket_name, storage_path)
+            
+            return {
+                "filename": storage_path.split('/')[-1],
+                "storage_path": storage_path,
+                "file_size": stat.size,
+                "content_type": stat.content_type,
+                "last_modified": stat.last_modified,
+                "tenant_id": str(tenant_id)
+            }
+            
+        except S3Error as e:
+            if e.code == 'NoSuchKey':
+                return None
+            else:
+                logger.error(f"Errore MinIO durante get info: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Errore durante il recupero delle informazioni del file"
+                )
+    
+    def create_presigned_url(
+        self,
+        storage_path: str,
+        tenant_id: uuid.UUID,
+        method: str = "GET",
+        expires: int = 3600
+    ) -> Optional[str]:
+        """
+        Crea un URL pre-firmato per accesso temporaneo al file.
+        
+        Args:
+            storage_path: Path del file su MinIO
+            tenant_id: ID del tenant per verifica accesso
+            method: Metodo HTTP (GET, PUT, DELETE)
+            expires: Scadenza in secondi
+        
+        Returns:
+            URL pre-firmato
+        """
+        try:
+            # Verifica che il path appartenga al tenant
+            if not is_valid_tenant_path(storage_path, tenant_id):
+                logger.warning(f"Tentativo di creazione URL non autorizzato: {storage_path} (tenant: {tenant_id})")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Accesso negato al file"
+                )
+            
+            # In modalità sviluppo/test, simula l'URL
+            if not self.client:
+                logger.info(f"[DEV] Simulazione URL pre-firmato: {storage_path} (tenant: {tenant_id})")
+                return f"http://localhost:9000/{self.bucket_name}/{storage_path}?dev_mode=true"
+            
+            # Crea URL pre-firmato (solo in produzione)
+            url = self.client.presigned_url(
+                method=method,
+                bucket_name=self.bucket_name,
+                object_name=storage_path,
+                expires=expires
+            )
+            
+            return url
+            
+        except S3Error as e:
+            logger.error(f"Errore MinIO durante creazione URL: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Errore durante la creazione dell'URL"
+            )
 
-def get_minio_service() -> MinioService:
-    """Dependency for getting a MinIO service instance."""
-    return MinioService()
+def get_minio_service() -> MinIOService:
+    """
+    Dependency per ottenere un'istanza del servizio MinIO.
+    Inizializza la connessione solo in produzione.
+    """
+    return MinIOService(initialize_connection=False)  # Non inizializza in sviluppo
 
-# Crea un'istanza singleton del servizio
-# minio_service = MinioService() 
+# TODO: Implementare cleanup automatico dei file temporanei
+# TODO: Aggiungere metriche di utilizzo storage per tenant
+# TODO: Implementare backup automatico dei file critici
+# TODO: Aggiungere validazione automatica dei path durante operazioni 

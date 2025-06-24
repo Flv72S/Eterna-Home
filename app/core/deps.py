@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
 from typing import Optional, List, Union
+import uuid
 
 from app.core.config import settings
 from app.db.session import get_session
@@ -65,6 +66,78 @@ async def get_current_user(
     cache_user(user, email)
     
     return user
+
+async def get_current_tenant(
+    current_user: User = Depends(get_current_user)
+) -> uuid.UUID:
+    """
+    Dependency per ottenere il tenant_id dell'utente corrente.
+    
+    Returns:
+        uuid.UUID: Il tenant_id dell'utente autenticato
+        
+    Raises:
+        HTTPException: Se l'utente non ha un tenant_id valido
+    """
+    if not current_user.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User does not have a valid tenant_id"
+        )
+    
+    print(f"[TENANT] User {current_user.email} accessing tenant: {current_user.tenant_id}")
+    return current_user.tenant_id
+
+def with_tenant_filter(query, tenant_id: uuid.UUID):
+    """
+    Utility per applicare il filtro tenant_id a una query SQLModel.
+    
+    Args:
+        query: Query SQLModel da filtrare
+        tenant_id: UUID del tenant per il filtraggio
+        
+    Returns:
+        Query filtrata per tenant_id
+    """
+    # Verifica se il modello ha il campo tenant_id
+    if hasattr(query.column_descriptions[0]['entity'], 'tenant_id'):
+        return query.filter(query.column_descriptions[0]['entity'].tenant_id == tenant_id)
+    return query
+
+def require_tenant_access(model_class):
+    """
+    Factory per creare dependency che verifica l'accesso al tenant.
+    
+    Args:
+        model_class: Classe del modello da verificare
+        
+    Returns:
+        Dependency function che verifica l'accesso al tenant
+    """
+    def tenant_checker(
+        item_id: int,
+        tenant_id: uuid.UUID = Depends(get_current_tenant),
+        session: Session = Depends(get_session)
+    ):
+        # Verifica che l'item appartenga al tenant dell'utente
+        query = select(model_class).where(
+            model_class.id == item_id,
+            model_class.tenant_id == tenant_id
+        )
+        result = safe_exec(session, query)
+        item = result.first()
+        
+        if not item:
+            print(f"[TENANT] Access denied: item {item_id} not found in tenant {tenant_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Resource not found or access denied"
+            )
+        
+        print(f"[TENANT] Access granted: item {item_id} in tenant {tenant_id}")
+        return item
+    
+    return tenant_checker
 
 def require_roles(*required_roles: str):
     """

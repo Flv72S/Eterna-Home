@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
+import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 from enum import Enum
@@ -69,6 +70,13 @@ class BIMModel(SQLModel, table=True):
     file_size: int = Field(description="Dimensione del file in bytes")
     checksum: str = Field(description="Checksum SHA-256 del file")
     
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+    
     # Conversione asincrona
     conversion_status: BIMConversionStatus = Field(default=BIMConversionStatus.PENDING, description="Stato di conversione")
     conversion_message: Optional[str] = Field(default=None, description="Messaggio di stato conversione")
@@ -117,4 +125,8 @@ class BIMModel(SQLModel, table=True):
         """Calcola la durata della conversione in secondi."""
         if self.conversion_started_at and self.conversion_completed_at:
             return (self.conversion_completed_at - self.conversion_started_at).total_seconds()
-        return None 
+        return None
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

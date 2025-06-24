@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
+import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
@@ -24,6 +25,13 @@ class Room(SQLModel, table=True):
     room_type: str = Field(description="Tipo di stanza")
     capacity: Optional[int] = Field(default=None, description="Capacità della stanza")
     
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+    
     # Relazioni
     house_id: int = Field(foreign_key="houses.id")
     
@@ -37,4 +45,8 @@ class Room(SQLModel, table=True):
     bookings: List["Booking"] = Relationship(
         back_populates="room",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    ) 
+    )
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

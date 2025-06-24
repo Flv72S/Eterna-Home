@@ -1,4 +1,5 @@
 from typing import Optional, List, TYPE_CHECKING
+import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
@@ -25,6 +26,13 @@ class NodeArea(SQLModel, table=True):
     has_physical_tag: bool = True  # se ha attivatore fisico o meno
     house_id: int = Field(foreign_key="houses.id")  # per multi-tenancy
 
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+
     # Relazioni
     house: Optional["House"] = Relationship(back_populates="node_areas")
     nodes: List["Node"] = Relationship(back_populates="node_area")
@@ -42,6 +50,13 @@ class MainArea(SQLModel, table=True):
     name: str = Field(index=True)  # es. "Zona Giorno", "Zona Impianti"
     description: Optional[str] = None
     house_id: int = Field(foreign_key="houses.id")  # per multi-tenancy
+
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
 
     # Relazioni
     house: Optional["House"] = Relationship(back_populates="main_areas")
@@ -85,6 +100,13 @@ class Node(SQLModel, table=True):
     is_master_node: bool = False  # se rappresenta l'area principale
     has_physical_tag: bool = True
 
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+
     # Relazioni
     house: Optional["House"] = Relationship(back_populates="nodes")
     room: Optional["Room"] = Relationship(back_populates="nodes")
@@ -96,4 +118,8 @@ class Node(SQLModel, table=True):
         back_populates="node",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    audio_logs: List["AudioLog"] = Relationship(back_populates="node") 
+    audio_logs: List["AudioLog"] = Relationship(back_populates="node")
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

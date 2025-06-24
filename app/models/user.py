@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
+import uuid
 
 from pydantic import ConfigDict, EmailStr
 from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
@@ -12,11 +13,13 @@ if TYPE_CHECKING:
     from app.models.booking import Booking
     from app.models.role import Role
     from app.models.user_role import UserRole
+    from app.models.user_tenant_role import UserTenantRole
     from app.models.bim_model import BIMModel
     from app.models.audio_log import AudioLog
 else:
     from app.models.role import Role
     from app.models.user_role import UserRole
+    from app.models.user_tenant_role import UserTenantRole
 
 class User(SQLModel, table=True):
     """
@@ -54,6 +57,13 @@ class User(SQLModel, table=True):
     hashed_password: str = Field()
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
+
+    # Campo tenant_id per multi-tenancy (tenant principale)
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant principale per isolamento logico multi-tenant"
+    )
 
     # Campo ruolo principale
     role: str = Field(
@@ -120,6 +130,12 @@ class User(SQLModel, table=True):
             "secondaryjoin": "UserRole.role_id == Role.id"
         }
     )
+    
+    # Relazione con UserTenantRole per ruoli multi-tenant
+    tenant_roles: List["UserTenantRole"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
@@ -174,6 +190,46 @@ class User(SQLModel, table=True):
         
         return role_names
     
+    def has_role_in_tenant(self, role_name: str, tenant_id: uuid.UUID) -> bool:
+        """Verifica se l'utente ha un ruolo specifico in un tenant."""
+        if hasattr(self, 'tenant_roles') and self.tenant_roles:
+            return any(
+                tr.role == role_name and 
+                tr.tenant_id == tenant_id and 
+                tr.is_active 
+                for tr in self.tenant_roles
+            )
+        return False
+    
+    def has_any_role_in_tenant(self, role_names: List[str], tenant_id: uuid.UUID) -> bool:
+        """Verifica se l'utente ha almeno uno dei ruoli specificati in un tenant."""
+        if hasattr(self, 'tenant_roles') and self.tenant_roles:
+            return any(
+                tr.role in role_names and 
+                tr.tenant_id == tenant_id and 
+                tr.is_active 
+                for tr in self.tenant_roles
+            )
+        return False
+    
+    def get_roles_in_tenant(self, tenant_id: uuid.UUID) -> List[str]:
+        """Restituisce la lista dei ruoli dell'utente in un tenant specifico."""
+        if hasattr(self, 'tenant_roles') and self.tenant_roles:
+            return [
+                tr.role for tr in self.tenant_roles 
+                if tr.tenant_id == tenant_id and tr.is_active
+            ]
+        return []
+    
+    def get_tenant_ids(self) -> List[uuid.UUID]:
+        """Restituisce la lista degli ID dei tenant a cui l'utente è associato."""
+        if hasattr(self, 'tenant_roles') and self.tenant_roles:
+            return list(set([
+                tr.tenant_id for tr in self.tenant_roles 
+                if tr.is_active
+            ]))
+        return [self.tenant_id] if self.tenant_id else []
+    
     def can_access_admin_features(self) -> bool:
         """Verifica se l'utente può accedere alle funzionalità amministrative."""
         admin_roles = UserRoleEnum.get_admin_roles()
@@ -194,4 +250,8 @@ class User(SQLModel, table=True):
     @property
     def role_display(self) -> str:
         """Proprietà per il nome visualizzato del ruolo (usata dagli schemi Pydantic)."""
-        return UserRoleEnum.get_display_name(self.role) 
+        return UserRoleEnum.get_display_name(self.role)
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

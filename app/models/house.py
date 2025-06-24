@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
+import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
@@ -27,6 +28,13 @@ class House(SQLModel, table=True):
     address: str
     owner_id: int = Field(foreign_key="users.id")
     
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+    
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -45,4 +53,8 @@ class House(SQLModel, table=True):
         back_populates="house",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    audio_logs: List["AudioLog"] = Relationship(back_populates="house") 
+    audio_logs: List["AudioLog"] = Relationship(back_populates="house")
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

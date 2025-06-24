@@ -1,5 +1,6 @@
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, timezone
+import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
 
@@ -55,6 +56,13 @@ class AudioLog(SQLModel, table=True):
     response_text: Optional[str] = Field(default=None, max_length=1000, description="Risposta generata dal sistema")
     processing_status: str = Field(default="received", description="Stato di elaborazione del comando")
     
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+    
     # Relazioni
     user: Optional["User"] = Relationship(back_populates="audio_logs")
     node: Optional["Node"] = Relationship(back_populates="audio_logs")
@@ -80,4 +88,8 @@ class AudioLog(SQLModel, table=True):
     @property
     def is_processing(self) -> bool:
         """Verifica se l'elaborazione è in corso."""
-        return self.processing_status in ["transcribing", "analyzing"] 
+        return self.processing_status in ["transcribing", "analyzing"]
+
+    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
+    # TODO: Aggiungere filtri multi-tenant nelle query CRUD 
