@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import os
 
 from app.core.config import settings
-from app.core.storage import (
+from app.core.storage_utils import (
     get_tenant_storage_path,
     get_tenant_folder_path,
     sanitize_filename,

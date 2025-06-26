@@ -14,34 +14,40 @@ from datetime import datetime, timezone
 from app.core.deps import (
     get_current_user, 
     get_current_tenant,
-    require_permission_in_tenant,
     get_session
 )
+from app.core.auth.rbac import require_permission_in_tenant
 from app.models.user import User
-from app.models.bim_model import BIMModel
+from app.models.bim_model import BIMModel, BIMModelVersion
 from app.schemas.bim import (
     BIMModelCreate, BIMModelResponse, BIMModelListResponse,
     BIMConversionRequest, BIMConversionResponse, BIMConversionStatusResponse,
-    BIMBatchConversionRequest, BIMBatchConversionResponse
+    BIMBatchConversionRequest, BIMBatchConversionResponse,
+    BIMModelVersionResponse, BIMModelVersionListResponse,
+    BIMMetadataResponse, BIMUploadResponse
 )
 from app.services.minio_service import get_minio_service
+from app.services.bim_parser import bim_parser
 from app.workers.conversion_worker import process_bim_model, batch_convert_models, get_conversion_status
 from app.db.utils import safe_exec
 
 router = APIRouter(prefix="/api/v1/bim", tags=["BIM Models"])
 
-@router.post("/upload", response_model=BIMModelResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=BIMUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_bim_model(
     file: UploadFile = File(...),
     name: str = None,
     description: str = None,
-    current_user: User = Depends(require_permission_in_tenant("write_bim_models")),
+    house_id: int = None,
+    node_id: int = None,
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(require_permission_in_tenant("upload_bim")),
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: Session = Depends(get_session)
 ):
     """
-    Carica un modello BIM nel tenant corrente.
-    Richiede permesso 'write_bim_models' nel tenant attivo.
+    Carica un modello BIM nel tenant corrente con parsing automatico e versionamento.
+    Richiede permesso 'upload_bim' nel tenant attivo.
     """
     try:
         # Validazione file
@@ -82,20 +88,89 @@ async def upload_bim_model(
             file_size=len(content),
             checksum=checksum,
             user_id=current_user.id,
-            tenant_id=tenant_id
+            house_id=house_id or 1,  # Default house_id se non specificato
+            node_id=node_id
         )
         
         bim_model = BIMModel(**bim_model_data.dict())
+        bim_model.tenant_id = tenant_id
         session.add(bim_model)
         session.commit()
         session.refresh(bim_model)
         
-        return bim_model
+        # Crea prima versione del modello
+        version = BIMModelVersion(
+            version_number=1,
+            change_description="Versione iniziale",
+            change_type="major",
+            file_url=upload_result["storage_path"],
+            file_size=len(content),
+            checksum=checksum,
+            bim_model_id=bim_model.id,
+            created_by_id=current_user.id,
+            tenant_id=tenant_id
+        )
+        session.add(version)
+        session.commit()
+        
+        # Parsing automatico in background
+        metadata = None
+        parsing_status = "pending"
+        conversion_triggered = False
+        
+        try:
+            # Parsing sincrono per metadati base
+            metadata_result = await bim_parser.parse_bim_file(bim_model)
+            
+            if metadata_result.get("parsing_success"):
+                # Aggiorna modello con metadati estratti
+                for key, value in metadata_result.items():
+                    if hasattr(bim_model, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
+                        setattr(bim_model, key, value)
+                
+                # Aggiorna versione con metadati
+                for key, value in metadata_result.items():
+                    if hasattr(version, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
+                        setattr(version, key, value)
+                
+                session.commit()
+                session.refresh(bim_model)
+                session.refresh(version)
+                
+                parsing_status = "completed"
+                metadata = BIMMetadataResponse(
+                    model_id=bim_model.id,
+                    **{k: v for k, v in metadata_result.items() if k not in ["extracted_at", "parsing_success", "parsing_message"]},
+                    extracted_at=metadata_result.get("extracted_at", datetime.now(timezone.utc)),
+                    parsing_success=True,
+                    parsing_message=metadata_result.get("parsing_message", "Parsing completato")
+                )
+            else:
+                parsing_status = "failed"
+                
+        except Exception as e:
+            logger.error(f"Errore parsing automatico: {e}")
+            parsing_status = "failed"
+        
+        # Avvia conversione asincrona se supportata
+        if bim_model.format in ["ifc", "rvt"]:
+            try:
+                background_tasks.add_task(process_bim_model.delay, bim_model.id, "auto")
+                conversion_triggered = True
+            except Exception as e:
+                logger.error(f"Errore avvio conversione: {e}")
+        
+        return BIMUploadResponse(
+            model=bim_model,
+            metadata=metadata,
+            parsing_status=parsing_status,
+            conversion_triggered=conversion_triggered
+        )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[BIM] Errore durante upload modello BIM: {e}")
+        logger.error(f"[BIM] Errore durante upload modello BIM: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante il caricamento del modello BIM"
@@ -152,7 +227,7 @@ async def get_bim_models(
         }
         
     except Exception as e:
-        print(f"[BIM] Errore durante listaggio modelli BIM: {e}")
+        logger.error(f"[BIM] Errore durante listaggio modelli BIM: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante il recupero dei modelli BIM"
@@ -189,10 +264,169 @@ async def get_bim_model(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[BIM] Errore durante recupero modello BIM: {e}")
+        logger.error(f"[BIM] Errore durante recupero modello BIM: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante il recupero del modello BIM"
+        )
+
+@router.get("/{model_id}/versions", response_model=BIMModelVersionListResponse)
+async def get_bim_model_versions(
+    model_id: int,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(require_permission_in_tenant("read_bim_models")),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
+    """
+    Ottiene le versioni di un modello BIM del tenant corrente.
+    Richiede permesso 'read_bim_models' nel tenant attivo.
+    """
+    try:
+        from sqlmodel import func
+        
+        # Verifica che il modello esista e appartenga al tenant
+        model_query = select(BIMModel).where(
+            BIMModel.id == model_id,
+            BIMModel.tenant_id == tenant_id
+        )
+        model = safe_exec(session, model_query).first()
+        
+        if not model:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Modello BIM non trovato"
+            )
+        
+        # Query versioni filtrate per tenant
+        base_query = select(BIMModelVersion).where(
+            BIMModelVersion.bim_model_id == model_id,
+            BIMModelVersion.tenant_id == tenant_id
+        )
+        
+        # Query per contare totale
+        total_query = select(func.count(BIMModelVersion.id)).where(
+            BIMModelVersion.bim_model_id == model_id,
+            BIMModelVersion.tenant_id == tenant_id
+        )
+        total = safe_exec(session, total_query).first()
+        
+        # Query per lista con paginazione
+        query = (
+            base_query
+            .order_by(BIMModelVersion.version_number.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        
+        versions = safe_exec(session, query).all()
+        
+        return {
+            "items": versions,
+            "total": total,
+            "page": skip // limit + 1,
+            "size": limit,
+            "pages": (total + limit - 1) // limit
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[BIM] Errore durante recupero versioni BIM: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante il recupero delle versioni BIM"
+        )
+
+@router.get("/{model_id}/metadata", response_model=BIMMetadataResponse)
+async def get_bim_model_metadata(
+    model_id: int,
+    current_user: User = Depends(require_permission_in_tenant("read_bim_models")),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
+    """
+    Ottiene i metadati di un modello BIM del tenant corrente.
+    Richiede permesso 'read_bim_models' nel tenant attivo.
+    """
+    try:
+        # Query filtrata per tenant e ID
+        query = select(BIMModel).where(
+            BIMModel.id == model_id,
+            BIMModel.tenant_id == tenant_id
+        )
+        
+        model = safe_exec(session, query).first()
+        
+        if not model:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Modello BIM non trovato"
+            )
+        
+        # Se il modello non ha metadati, prova a parsare
+        if not model.has_metadata:
+            try:
+                metadata_result = await bim_parser.parse_bim_file(model)
+                
+                if metadata_result.get("parsing_success"):
+                    # Aggiorna modello con metadati estratti
+                    for key, value in metadata_result.items():
+                        if hasattr(model, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
+                            setattr(model, key, value)
+                    
+                    session.commit()
+                    session.refresh(model)
+                    
+                    return BIMMetadataResponse(
+                        model_id=model.id,
+                        **{k: v for k, v in metadata_result.items() if k not in ["extracted_at", "parsing_success", "parsing_message"]},
+                        extracted_at=metadata_result.get("extracted_at", datetime.now(timezone.utc)),
+                        parsing_success=True,
+                        parsing_message=metadata_result.get("parsing_message", "Parsing completato")
+                    )
+                else:
+                    return BIMMetadataResponse(
+                        model_id=model.id,
+                        extracted_at=datetime.now(timezone.utc),
+                        parsing_success=False,
+                        parsing_message=metadata_result.get("parsing_message", "Parsing fallito")
+                    )
+            except Exception as e:
+                logger.error(f"Errore parsing metadati: {e}")
+                return BIMMetadataResponse(
+                    model_id=model.id,
+                    extracted_at=datetime.now(timezone.utc),
+                    parsing_success=False,
+                    parsing_message=f"Errore parsing: {str(e)}"
+                )
+        
+        # Restituisce metadati esistenti
+        return BIMMetadataResponse(
+            model_id=model.id,
+            total_area=model.total_area,
+            total_volume=model.total_volume,
+            floor_count=model.floor_count,
+            room_count=model.room_count,
+            building_height=model.building_height,
+            project_author=model.project_author,
+            project_organization=model.project_organization,
+            project_phase=model.project_phase,
+            coordinate_system=model.coordinate_system,
+            units=model.units,
+            extracted_at=model.updated_at,
+            parsing_success=True,
+            parsing_message="Metadati già estratti"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[BIM] Errore durante recupero metadati BIM: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante il recupero dei metadati BIM"
         )
 
 @router.get("/{model_id}/download")

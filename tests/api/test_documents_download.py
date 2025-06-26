@@ -5,11 +5,11 @@ from unittest.mock import patch, MagicMock
 import io
 import traceback
 
-from app.services.minio_service import MinioService
+from app.services.minio_service import MinIOService
 from app.models.document import Document
 from app.core.config import settings
 from app.models.user import User
-from app.core.auth import get_current_user
+from app.core.deps import get_current_user
 
 @pytest.fixture
 def mock_current_user():

@@ -20,13 +20,13 @@ from app.db.session import get_session
 from app.models.bim_model import BIMModel, BIMFormat, BIMSoftware, BIMLevelOfDetail, BIMConversionStatus
 from app.schemas.bim import BIMConversionRequest, BIMConversionResponse
 from sqlmodel import Session, select
-from app.services.minio_service import MinioService
+from app.services.minio_service import MinIOService
 
 class BIMConversionTester:
     """Classe per testare il sistema di conversione BIM asincrona."""
     
     def __init__(self):
-        self.minio_service = MinioService()
+        self.minio_service = MinIOService()
         self.test_user_id = 1
         self.test_house_id = 1
         self.test_models = []

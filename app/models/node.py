@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.room import Room
     from app.models.bim_model import BIMModel
     from app.models.audio_log import AudioLog
+    from app.models.physical_activator import PhysicalActivator
 
 class NodeArea(SQLModel, table=True):
     """Modello per le aree specifiche associate ai nodi."""
@@ -119,6 +120,7 @@ class Node(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     audio_logs: List["AudioLog"] = Relationship(back_populates="node")
+    physical_activators: List["PhysicalActivator"] = Relationship(back_populates="linked_node")
 
     # TODO: Aggiungere migrazione Alembic per il campo tenant_id
     # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione

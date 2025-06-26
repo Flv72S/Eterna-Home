@@ -4,8 +4,7 @@ from sqlmodel import Session, select
 from typing import List
 import io
 
-from app.utils.security import get_current_user
-from app.database import get_session
+from app.core.deps import get_current_user, get_session
 from app.models.user import User
 from app.models.document import Document
 from app.core.storage.minio import get_minio_client

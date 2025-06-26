@@ -48,6 +48,8 @@ except ImportError:
     def validate_bim_model(*args, **kwargs):
         return None
 
+from app.services.minio_service import MinIOService
+
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -198,10 +200,7 @@ def convert_with_validation(self, model_id: int, conversion_type: str = "auto") 
 async def cleanup_conversion_files(self, model_id: int) -> Dict[str, Any]:
     """Pulisce i file temporanei di conversione per un modello."""
     try:
-        from app.services.minio_service import MinioService
         import os
-        
-        minio_service = MinioService()
         
         # Ottieni modello dal database
         db = next(get_db())
@@ -222,6 +221,7 @@ async def cleanup_conversion_files(self, model_id: int) -> Dict[str, Any]:
         
         # Elimina file da MinIO
         deleted_count = 0
+        minio_service = MinIOService()
         for file_url in files_to_cleanup:
             try:
                 bucket_name, file_path = file_url.split("/", 1)

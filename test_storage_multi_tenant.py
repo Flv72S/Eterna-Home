@@ -16,7 +16,7 @@ import io
 from app.models.user import User
 from app.models.document import Document
 from app.models.user_tenant_role import UserTenantRole
-from app.core.storage import (
+from app.core.storage_utils import (
     get_tenant_storage_path,
     get_tenant_folder_path,
     sanitize_filename,

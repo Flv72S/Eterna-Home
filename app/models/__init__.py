@@ -16,6 +16,15 @@ from .ai_interaction import (
     AIInteractionResponse, 
     AIInteractionList
 )
+from .physical_activator import (
+    PhysicalActivator,
+    ActivatorType,
+    PhysicalActivatorCreate,
+    PhysicalActivatorUpdate,
+    PhysicalActivatorResponse,
+    ActivatorActivationRequest,
+    ActivatorActivationResponse
+)
 
 __all__ = [
     'User',
@@ -41,5 +50,12 @@ __all__ = [
     'AIAssistantInteraction',
     'AIInteractionCreate',
     'AIInteractionResponse',
-    'AIInteractionList'
+    'AIInteractionList',
+    'PhysicalActivator',
+    'ActivatorType',
+    'PhysicalActivatorCreate',
+    'PhysicalActivatorUpdate',
+    'PhysicalActivatorResponse',
+    'ActivatorActivationRequest',
+    'ActivatorActivationResponse'
 ] 

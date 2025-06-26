@@ -14,7 +14,7 @@ from app.routers import (
     auth, users, roles, house as house_router, node as node_router, 
     document as document_router, documents as documents_router, 
     bim as bim_router, node_areas, main_areas, area_reports, 
-    voice, local_interface, secure_area, ai_assistant
+    voice, local_interface, secure_area, ai_assistant, activator
 )
 from app.core.redis import redis_client
 from app.core.limiter import limiter
@@ -116,6 +116,7 @@ app.include_router(voice.router, tags=["Voice Commands"])
 app.include_router(local_interface.router, tags=["Local Interface"])
 app.include_router(secure_area.router)
 app.include_router(ai_assistant.router, prefix="/api/v1", tags=["AI Assistant"])
+app.include_router(activator.router, prefix="/api/v1", tags=["Physical Activators"])
 
 @app.get("/")
 async def root():

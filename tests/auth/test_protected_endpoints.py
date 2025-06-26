@@ -8,7 +8,7 @@ from app.main import app
 from app.core.redis import redis_client
 from app.models.user import User
 from app.core.security import create_access_token
-from app.core.auth import create_access_token as new_create_access_token
+from app.core.security import create_access_token as new_create_access_token
 from app.core.deps import get_current_user
 from app.models.enums import UserRole
 

@@ -9,22 +9,28 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 import uuid
 import io
+import hashlib
+import os
+from datetime import datetime, timezone
 
 from app.core.deps import (
     get_current_user, 
     get_current_tenant,
-    require_permission_in_tenant,
-    require_tenant_access
+    get_session
 )
+from app.core.auth.rbac import require_permission_in_tenant
 from app.models.user import User
-from app.models.document import Document, DocumentCreate, DocumentUpdate, DocumentResponse
-from app.services.minio_service import minio_service
-from app.db.session import get_session
+from app.models.document import Document
+from app.models.document_version import DocumentVersion
+from app.schemas.document import (
+    DocumentCreate, DocumentUpdate, DocumentRead
+)
+from app.services.minio_service import get_minio_service
 from app.db.utils import safe_exec
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
-@router.post("/upload", response_model=DocumentResponse)
+@router.post("/upload", response_model=DocumentRead)
 async def upload_document(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -63,7 +69,7 @@ async def upload_document(
         session.commit()
         session.refresh(document)
         
-        return DocumentResponse.from_orm(document)
+        return DocumentRead.from_orm(document)
         
     except Exception as e:
         # Log dell'errore
@@ -73,7 +79,7 @@ async def upload_document(
             detail="Errore durante il caricamento del documento"
         )
 
-@router.get("/", response_model=List[DocumentResponse])
+@router.get("/", response_model=List[DocumentRead])
 async def list_documents(
     skip: int = 0,
     limit: int = 100,
@@ -100,7 +106,7 @@ async def list_documents(
         # Esegui query
         documents = safe_exec(session, query).all()
         
-        return [DocumentResponse.from_orm(doc) for doc in documents]
+        return [DocumentRead.from_orm(doc) for doc in documents]
         
     except Exception as e:
         print(f"[DOCUMENT] Errore durante listaggio documenti: {e}")
@@ -109,7 +115,7 @@ async def list_documents(
             detail="Errore durante il recupero dei documenti"
         )
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get("/{document_id}", response_model=DocumentRead)
 async def get_document(
     document_id: int,
     current_user: User = Depends(require_permission_in_tenant("read_documents")),
@@ -135,7 +141,7 @@ async def get_document(
                 detail="Documento non trovato"
             )
         
-        return DocumentResponse.from_orm(document)
+        return DocumentRead.from_orm(document)
         
     except HTTPException:
         raise
@@ -203,7 +209,7 @@ async def download_document(
             detail="Errore durante il download del documento"
         )
 
-@router.put("/{document_id}", response_model=DocumentResponse)
+@router.put("/{document_id}", response_model=DocumentRead)
 async def update_document(
     document_id: int,
     document_update: DocumentUpdate,
@@ -239,7 +245,7 @@ async def update_document(
         session.commit()
         session.refresh(document)
         
-        return DocumentResponse.from_orm(document)
+        return DocumentRead.from_orm(document)
         
     except HTTPException:
         raise

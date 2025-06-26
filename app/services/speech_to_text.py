@@ -29,7 +29,7 @@ except ImportError:
     logging.warning("Azure Speech Services non disponibile. Installa: pip install azure-cognitiveservices-speech")
 
 from app.core.config import settings
-from app.services.minio_service import MinioService
+from app.services.minio_service import MinIOService
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class SpeechToTextService:
     """Servizio per trascrizione audio con supporto multipli provider."""
     
     def __init__(self):
-        self.minio_service = MinioService()
+        self.minio_service = MinIOService()
         self.google_client = None
         self.azure_config = None
         

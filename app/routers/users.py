@@ -7,13 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select
 from typing import List, Optional
 import uuid
+from datetime import datetime, timezone
 
 from app.core.deps import (
     get_current_user, 
     get_current_tenant,
-    require_permission_in_tenant,
     get_session
 )
+from app.core.auth.rbac import require_permission_in_tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.enums import UserRole

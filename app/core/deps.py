@@ -11,6 +11,10 @@ from app.db.utils import safe_exec
 from app.models.user import User
 from app.utils.security import get_cached_user, cache_user
 
+# Note: Le funzioni RBAC multi-tenant sono disponibili in app.core.auth.rbac
+# Per evitare import circolari, importarle direttamente nei router:
+# from app.core.auth.rbac import require_permission_in_tenant, require_role_in_tenant, etc.
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def get_db():

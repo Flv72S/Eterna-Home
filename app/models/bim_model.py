@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING, Dict, Any
 import uuid
 from sqlmodel import Field, SQLModel, Relationship
 from pydantic import ConfigDict
@@ -47,6 +47,68 @@ class BIMConversionStatus(str, Enum):
     VALIDATION_FAILED = "validation_failed"
     CLEANED = "cleaned"
 
+class BIMModelVersion(SQLModel, table=True):
+    """Modello per il versionamento dei modelli BIM."""
+    __tablename__ = "bim_model_versions"
+    
+    model_config = ConfigDict(
+        from_attributes=True,
+        validate_by_name=True,
+        str_strip_whitespace=True
+    )
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    version_number: int = Field(index=True, description="Numero di versione")
+    change_description: Optional[str] = Field(default=None, description="Descrizione delle modifiche")
+    change_type: str = Field(default="update", description="Tipo di modifica (major, minor, patch)")
+    
+    # File info della versione
+    file_url: str = Field(description="URL del file in storage")
+    file_size: int = Field(description="Dimensione del file in bytes")
+    checksum: str = Field(description="Checksum SHA-256 del file")
+    
+    # Metadati della versione
+    total_area: Optional[float] = Field(default=None, description="Superficie totale in m²")
+    total_volume: Optional[float] = Field(default=None, description="Volume totale in m³")
+    floor_count: Optional[int] = Field(default=None, description="Numero di piani")
+    room_count: Optional[int] = Field(default=None, description="Numero di stanze")
+    building_height: Optional[float] = Field(default=None, description="Altezza edificio in metri")
+    
+    # Campo tenant_id per multi-tenancy
+    tenant_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        index=True,
+        description="ID del tenant per isolamento logico multi-tenant"
+    )
+    
+    # Foreign keys
+    bim_model_id: int = Field(foreign_key="bim_models.id", index=True)
+    created_by_id: int = Field(foreign_key="users.id", index=True)
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relazioni
+    bim_model: "BIMModel" = Relationship(back_populates="model_versions")
+    created_by: "User" = Relationship(back_populates="bim_model_versions")
+    
+    @property
+    def version_display(self) -> str:
+        """Restituisce la versione in formato leggibile."""
+        return f"v{self.version_number}"
+    
+    @property
+    def has_metadata(self) -> bool:
+        """Verifica se la versione ha metadati estratti."""
+        return any([
+            self.total_area is not None,
+            self.total_volume is not None,
+            self.floor_count is not None,
+            self.room_count is not None,
+            self.building_height is not None
+        ])
+
 class BIMModel(SQLModel, table=True):
     """Modello per la gestione dei modelli BIM."""
     __tablename__ = "bim_models"
@@ -77,6 +139,18 @@ class BIMModel(SQLModel, table=True):
         description="ID del tenant per isolamento logico multi-tenant"
     )
     
+    # Metadati BIM estratti dal parsing
+    total_area: Optional[float] = Field(default=None, description="Superficie totale in m²")
+    total_volume: Optional[float] = Field(default=None, description="Volume totale in m³")
+    floor_count: Optional[int] = Field(default=None, description="Numero di piani")
+    room_count: Optional[int] = Field(default=None, description="Numero di stanze")
+    building_height: Optional[float] = Field(default=None, description="Altezza edificio in metri")
+    project_author: Optional[str] = Field(default=None, description="Autore del progetto")
+    project_organization: Optional[str] = Field(default=None, description="Organizzazione del progetto")
+    project_phase: Optional[str] = Field(default=None, description="Fase del progetto")
+    coordinate_system: Optional[str] = Field(default=None, description="Sistema di coordinate")
+    units: Optional[str] = Field(default=None, description="Unità di misura")
+    
     # Conversione asincrona
     conversion_status: BIMConversionStatus = Field(default=BIMConversionStatus.PENDING, description="Stato di conversione")
     conversion_message: Optional[str] = Field(default=None, description="Messaggio di stato conversione")
@@ -103,6 +177,10 @@ class BIMModel(SQLModel, table=True):
         back_populates="bim_model",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    model_versions: List["BIMModelVersion"] = Relationship(
+        back_populates="bim_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     
     # Proprietà helper
     @property
@@ -126,7 +204,48 @@ class BIMModel(SQLModel, table=True):
         if self.conversion_started_at and self.conversion_completed_at:
             return (self.conversion_completed_at - self.conversion_started_at).total_seconds()
         return None
+    
+    @property
+    def has_metadata(self) -> bool:
+        """Verifica se il modello ha metadati estratti."""
+        return any([
+            self.total_area is not None,
+            self.total_volume is not None,
+            self.floor_count is not None,
+            self.room_count is not None,
+            self.building_height is not None
+        ])
+    
+    @property
+    def metadata_summary(self) -> Dict[str, Any]:
+        """Restituisce un riassunto dei metadati BIM."""
+        return {
+            "total_area": self.total_area,
+            "total_volume": self.total_volume,
+            "floor_count": self.floor_count,
+            "room_count": self.room_count,
+            "building_height": self.building_height,
+            "project_author": self.project_author,
+            "project_organization": self.project_organization,
+            "project_phase": self.project_phase,
+            "coordinate_system": self.coordinate_system,
+            "units": self.units
+        }
+    
+    @property
+    def current_version_number(self) -> int:
+        """Restituisce il numero di versione corrente."""
+        if self.model_versions:
+            return max(v.version_number for v in self.model_versions)
+        return 1
+    
+    @property
+    def latest_version(self) -> Optional["BIMModelVersion"]:
+        """Restituisce l'ultima versione del modello."""
+        if self.model_versions:
+            return max(self.model_versions, key=lambda v: v.version_number)
+        return None
 
-    # TODO: Aggiungere migrazione Alembic per il campo tenant_id
+    # TODO: Aggiungere migrazione Alembic per i nuovi campi metadati
     # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
     # TODO: Aggiungere filtri multi-tenant nelle query CRUD 

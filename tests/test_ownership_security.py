@@ -10,7 +10,7 @@ from app.main import app
 from app.models.user import User
 from app.models.house import House
 from app.models.document import Document
-from app.core.auth import create_access_token
+from app.core.security import create_access_token
 from app.utils.password import get_password_hash
 import uuid
 from app.models.enums import UserRole

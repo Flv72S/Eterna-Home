@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from app.models.bim_model import BIMFormat, BIMSoftware, BIMLevelOfDetail, BIMConversionStatus
@@ -49,17 +49,76 @@ class BIMModelResponse(BIMModelBase):
     conversion_completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    
+    # Metadati BIM
+    total_area: Optional[float] = None
+    total_volume: Optional[float] = None
+    floor_count: Optional[int] = None
+    room_count: Optional[int] = None
+    building_height: Optional[float] = None
+    project_author: Optional[str] = None
+    project_organization: Optional[str] = None
+    project_phase: Optional[str] = None
+    coordinate_system: Optional[str] = None
+    units: Optional[str] = None
+    
+    # Proprietà calcolate
+    has_metadata: bool = Field(description="Indica se il modello ha metadati estratti")
+    current_version_number: int = Field(description="Numero di versione corrente")
 
 class BIMModelListResponse(BaseModel):
-    """Schema per la lista di BIMModel."""
-    model_config = ConfigDict(from_attributes=True)
-    
+    """Schema per la risposta della lista di BIMModel."""
     items: List[BIMModelResponse]
     total: int
     page: int
     size: int
     pages: int
 
+# Schemi per versionamento BIM
+class BIMModelVersionBase(BaseModel):
+    """Schema base per BIMModelVersion."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    version_number: int = Field(..., description="Numero di versione")
+    change_description: Optional[str] = Field(None, description="Descrizione delle modifiche")
+    change_type: str = Field(default="update", description="Tipo di modifica")
+    file_url: str = Field(..., description="URL del file in storage")
+    file_size: int = Field(..., description="Dimensione del file in bytes")
+    checksum: str = Field(..., description="Checksum SHA-256 del file")
+
+class BIMModelVersionCreate(BIMModelVersionBase):
+    """Schema per la creazione di una BIMModelVersion."""
+    bim_model_id: int = Field(..., description="ID del modello BIM")
+    created_by_id: int = Field(..., description="ID dell'utente che ha creato la versione")
+
+class BIMModelVersionResponse(BIMModelVersionBase):
+    """Schema per la risposta di una BIMModelVersion."""
+    id: int
+    bim_model_id: int
+    created_by_id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    # Metadati della versione
+    total_area: Optional[float] = None
+    total_volume: Optional[float] = None
+    floor_count: Optional[int] = None
+    room_count: Optional[int] = None
+    building_height: Optional[float] = None
+    
+    # Proprietà calcolate
+    version_display: str = Field(description="Versione in formato leggibile")
+    has_metadata: bool = Field(description="Indica se la versione ha metadati")
+
+class BIMModelVersionListResponse(BaseModel):
+    """Schema per la risposta della lista di versioni BIM."""
+    items: List[BIMModelVersionResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+# Schemi per conversione BIM
 class BIMConversionRequest(BaseModel):
     """Schema per richiesta di conversione BIM."""
     model_id: int = Field(..., description="ID del modello da convertire")
@@ -96,7 +155,32 @@ class BIMBatchConversionResponse(BaseModel):
     """Schema per risposta di conversione batch BIM."""
     success: bool
     total_models: int
-    successful: int
-    failed: int
+    started_models: int
+    failed_models: int
     task_ids: List[str]
-    message: str 
+    message: str
+
+# Schemi per parsing e metadati BIM
+class BIMMetadataResponse(BaseModel):
+    """Schema per metadati BIM estratti."""
+    model_id: int
+    total_area: Optional[float] = None
+    total_volume: Optional[float] = None
+    floor_count: Optional[int] = None
+    room_count: Optional[int] = None
+    building_height: Optional[float] = None
+    project_author: Optional[str] = None
+    project_organization: Optional[str] = None
+    project_phase: Optional[str] = None
+    coordinate_system: Optional[str] = None
+    units: Optional[str] = None
+    extracted_at: datetime
+    parsing_success: bool
+    parsing_message: Optional[str] = None
+
+class BIMUploadResponse(BaseModel):
+    """Schema per risposta upload BIM con parsing automatico."""
+    model: BIMModelResponse
+    metadata: Optional[BIMMetadataResponse] = None
+    parsing_status: str = Field(description="Stato del parsing (pending, completed, failed)")
+    conversion_triggered: bool = Field(description="Indica se è stata avviata la conversione asincrona") 
