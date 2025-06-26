@@ -5,6 +5,7 @@ import uuid
 from pydantic import ConfigDict, EmailStr
 from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
 from app.models.enums import UserRole as UserRoleEnum
+from app.models.permission import UserPermission
 
 if TYPE_CHECKING:
     from app.models.house import House
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from app.models.bim_model import BIMModel
     from app.models.bim_model import BIMModelVersion
     from app.models.audio_log import AudioLog
+    from app.models.permission import Permission
 else:
     from app.models.role import Role
     from app.models.user_role import UserRole
@@ -140,6 +142,12 @@ class User(SQLModel, table=True):
     tenant_roles: List["UserTenantRole"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # Relazione many-to-many con Permission
+    permissions: List["Permission"] = Relationship(
+        back_populates="users",
+        link_model=UserPermission
     )
 
     def __repr__(self) -> str:

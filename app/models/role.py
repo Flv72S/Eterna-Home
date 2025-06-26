@@ -6,9 +6,11 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from pydantic import ConfigDict
 from app.models.user_role import UserRole
+from app.models.permission import RolePermission
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.permission import Permission
 
 
 class RoleBase(SQLModel):
@@ -34,6 +36,12 @@ class Role(RoleBase, table=True):
             "primaryjoin": "Role.id == UserRole.role_id",
             "secondaryjoin": "UserRole.user_id == User.id"
         }
+    )
+    
+    # Relazione many-to-many con Permission
+    permissions: List["Permission"] = Relationship(
+        back_populates="roles",
+        link_model=RolePermission
     )
     
     model_config = ConfigDict(
