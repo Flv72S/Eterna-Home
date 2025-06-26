@@ -6,6 +6,7 @@ Gestisce l'isolamento completo delle interazioni per tenant.
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from sqlmodel import SQLModel, Field
+from pydantic import ConfigDict
 import uuid
 
 class AIAssistantInteraction(SQLModel, table=True):
@@ -15,6 +16,13 @@ class AIAssistantInteraction(SQLModel, table=True):
     """
     
     __tablename__ = "ai_interactions"
+    
+    model_config = ConfigDict(
+        from_attributes=True,
+        validate_by_name=True,
+        str_strip_whitespace=True,
+        arbitrary_types_allowed=True
+    )
     
     id: int = Field(default=None, primary_key=True)
     tenant_id: uuid.UUID = Field(index=True, nullable=False)
@@ -26,7 +34,7 @@ class AIAssistantInteraction(SQLModel, table=True):
     response: str = Field(nullable=False)
     
     # Metadati opzionali
-    context: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type": "JSON"})
+    context: Optional[str] = Field(default=None, description="Contesto JSON dell'interazione")
     session_id: Optional[str] = Field(default=None, index=True)
     interaction_type: Optional[str] = Field(default="chat")  # chat, query, analysis, etc.
     
@@ -42,9 +50,6 @@ class AIAssistantInteraction(SQLModel, table=True):
     # Audit fields
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    class Config:
-        arbitrary_types_allowed = True
 
 class AIInteractionCreate(SQLModel):
     """Schema per la creazione di una nuova interazione AI."""
