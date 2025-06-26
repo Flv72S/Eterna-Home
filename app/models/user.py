@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.user_role import UserRole
     from app.models.user_tenant_role import UserTenantRole
     from app.models.bim_model import BIMModel
+    from app.models.bim_model import BIMModelVersion
     from app.models.audio_log import AudioLog
 else:
     from app.models.role import Role
@@ -115,6 +116,10 @@ class User(SQLModel, table=True):
     bim_models: List["BIMModel"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    bim_model_versions: List["BIMModelVersion"] = Relationship(
+        back_populates="created_by",
+        sa_relationship_kwargs={"foreign_keys": "BIMModelVersion.created_by_id", "cascade": "all, delete-orphan"}
     )
     audio_logs: List["AudioLog"] = Relationship(
         back_populates="user",

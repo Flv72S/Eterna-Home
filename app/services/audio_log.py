@@ -3,6 +3,9 @@ from sqlmodel import Session, select, func
 from app.models import AudioLog, User, House, Node
 from app.schemas.audio_log import AudioLogCreate, AudioLogUpdate, VoiceCommandRequest
 from app.models.user import User
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 class AudioLogService:
     """Servizio per la gestione degli AudioLog."""
@@ -31,11 +34,23 @@ class AudioLogService:
             if not node:
                 raise ValueError("Nodo non trovato nella casa specificata")
         
-        # Crea il nuovo AudioLog
+        # Crea il nuovo AudioLog con tenant_id dell'utente
         audio_log = AudioLog(**audio_log_data.dict())
+        audio_log.tenant_id = current_user.tenant_id  # Assegna tenant_id automaticamente
+        
         db.add(audio_log)
         db.commit()
         db.refresh(audio_log)
+        
+        # Logging strutturato dell'interazione
+        logger.info("AudioLog created",
+                    audiolog_id=audio_log.id,
+                    user_id=current_user.id,
+                    tenant_id=str(current_user.tenant_id),
+                    status=audio_log.processing_status,
+                    has_transcription=bool(audio_log.transcribed_text),
+                    has_response=bool(audio_log.response_text))
+        
         return audio_log
     
     @staticmethod
@@ -45,7 +60,8 @@ class AudioLogService:
             select(AudioLog)
             .where(
                 AudioLog.id == log_id,
-                AudioLog.user_id == current_user.id
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
             )
         ).first()
         return audio_log
@@ -63,7 +79,10 @@ class AudioLogService:
         """Ottiene la lista degli AudioLog con filtri e paginazione."""
         query = (
             select(AudioLog)
-            .where(AudioLog.user_id == current_user.id)
+            .where(
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
+            )
         )
         
         # Applica filtri
@@ -77,7 +96,10 @@ class AudioLogService:
         # Conta totale
         total_query = (
             select(func.count(AudioLog.id))
-            .where(AudioLog.user_id == current_user.id)
+            .where(
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
+            )
         )
         if house_id:
             total_query = total_query.where(AudioLog.house_id == house_id)
@@ -168,7 +190,10 @@ class AudioLogService:
         # Conta totale comandi
         total_commands = db.exec(
             select(func.count(AudioLog.id))
-            .where(AudioLog.user_id == current_user.id)
+            .where(
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
+            )
         ).first()
         
         # Conta per stato
@@ -177,7 +202,10 @@ class AudioLogService:
                 AudioLog.processing_status,
                 func.count(AudioLog.id).label("count")
             )
-            .where(AudioLog.user_id == current_user.id)
+            .where(
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
+            )
             .group_by(AudioLog.processing_status)
         ).all()
         
@@ -187,7 +215,10 @@ class AudioLogService:
                 AudioLog.house_id,
                 func.count(AudioLog.id).label("count")
             )
-            .where(AudioLog.user_id == current_user.id)
+            .where(
+                AudioLog.user_id == current_user.id,
+                AudioLog.tenant_id == current_user.tenant_id  # Filtro multi-tenant
+            )
             .group_by(AudioLog.house_id)
         ).all()
         

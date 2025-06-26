@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlmodel import Session
 from app.core.deps import get_current_user, get_db
+from app.core.auth.rbac import require_permission_in_tenant
 from app.core.logging import get_logger
 from app.models import User
 from app.schemas.audio_log import (
@@ -22,6 +23,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 @router.post("/commands", response_model=VoiceCommandResponse, status_code=status.HTTP_202_ACCEPTED)
+@require_permission_in_tenant("submit_voice")
 async def create_voice_command(
     command_data: VoiceCommandRequest,
     current_user: User = Depends(get_current_user),
@@ -100,6 +102,7 @@ async def create_voice_command(
         )
 
 @router.post("/commands/audio", response_model=VoiceCommandResponse, status_code=status.HTTP_202_ACCEPTED)
+@require_permission_in_tenant("submit_voice")
 async def create_voice_command_audio(
     audio_file: UploadFile = File(...),
     node_id: Optional[int] = Form(None),
@@ -242,6 +245,7 @@ async def create_voice_command_audio(
         )
 
 @router.get("/logs", response_model=AudioLogListResponse)
+@require_permission_in_tenant("read_voice_logs")
 async def get_audio_logs(
     house_id: Optional[int] = None,
     node_id: Optional[int] = None,
@@ -268,6 +272,7 @@ async def get_audio_logs(
         )
 
 @router.get("/logs/{log_id}", response_model=AudioLogResponse)
+@require_permission_in_tenant("read_voice_logs")
 async def get_audio_log(
     log_id: int,
     current_user: User = Depends(get_current_user),
@@ -285,6 +290,7 @@ async def get_audio_log(
     return audio_log
 
 @router.put("/logs/{log_id}", response_model=AudioLogResponse)
+@require_permission_in_tenant("manage_voice_logs")
 async def update_audio_log(
     log_id: int,
     audio_log_data: AudioLogUpdate,
@@ -303,6 +309,7 @@ async def update_audio_log(
     return audio_log
 
 @router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permission_in_tenant("manage_voice_logs")
 async def delete_audio_log(
     log_id: int,
     current_user: User = Depends(get_current_user),
@@ -335,6 +342,7 @@ async def get_processing_statuses():
     }
 
 @router.get("/stats")
+@require_permission_in_tenant("read_voice_logs")
 async def get_voice_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

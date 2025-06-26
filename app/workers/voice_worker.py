@@ -10,12 +10,13 @@ from typing import Dict, Any
 from sqlmodel import Session, create_engine
 from app.core.queue import RabbitMQManager
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.models.audio_log import AudioLog
 from app.services.audio_log import AudioLogService
 from app.services.speech_to_text import SpeechToTextService
 from app.services.local_interface import LocalInterfaceService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class VoiceWorker:
     """Worker per elaborazione comandi vocali."""
@@ -70,10 +71,14 @@ class VoiceWorker:
     async def process_message(self, message_data: Dict[str, Any]):
         """Elabora un messaggio dalla coda."""
         try:
-            logger.info(f"Elaborazione messaggio: {message_data}")
-            
             audiolog_id = message_data.get("audiolog_id")
             command_type = message_data.get("command_type", "text")
+            user_id = message_data.get("user_id")
+            
+            logger.info("Voice command processing started",
+                        audiolog_id=audiolog_id,
+                        user_id=user_id,
+                        command_type=command_type)
             
             if not audiolog_id:
                 logger.error("Messaggio senza audiolog_id")
@@ -84,8 +89,16 @@ class VoiceWorker:
                 # Recupera AudioLog
                 audio_log = db.get(AudioLog, audiolog_id)
                 if not audio_log:
-                    logger.error(f"AudioLog {audiolog_id} non trovato")
+                    logger.error("AudioLog not found", audiolog_id=audiolog_id)
                     return
+                
+                # Logging strutturato dell'interazione
+                logger.info("Voice command processing",
+                            audiolog_id=audio_log.id,
+                            user_id=audio_log.user_id,
+                            tenant_id=str(audio_log.tenant_id),
+                            status=audio_log.processing_status,
+                            input_text=audio_log.transcribed_text)
                 
                 # Aggiorna stato a "transcribing"
                 await self.update_processing_status(db, audio_log, "transcribing")
@@ -99,11 +112,16 @@ class VoiceWorker:
                         await self.process_text_message(db, audio_log, message_data)
                         
                 except Exception as e:
-                    logger.error(f"Errore elaborazione messaggio: {e}")
+                    logger.error("Voice command processing failed",
+                                audiolog_id=audio_log.id,
+                                user_id=audio_log.user_id,
+                                tenant_id=str(audio_log.tenant_id),
+                                error=str(e),
+                                exc_info=True)
                     await self.update_processing_status(db, audio_log, "failed")
                     
         except Exception as e:
-            logger.error(f"Errore processamento messaggio: {e}")
+            logger.error("Message processing error", error=str(e), exc_info=True)
     
     async def process_audio_message(self, db: Session, audio_log: AudioLog, message_data: Dict[str, Any]):
         """Elabora un messaggio audio con servizio di trascrizione reale."""
@@ -140,13 +158,19 @@ class VoiceWorker:
     async def process_text_message(self, db: Session, audio_log: AudioLog, message_data: Dict[str, Any]):
         """Elabora un comando testuale con interfacce locali."""
         try:
-            logger.info(f"Elaborazione testo per AudioLog {audio_log.id}")
+            logger.info("Text message processing started",
+                        audiolog_id=audio_log.id,
+                        user_id=audio_log.user_id,
+                        tenant_id=str(audio_log.tenant_id))
             
             # Ottieni il testo da elaborare
             text_to_process = audio_log.transcribed_text or message_data.get("transcribed_text", "")
             
             if not text_to_process:
-                logger.warning(f"Nessun testo da elaborare per AudioLog {audio_log.id}")
+                logger.warning("No text to process",
+                              audiolog_id=audio_log.id,
+                              user_id=audio_log.user_id,
+                              tenant_id=str(audio_log.tenant_id))
                 await self.update_processing_status(db, audio_log, "failed")
                 return
             
@@ -154,11 +178,18 @@ class VoiceWorker:
             if settings.ENABLE_LOCAL_INTERFACES:
                 result = await self.local_interface.process_voice_command(audio_log.id)
                 response_text = result.get("response", "Elaborazione completata")
-                logger.info(f"Interfaccia locale elaborata: {len(result.get('actions_executed', []))} azioni")
+                logger.info("Local interface processing completed",
+                            audiolog_id=audio_log.id,
+                            user_id=audio_log.user_id,
+                            tenant_id=str(audio_log.tenant_id),
+                            actions_count=len(result.get('actions_executed', [])))
             else:
                 # Fallback a elaborazione simulata
                 response_text = await self.simulate_nlp_processing(text_to_process, message_data)
-                logger.info("Usata elaborazione simulata")
+                logger.info("Simulated NLP processing completed",
+                            audiolog_id=audio_log.id,
+                            user_id=audio_log.user_id,
+                            tenant_id=str(audio_log.tenant_id))
             
             # Aggiorna AudioLog con risposta
             audio_log.response_text = response_text
@@ -167,10 +198,22 @@ class VoiceWorker:
             # Aggiorna stato a "completed"
             await self.update_processing_status(db, audio_log, "completed")
             
-            logger.info(f"Elaborazione completata per AudioLog {audio_log.id}")
+            # Logging finale dell'interazione AI
+            logger.info("Voice command interaction completed",
+                        audiolog_id=audio_log.id,
+                        user_id=audio_log.user_id,
+                        tenant_id=str(audio_log.tenant_id),
+                        input_text=text_to_process,
+                        response_text=response_text,
+                        status="completed")
             
         except Exception as e:
-            logger.error(f"Errore elaborazione testo: {e}")
+            logger.error("Text message processing failed",
+                        audiolog_id=audio_log.id,
+                        user_id=audio_log.user_id,
+                        tenant_id=str(audio_log.tenant_id),
+                        error=str(e),
+                        exc_info=True)
             raise
     
     async def update_processing_status(self, db: Session, audio_log: AudioLog, status: str):
