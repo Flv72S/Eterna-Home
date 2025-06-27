@@ -116,6 +116,7 @@ class MinIOService:
         file: UploadFile,
         folder: str,
         tenant_id: uuid.UUID,
+        house_id: Optional[int] = None,
         custom_filename: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -125,6 +126,7 @@ class MinIOService:
             file: File da caricare
             folder: Cartella di destinazione (documents, bim, media, etc.)
             tenant_id: ID del tenant per isolamento
+            house_id: ID della casa per isolamento multi-house (opzionale)
             custom_filename: Nome file personalizzato (opzionale)
         
         Returns:
@@ -156,8 +158,11 @@ class MinIOService:
             else:
                 filename = generate_unique_filename(file.filename, tenant_id)
             
-            # Genera path multi-tenant
-            storage_path = get_tenant_storage_path(folder, tenant_id, filename)
+            # Genera path multi-tenant e multi-house
+            if house_id:
+                storage_path = f"tenants/{tenant_id}/houses/{house_id}/{folder}/{filename}"
+            else:
+                storage_path = get_tenant_storage_path(folder, tenant_id, filename)
             
             # Leggi il contenuto del file
             file_content = file.file.read()
@@ -165,7 +170,10 @@ class MinIOService:
             
             # In modalità sviluppo/test, simula il caricamento
             if not self.client:
-                logger.info(f"[DEV] Simulazione upload file: {storage_path} (tenant: {tenant_id}, size: {file_size})")
+                logger.info(
+                    f"[DEV] Simulazione upload file: {storage_path} "
+                    f"(tenant: {tenant_id}, house: {house_id}, size: {file_size})"
+                )
                 return {
                     "filename": filename,
                     "original_filename": file.filename,
@@ -173,6 +181,7 @@ class MinIOService:
                     "file_size": file_size,
                     "content_type": file.content_type,
                     "tenant_id": str(tenant_id),
+                    "house_id": house_id,
                     "folder": folder,
                     "uploaded_at": datetime.now(timezone.utc).isoformat(),
                     "dev_mode": True
@@ -188,7 +197,10 @@ class MinIOService:
             )
             
             # Log dell'operazione
-            logger.info(f"File caricato: {storage_path} (tenant: {tenant_id}, size: {file_size})")
+            logger.info(
+                f"File caricato: {storage_path} "
+                f"(tenant: {tenant_id}, house: {house_id}, size: {file_size})"
+            )
             
             return {
                 "filename": filename,
@@ -197,102 +209,121 @@ class MinIOService:
                 "file_size": file_size,
                 "content_type": file.content_type,
                 "tenant_id": str(tenant_id),
+                "house_id": house_id,
                 "folder": folder,
                 "uploaded_at": datetime.now(timezone.utc).isoformat()
             }
             
-        except S3Error as e:
-            logger.error(f"Errore MinIO durante upload: {e}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Errore durante upload file: {e}",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "house_id": house_id,
+                    "folder": folder,
+                    "filename": file.filename
+                }
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Errore durante il caricamento del file"
-            )
-        except Exception as e:
-            logger.error(f"Errore generico durante upload: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Errore interno del server"
             )
     
     def download_file(
         self,
         storage_path: str,
-        tenant_id: uuid.UUID
+        tenant_id: uuid.UUID,
+        house_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Scarica un file verificando l'accesso del tenant.
+        Scarica un file dal path del tenant specificato.
         
         Args:
-            storage_path: Path del file su MinIO
-            tenant_id: ID del tenant per verifica accesso
+            storage_path: Path del file nello storage
+            tenant_id: ID del tenant per isolamento
+            house_id: ID della casa per isolamento multi-house (opzionale)
         
         Returns:
-            Dict con metadati e contenuto del file
+            Dict con contenuto e metadati del file
         
         Raises:
-            HTTPException: Se l'accesso è negato o il file non esiste
+            HTTPException: Se il file non esiste o il download fallisce
         """
         try:
             # Verifica che il path appartenga al tenant
             if not is_valid_tenant_path(storage_path, tenant_id):
-                logger.warning(f"Tentativo di accesso non autorizzato: {storage_path} (tenant: {tenant_id})")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Accesso negato al file"
+                    detail="Accesso non autorizzato al file"
                 )
             
             # In modalità sviluppo/test, simula il download
             if not self.client:
-                logger.info(f"[DEV] Simulazione download file: {storage_path} (tenant: {tenant_id})")
+                logger.info(
+                    f"[DEV] Simulazione download file: {storage_path} "
+                    f"(tenant: {tenant_id}, house: {house_id})"
+                )
                 return {
-                    "content": b"test content (dev mode)",
-                    "filename": storage_path.split('/')[-1],
+                    "filename": os.path.basename(storage_path),
+                    "content": b"Simulated file content for development",
                     "content_type": "application/octet-stream",
-                    "file_size": 20,
-                    "last_modified": datetime.now(timezone.utc),
+                    "file_size": 1024,
                     "tenant_id": str(tenant_id),
+                    "house_id": house_id,
                     "dev_mode": True
                 }
             
-            # Ottieni il file da MinIO (solo in produzione)
-            response = self.client.get_object(self.bucket_name, storage_path)
-            
-            # Leggi il contenuto
-            file_content = response.read()
-            
-            # Ottieni metadati
-            stat = self.client.stat_object(self.bucket_name, storage_path)
-            
-            # Log dell'operazione
-            logger.info(f"File scaricato: {storage_path} (tenant: {tenant_id})")
-            
-            return {
-                "content": file_content,
-                "filename": storage_path.split('/')[-1],
-                "content_type": stat.content_type,
-                "file_size": stat.size,
-                "last_modified": stat.last_modified,
-                "tenant_id": str(tenant_id)
-            }
-            
-        except S3Error as e:
-            if e.code == 'NoSuchKey':
-                logger.warning(f"File non trovato: {storage_path}")
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="File non trovato"
+            # Scarica da MinIO (solo in produzione)
+            try:
+                response = self.client.get_object(self.bucket_name, storage_path)
+                file_content = response.read()
+                file_size = len(file_content)
+                
+                # Determina content type
+                content_type = response.headers.get('content-type', 'application/octet-stream')
+                
+                logger.info(
+                    f"File scaricato: {storage_path} "
+                    f"(tenant: {tenant_id}, house: {house_id}, size: {file_size})"
                 )
-            else:
-                logger.error(f"Errore MinIO durante download: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Errore durante il download del file"
-                )
+                
+                return {
+                    "filename": os.path.basename(storage_path),
+                    "content": file_content,
+                    "content_type": content_type,
+                    "file_size": file_size,
+                    "tenant_id": str(tenant_id),
+                    "house_id": house_id
+                }
+                
+            except S3Error as e:
+                if e.code == 'NoSuchKey':
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="File non trovato"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Errore durante il download del file"
+                    )
+            
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Errore generico durante download: {e}")
+            logger.error(
+                f"Errore durante download file: {e}",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "house_id": house_id,
+                    "storage_path": storage_path
+                }
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Errore interno del server"
+                detail="Errore durante il download del file"
             )
     
     def delete_file(

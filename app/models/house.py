@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.room import Room
     from app.models.bim_model import BIMModel
     from app.models.audio_log import AudioLog
+    from app.models.user_house import UserHouse
 
 class House(SQLModel, table=True):
     """Modello per la gestione delle case."""
@@ -40,7 +41,25 @@ class House(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    owner: "User" = Relationship(back_populates="houses", sa_relationship_kwargs={"lazy": "select"})
+    # Proprietario della casa (relazione one-to-many)
+    owner: "User" = Relationship(back_populates="owned_houses", sa_relationship_kwargs={"lazy": "select"})
+    
+    # Utenti associati alla casa (relazione many-to-many tramite UserHouse)
+    users: List["User"] = Relationship(
+        back_populates="houses",
+        link_model=UserHouse,
+        sa_relationship_kwargs={
+            "primaryjoin": "House.id == UserHouse.house_id",
+            "secondaryjoin": "UserHouse.user_id == User.id"
+        }
+    )
+    
+    # Relazione con UserHouse per accesso diretto alle associazioni
+    user_houses: List["UserHouse"] = Relationship(
+        back_populates="house",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    
     nodes: List["Node"] = Relationship(back_populates="house")
     node_areas: List["NodeArea"] = Relationship(back_populates="house")
     main_areas: List["MainArea"] = Relationship(back_populates="house")

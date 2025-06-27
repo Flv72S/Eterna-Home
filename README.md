@@ -1,6 +1,55 @@
 # Eterna-Home
 
-## 🎉 **AGGIORNAMENTO GIUGNO 2025 - SISTEMA RUOLI AVANZATO COMPLETATO ✅**
+## 🎉 **AGGIORNAMENTO GIUGNO 2025 - SISTEMA MULTI-HOUSE FRONTEND COMPLETATO ✅**
+
+### **🏘️ Frontend Multi-House Implementation - COMPLETATO ✅**
+
+#### **Sistema di Selezione Casa Attiva Implementato:**
+- **HouseContext**: Stato globale e persistenza della casa attiva in localStorage
+- **HouseSelector**: Dropdown moderno per selezione e cambio casa con gestione edge cases
+- **useActiveHouse**: Hook personalizzato per accesso rapido alla casa attiva
+- **Interceptor Axios**: Header `X-House-ID` automatico su tutte le chiamate API
+- **Dashboard Integrata**: Visualizzazione dati filtrati per casa attiva
+- **AuthGuard Esteso**: Protezione route con verifica casa attiva
+- **HouseRequiredGuard**: Componente specifico per protezione pagine
+
+#### **Funzionalità Implementate:**
+- ✅ **Selezione Casa**: Dropdown con lista case disponibili per utente
+- ✅ **Persistenza**: Casa attiva salvata in localStorage e recuperata all'avvio
+- ✅ **API Integration**: Tutte le chiamate API includono automaticamente `X-House-ID`
+- ✅ **UI/UX**: Design responsive con stati loading/error/success
+- ✅ **Sicurezza**: Validazione accesso casa e gestione errori 403/404
+- ✅ **Edge Cases**: Gestione utenti senza case, case non più disponibili
+- ✅ **Build Ottimizzata**: Compilazione TypeScript senza errori
+
+#### **Componenti Creati:**
+```
+frontend/eterna-home/src/
+├── context/
+│   └── HouseContext.tsx          # Context React per casa attiva
+├── components/
+│   ├── HouseSelector.tsx         # Dropdown selezione casa
+│   └── HouseRequiredGuard.tsx    # Protezione pagine
+├── hooks/
+│   └── useActiveHouse.ts         # Hook personalizzato
+├── pages/
+│   └── DashboardPage.tsx         # Dashboard integrata
+└── services/
+    └── apiService.ts             # Interceptor con house_id
+```
+
+#### **Flusso di Utilizzo:**
+1. **Login Utente** → JWT con tenant_id
+2. **Caricamento Case** → API `/api/v1/user-house/my-houses/summary`
+3. **Selezione Casa** → Aggiornamento context + localStorage
+4. **API Calls** → Header `X-House-ID` automatico
+5. **Navigazione** → Protezione route con verifica casa attiva
+
+#### **Test e Build:**
+- ✅ **Build Success**: Compilazione TypeScript senza errori
+- ✅ **Type Safety**: Tutti i tipi correttamente definiti
+- ✅ **Component Testing**: Test unitari per HouseContext e HouseSelector
+- ✅ **Integration Ready**: Pronto per integrazione con backend
 
 ### **📊 Riepilogo Test CRUD Ruoli - COMPLETATO ✅**
 
@@ -201,232 +250,36 @@ PUT    /api/v1/roles/{id}       # Aggiorna ruolo (superuser)
 DELETE /api/v1/roles/{id}       # Elimina ruolo (superuser)
 ```
 
-#### **Correzioni Tecniche Applicate:**
-- ✅ **Router duplicato**: Rimosso conflitto tra router di autenticazione
-- ✅ **Rate limiting**: Aumentato a 1000/minuto per test
-- ✅ **Logica utente disabilitato**: Corretta per restituire 403
-- ✅ **Messaggi in italiano**: Allineati tutti i messaggi di errore
-- ✅ **Logout idempotente**: Sempre 200 anche con token non valido
-- ✅ **Token fisso per test**: Configurato per stabilità dei test
-
 ---
 
-## Aggiornamenti Giugno 2025 - Sistema di Sicurezza Ownership Completato ✅
+## 🚀 **Prossimi Step - Sistema Multi-House Backend**
 
-### **🎯 NUOVO: Test di Ownership Security - COMPLETATI ✅**
+### **Micro-step 5.1: Integrazione Backend-Frontend**
+- Test end-to-end del sistema multi-house
+- Verifica API calls con header `X-House-ID`
+- Test isolamento dati tra case diverse
 
-#### **Funzionalità Implementate e Testate:**
-1. **Controllo Proprietà Risorse (Houses)** ✅
-   - ✅ Accesso alle proprie case (`/api/v1/houses/`)
-   - ✅ Blocco accesso a case altrui (403 Forbidden)
-   - ✅ Modifica delle proprie case
-   - ✅ Blocco modifica case altrui
-   - ✅ Eliminazione delle proprie case
-   - ✅ Blocco eliminazione case altrui
+### **Micro-step 5.2: Pagine Protette**
+- Implementazione pagine documenti filtrate per casa
+- Pagine BIM con isolamento per casa
+- Dashboard dettagliata per casa attiva
 
-2. **Controllo Proprietà Risorse (Documents)** ✅
-   - ✅ Accesso ai propri documenti (`/api/v1/documents/`)
-   - ✅ Blocco accesso a documenti altrui (403 Forbidden)
-   - ✅ Modifica dei propri documenti
-   - ✅ Blocco modifica documenti altrui
-   - ✅ Eliminazione dei propri documenti
-   - ✅ Blocco eliminazione documenti altrui
-   - ✅ Upload file sui propri documenti (`/api/v1/documents/{id}/upload`)
-   - ✅ Blocco upload su documenti altrui
-   - ✅ Download dei propri documenti (`/api/v1/documents/download/{id}`)
-   - ✅ Blocco download documenti altrui
-
-3. **Gestione Errori e Sicurezza** ✅
-   - ✅ Gestione risorse inesistenti (404 Not Found)
-   - ✅ Autenticazione richiesta (401 Unauthorized)
-   - ✅ Validazione token (401 per token invalidi)
-   - ✅ Controlli ownership middleware
-
-#### **Correzioni Tecniche Applicate:**
-- ✅ **Schema Document**: Allineato `owner_id` vs `author_id` in `app/schemas/document.py`
-- ✅ **Endpoint Upload**: Creato endpoint mancante `/api/v1/documents/{id}/upload`
-- ✅ **Router House**: Montato correttamente su `/api/v1/houses` in `app/main.py`
-- ✅ **Router Document**: Montato correttamente in `app/main.py`
-- ✅ **Mock MinIO**: Implementato mock per test senza dipendenze da MinIO reale
-- ✅ **Username Unici**: Evitati conflitti di duplicazione con UUID per test
-- ✅ **Path API**: Allineati tutti i path da `/houses/` a `/api/v1/houses/`
-
-#### **Test Ownership Superati (25/25):**
-```
-✅ test_user_can_access_own_houses
-✅ test_user_cannot_access_other_user_houses
-✅ test_user_can_modify_own_houses
-✅ test_user_cannot_modify_other_user_houses
-✅ test_user_can_delete_own_houses
-✅ test_user_cannot_delete_other_user_houses
-✅ test_user_can_access_own_documents
-✅ test_user_cannot_see_other_user_documents_in_list
-✅ test_user_can_modify_own_document
-✅ test_user_cannot_modify_other_user_document
-✅ test_user_can_delete_own_document
-✅ test_user_cannot_delete_other_user_document
-✅ test_user_can_create_document_for_own_house
-✅ test_user_cannot_create_document_for_other_house
-✅ test_user_can_download_own_document
-✅ test_user_cannot_download_other_user_document
-✅ test_user_can_upload_to_own_document
-✅ test_user_cannot_upload_to_other_user_document
-✅ test_access_nonexistent_house
-✅ test_access_nonexistent_document
-✅ test_unauthorized_access_without_token
-✅ test_unauthorized_access_with_invalid_token
-```
-
-#### **Struttura Aggiornata:**
-```
-app/
-  ├── routers/
-  │   ├── auth.py          # Router autenticazione
-  │   ├── house.py         # Router case con ownership
-  │   └── document.py      # Router documenti con ownership
-  ├── schemas/
-  │   ├── document.py      # Schema con owner_id corretto
-  │   └── user.py          # Schema utente
-  ├── services/
-  │   └── minio_service.py # Service storage con mock
-  └── main.py              # App con router montati
-```
-
-#### **Come Eseguire i Test di Ownership:**
-```bash
-# Tutti i test di ownership
-python -m pytest tests/test_ownership_security.py -v
-
-# Test specifico
-python -m pytest tests/test_ownership_security.py::test_user_can_access_own_houses -v
-```
+### **Micro-step 5.3: Performance e Ottimizzazione**
+- Caching delle case disponibili
+- Lazy loading dei dati per casa
+- Ottimizzazione query database
 
 ---
-
-## Aggiornamenti Giugno 2025 - Autenticazione e Sicurezza Completate ✅
-
-### **Decisione Strategica: Alembic Solo per Produzione**
-- **Approccio attuale**: Database locale senza Alembic per sviluppo e test
-- **Motivazione**: Evitare conflitti di configurazione e semplificare il workflow di sviluppo
-- **Transizione futura**: Alembic verrà implementato solo prima del passaggio in produzione
-- **Vantaggi**: Test più veloci, setup semplificato, focus su funzionalità
-
-### **Test di Autenticazione e Sicurezza - COMPLETATI ✅**
-
-#### **Funzionalità Testate e Funzionanti:**
-1. **Login (successo, credenziali errate, utente disabilitato)** ✅
-   - Login con credenziali valide
-   - Login con credenziali errate (401)
-   - Login con utente disabilitato (403)
-
-2. **Rate limiting login** ✅
-   - Configurato a 1000/minuto per ambiente di sviluppo
-   - Test di saturazione del limite funzionanti
-
-3. **Generazione e refresh token** ✅
-   - Generazione token JWT
-   - Validazione token
-   - Gestione scadenza
-
-4. **Logout (token valido, token non valido, gestione sessione)** ✅
-   - Logout idempotente (sempre 200)
-   - Gestione token non validi
-   - Messaggi in italiano
-
-5. **Struttura e scadenza JWT** ✅
-   - Token con scadenza configurata
-   - Validazione struttura token
-
-6. **Accesso a endpoint protetti** ✅
-   - Protezione endpoint con autenticazione
-   - Gestione utenti autenticati/non autenticati
-
-#### **Correzioni Applicate:**
-- ✅ **Router duplicato**: Rimosso conflitto tra router di autenticazione
-- ✅ **Rate limiting**: Aumentato a 1000/minuto per test
-- ✅ **Logica utente disabilitato**: Corretta per restituire 403
-- ✅ **Messaggi in italiano**: Allineati tutti i messaggi di errore
-- ✅ **Logout idempotente**: Sempre 200 anche con token non valido
-- ✅ **Token fisso per test**: Configurato per stabilità dei test
-
-#### **Test Superati (8/9):**
-- `test_login_valid_credentials` ✅
-- `test_login_invalid_credentials` ✅
-- `test_login_disabled_account` ✅
-- `test_logout_invalidate_token` ✅
-- `test_login_disabled_user` ✅
-- `test_login_rate_limiting` ✅
-- `test_login_invalid_credentials` ✅
-- `test_logout_session_management` ✅
-- `test_login_token_generation` ✅
-
-### **Struttura Aggiornata:**
-```
-app/
-  ├── routers/
-  │   └── auth.py          # Router autenticazione principale
-  ├── services/
-  │   └── user.py          # Service utente con logica autenticazione
-  ├── utils/
-  │   └── security.py      # Funzioni di sicurezza
-  ├── core/
-  │   ├── config.py        # Configurazione
-  │   ├── limiter.py       # Rate limiting
-  │   └── redis.py         # Configurazione Redis
-  └── main.py              # App principale
-```
-
-### **Come Eseguire i Test di Autenticazione:**
-```bash
-# Tutti i test di autenticazione
-python -m pytest tests/api/test_auth_api.py -v
-
-# Test specifico
-python -m pytest tests/api/test_auth_api.py::test_login_valid_credentials -v
-```
-
----
-
-## 🚀 **Prossimi Step - Sistema Ruoli Avanzato**
-
-### **Micro-step 4.1.3: Assegnazione e Revoca Ruoli** (Prossimo)
-- Endpoint per assegnare/revocare ruoli agli utenti
-- Controlli di autorizzazione
-- Audit trail delle assegnazioni
-
-### **Micro-step 4.1.4: Protezione Endpoint Business**
-- Integrazione sistema ruoli con endpoint esistenti
-- Controlli granulari per tipo di operazione
-- Test di sicurezza per ogni ruolo
-
-### **Micro-step 4.1.5: Endpoint Permessi Utente**
-- Endpoint per ottenere permessi dell'utente corrente
-- Cache dei permessi per performance
-- Validazione permessi in tempo reale
-
-### **Ruoli Pianificati:**
-1. **Proprietario (Owner)** – Gestione propri immobili e documenti
-2. **Tecnico (Technician)** – Accesso a risorse assegnate (manutenzioni)
-3. **Impresa Costruttrice (Builder)** – Gestione documenti tecnici edifici in costruzione
-4. **Amministratore di Condominio (CondoAdmin)** – Accesso documenti comuni edifici
-5. **Admin** – Accesso a tutte le risorse per gestione e supporto
-6. **SuperAdmin** – Privilegi totali sul sistema
-
----
-
-## Aggiornamenti Precedenti (giugno 2025)
-
-- **Migrazioni Alembic risolte**: Reinizializzazione e correzione della directory `alembic` in `backend/`, fix dei tipi colonna (`AutoString` → `sa.String`), applicazione corretta delle migrazioni e verifica tabelle (`user`, `booking`, `house`, `room`).
-- **Test autenticazione aggiornati**: I test ora rispettano i nuovi vincoli di schema, includono debug delle risposte e non richiedono più la creazione manuale della tabella `user`.
 
 ## Contribuire
 
-Se desideri contribuire al progetto, segui le istruzioni nel file `CONTRIBUTING.md`.  
- # #   S I S T E M A   L O G G I N G   M U L T I - T E N A N T   E   I N T E R A Z I O N I   A I   C O M P L E T A T O  
- # # #   I m p l e m e n t a z i o n e   C o m p l e t a t a   -   2 3 / 0 6 / 2 0 2 5  
- -   S i s t e m a   d i   l o g g i n g   m u l t i - t e n a n t   c o n   f o r m a t o   J S O N   s t r u t t u r a t o  
- -   I n t e r a z i o n i   A I   i s o l a t e   p e r   t e n a n t   c o n   c o n t r o l l i   R B A C  
- -   A u d i t   t r a i l   c o m p l e t o   c o n   l o g g i n g   v i o l a z i o n i   s i c u r e z z a  
- -   1 1   t e s t   c o m p l e t i   e   p a s s a t i   p e r   l o g g i n g   e   i n t e r a z i o n i   A I  
- -   S i s t e m a   p r o n t o   p e r   p r o d u z i o n e   c o n   i s o l a m e n t o   c o m p l e t o  
- 
+Se desideri contribuire al progetto, segui le istruzioni nel file `CONTRIBUTING.md`.
+
+## SISTEMA LOGGING MULTI-TENANT E INTERAZIONI AI COMPLETATO
+
+### Implementazione Completata - 23/06/2025
+- Sistema di logging multi-tenant con formato JSON strutturato
+- Interazioni AI isolate per tenant con controlli RBAC
+- Audit trail completo con logging violazioni sicurezza
+- 11 test completi e passati per logging e interazioni AI
+- Sistema pronto per produzione con isolamento completo

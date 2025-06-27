@@ -204,7 +204,7 @@ class BIMModel(SQLModel, table=True):
         if self.conversion_started_at and self.conversion_completed_at:
             return (self.conversion_completed_at - self.conversion_started_at).total_seconds()
         return None
-    
+
     @property
     def has_metadata(self) -> bool:
         """Verifica se il modello ha metadati estratti."""

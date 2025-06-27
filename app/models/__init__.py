@@ -2,6 +2,7 @@ from .user import User
 from .document import Document
 from .document_version import DocumentVersion
 from .house import House
+from .user_house import UserHouse
 from .node import Node, NodeArea, MainArea
 from .room import Room
 from .booking import Booking
@@ -31,6 +32,7 @@ __all__ = [
     'Document',
     'DocumentVersion',
     'House',
+    'UserHouse',
     'Node',
     'NodeArea',
     'MainArea',

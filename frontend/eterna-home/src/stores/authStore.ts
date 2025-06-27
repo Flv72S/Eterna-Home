@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { jwtDecode } from 'jwt-decode';
-import { AuthState, User, JWTToken, LoginCredentials } from '../types/auth';
+import { AuthState, LoginCredentials } from '../types/auth';
 import { authService } from '../services/authService';
 
 interface AuthStore extends AuthState {
@@ -14,55 +13,49 @@ interface AuthStore extends AuthState {
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
+      // Initial state
       token: null,
       user: null,
       isAuthenticated: false,
       currentTenantId: null,
       availableTenants: [],
-      isLoading: false,
       error: null,
+      isLoading: false,
 
+      // Actions
       login: async (credentials: LoginCredentials) => {
         set({ isLoading: true, error: null });
-        
         try {
           const response = await authService.login(credentials);
-          const token = response.access_token;
-          const decodedToken = jwtDecode<JWTToken>(token);
-          
           set({
-            token,
+            token: response.access_token,
             user: response.user,
             isAuthenticated: true,
-            currentTenantId: decodedToken.tenant_id,
-            availableTenants: [decodedToken.tenant_id],
+            currentTenantId: response.user.tenant_id,
+            availableTenants: [response.user.tenant_id],
             isLoading: false,
             error: null,
           });
-          
-          authService.setAuthToken(token);
-          
         } catch (error: any) {
           set({
             isLoading: false,
-            error: error.response?.data?.detail || 'Errore durante il login',
-            isAuthenticated: false,
+            error: error.message || 'Errore durante il login',
           });
           throw error;
         }
       },
 
       logout: () => {
-        authService.clearAuthToken();
+        authService.logout();
         set({
           token: null,
           user: null,
           isAuthenticated: false,
           currentTenantId: null,
           availableTenants: [],
-          isLoading: false,
           error: null,
+          isLoading: false,
         });
       },
 
@@ -75,29 +68,22 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       initializeAuth: () => {
-        const { token } = get();
-        
+        const token = localStorage.getItem('eterna-home-auth');
         if (token) {
           try {
-            const decodedToken = jwtDecode<JWTToken>(token);
-            const currentTime = Date.now() / 1000;
-            
-            if (decodedToken.exp < currentTime) {
-              get().logout();
-              return;
+            const authData = JSON.parse(token);
+            if (authData.state?.token && authData.state?.user) {
+              set({
+                token: authData.state.token,
+                user: authData.state.user,
+                isAuthenticated: true,
+                currentTenantId: authData.state.user.tenant_id,
+                availableTenants: [authData.state.user.tenant_id],
+              });
             }
-            
-            authService.setAuthToken(token);
-            
-            set({
-              isAuthenticated: true,
-              currentTenantId: decodedToken.tenant_id,
-              availableTenants: [decodedToken.tenant_id],
-            });
-            
           } catch (error) {
-            console.error('Error decoding token:', error);
-            get().logout();
+            console.error('Error parsing auth data:', error);
+            localStorage.removeItem('eterna-home-auth');
           }
         }
       },
@@ -107,6 +93,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         token: state.token,
         user: state.user,
+        isAuthenticated: state.isAuthenticated,
         currentTenantId: state.currentTenantId,
         availableTenants: state.availableTenants,
       }),

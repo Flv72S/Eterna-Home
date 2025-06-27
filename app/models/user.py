@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.role import Role
     from app.models.user_role import UserRole
     from app.models.user_tenant_role import UserTenantRole
+    from app.models.user_house import UserHouse
     from app.models.bim_model import BIMModel
     from app.models.bim_model import BIMModelVersion
     from app.models.audio_log import AudioLog
@@ -23,6 +24,7 @@ else:
     from app.models.role import Role
     from app.models.user_role import UserRole
     from app.models.user_tenant_role import UserTenantRole
+    from app.models.user_house import UserHouse
 
 class User(SQLModel, table=True):
     """
@@ -99,10 +101,28 @@ class User(SQLModel, table=True):
     )
 
     # Relazioni
-    houses: List["House"] = Relationship(
+    # Relazione one-to-many con House (case di cui è proprietario)
+    owned_houses: List["House"] = Relationship(
         back_populates="owner",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    
+    # Relazione many-to-many con House tramite UserHouse
+    houses: List["House"] = Relationship(
+        back_populates="users",
+        link_model=UserHouse,
+        sa_relationship_kwargs={
+            "primaryjoin": "User.id == UserHouse.user_id",
+            "secondaryjoin": "UserHouse.house_id == House.id"
+        }
+    )
+    
+    # Relazione con UserHouse per accesso diretto alle associazioni
+    user_houses: List["UserHouse"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    
     documents: List["Document"] = Relationship(
         back_populates="owner",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
@@ -235,13 +255,81 @@ class User(SQLModel, table=True):
         return []
     
     def get_tenant_ids(self) -> List[uuid.UUID]:
-        """Restituisce la lista degli ID dei tenant a cui l'utente è associato."""
+        """Restituisce la lista degli ID dei tenant a cui l'utente appartiene."""
+        tenant_ids = [self.tenant_id]  # Tenant principale
+        
+        # Aggiungi tenant dai ruoli multi-tenant
         if hasattr(self, 'tenant_roles') and self.tenant_roles:
-            return list(set([
-                tr.tenant_id for tr in self.tenant_roles 
-                if tr.is_active
-            ]))
-        return [self.tenant_id] if self.tenant_id else []
+            for tenant_role in self.tenant_roles:
+                if tenant_role.tenant_id not in tenant_ids:
+                    tenant_ids.append(tenant_role.tenant_id)
+        
+        return list(set(tenant_ids))
+    
+    def get_house_ids(self, tenant_id: Optional[uuid.UUID] = None) -> List[int]:
+        """
+        Restituisce la lista degli ID delle case a cui l'utente ha accesso.
+        Se tenant_id è specificato, filtra solo per quel tenant.
+        """
+        house_ids = []
+        
+        # Case di cui è proprietario
+        if hasattr(self, 'owned_houses') and self.owned_houses:
+            for house in self.owned_houses:
+                if tenant_id is None or house.tenant_id == tenant_id:
+                    house_ids.append(house.id)
+        
+        # Case associate tramite UserHouse
+        if hasattr(self, 'user_houses') and self.user_houses:
+            for user_house in self.user_houses:
+                if user_house.is_active and (tenant_id is None or user_house.tenant_id == tenant_id):
+                    house_ids.append(user_house.house_id)
+        
+        return list(set(house_ids))
+    
+    def has_house_access(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> bool:
+        """
+        Verifica se l'utente ha accesso a una casa specifica.
+        Se tenant_id è specificato, verifica anche l'appartenenza al tenant.
+        """
+        # Verifica se è proprietario della casa
+        if hasattr(self, 'owned_houses') and self.owned_houses:
+            for house in self.owned_houses:
+                if house.id == house_id:
+                    if tenant_id is None or house.tenant_id == tenant_id:
+                        return True
+        
+        # Verifica se è associato tramite UserHouse
+        if hasattr(self, 'user_houses') and self.user_houses:
+            for user_house in self.user_houses:
+                if (user_house.house_id == house_id and 
+                    user_house.is_active and 
+                    (tenant_id is None or user_house.tenant_id == tenant_id)):
+                    return True
+        
+        return False
+    
+    def get_role_in_house(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> Optional[str]:
+        """
+        Restituisce il ruolo dell'utente in una casa specifica.
+        Se tenant_id è specificato, verifica anche l'appartenenza al tenant.
+        """
+        # Verifica se è proprietario della casa
+        if hasattr(self, 'owned_houses') and self.owned_houses:
+            for house in self.owned_houses:
+                if house.id == house_id:
+                    if tenant_id is None or house.tenant_id == tenant_id:
+                        return "owner"
+        
+        # Verifica ruolo tramite UserHouse
+        if hasattr(self, 'user_houses') and self.user_houses:
+            for user_house in self.user_houses:
+                if (user_house.house_id == house_id and 
+                    user_house.is_active and 
+                    (tenant_id is None or user_house.tenant_id == tenant_id)):
+                    return user_house.role_in_house
+        
+        return None
     
     def can_access_admin_features(self) -> bool:
         """Verifica se l'utente può accedere alle funzionalità amministrative."""

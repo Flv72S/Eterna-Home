@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 from fastapi import Depends, HTTPException, status
 from sqlmodel import Session, select
 import uuid
+from functools import wraps
 
 from app.core.deps import get_current_user, get_current_tenant
 from app.models.user import User
@@ -262,4 +263,80 @@ def get_user_tenants(
 require_role = require_role_in_tenant
 require_roles = require_any_role_in_tenant
 require_permission = require_permission_in_tenant
-require_permissions = require_any_permission_in_tenant 
+require_permissions = require_any_permission_in_tenant
+
+def require_house_access(house_id_param: str = "house_id"):
+    """
+    Decoratore per verificare che l'utente abbia accesso a una casa specifica.
+    
+    Args:
+        house_id_param: Nome del parametro che contiene l'ID della casa
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Estrai house_id dai parametri
+            house_id = kwargs.get(house_id_param)
+            if house_id is None:
+                # Prova a cercare nei parametri posizionali
+                import inspect
+                sig = inspect.signature(func)
+                param_names = list(sig.parameters.keys())
+                try:
+                    house_id_idx = param_names.index(house_id_param)
+                    if house_id_idx < len(args):
+                        house_id = args[house_id_idx]
+                except ValueError:
+                    pass
+            
+            if house_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Parametro {house_id_param} mancante"
+                )
+            
+            # Ottieni utente e tenant corrente
+            current_user = kwargs.get('current_user')
+            tenant_id = kwargs.get('tenant_id')
+            
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Utente non autenticato"
+                )
+            
+            if not tenant_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Tenant ID mancante"
+                )
+            
+            # Verifica accesso alla casa
+            if not current_user.has_house_access(house_id, tenant_id):
+                logger.warning(
+                    "Tentativo di accesso non autorizzato a casa",
+                    extra={
+                        "user_id": current_user.id,
+                        "house_id": house_id,
+                        "tenant_id": tenant_id,
+                        "endpoint": func.__name__
+                    }
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Non hai accesso a questa casa"
+                )
+            
+            logger.info(
+                "Accesso a casa verificato",
+                extra={
+                    "user_id": current_user.id,
+                    "house_id": house_id,
+                    "tenant_id": tenant_id,
+                    "endpoint": func.__name__
+                }
+            )
+            
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator 
