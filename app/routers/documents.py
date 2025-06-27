@@ -8,6 +8,9 @@ from app.core.deps import get_current_user, get_session
 from app.models.user import User
 from app.models.document import Document
 from app.core.storage.minio import get_minio_client
+from app.security.validators import validate_file_upload, sanitize_filename
+from app.services.minio_service import get_minio_service
+from app.services.antivirus_service import get_antivirus_service
 
 router = APIRouter()
 
@@ -21,6 +24,25 @@ async def upload_document_file(
     """
     Carica un file associato a un documento.
     """
+    # Validazione avanzata del file
+    allowed_types = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml"
+    ]
+    max_size = 50 * 1024 * 1024  # 50MB
+    
+    # Sanifica e valida il file
+    safe_filename = sanitize_filename(file.filename)
+    validate_file_upload(file, allowed_types, max_size)
+    
     # Verifica che il documento esista
     document = db.get(Document, document_id)
     if not document:
@@ -109,4 +131,19 @@ async def download_document_file(
         headers={
             "Content-Disposition": f'attachment; filename="{document.title}"'
         }
-    ) 
+    )
+
+@router.get("/antivirus/status")
+async def get_antivirus_status(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verifica lo stato del servizio antivirus.
+    """
+    antivirus_service = get_antivirus_service()
+    status_info = antivirus_service.get_scan_status()
+    
+    return {
+        "antivirus_status": status_info,
+        "message": "Stato servizio antivirus recuperato con successo"
+    } 

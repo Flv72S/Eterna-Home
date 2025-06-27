@@ -16,6 +16,7 @@ from app.schemas.audio_log import (
 from app.services.audio_log import AudioLogService
 from app.core.storage.minio import get_minio_client
 from app.core.queue import get_rabbitmq_manager
+from app.security.validators import validate_file_upload, sanitize_filename, TextValidator
 import uuid
 import os
 
@@ -23,10 +24,9 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 @router.post("/commands", response_model=VoiceCommandResponse, status_code=status.HTTP_202_ACCEPTED)
-@require_permission_in_tenant("submit_voice")
 async def create_voice_command(
     command_data: VoiceCommandRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("submit_voice")),
     db: Session = Depends(get_db)
 ):
     """
@@ -102,12 +102,11 @@ async def create_voice_command(
         )
 
 @router.post("/commands/audio", response_model=VoiceCommandResponse, status_code=status.HTTP_202_ACCEPTED)
-@require_permission_in_tenant("submit_voice")
 async def create_voice_command_audio(
     audio_file: UploadFile = File(...),
     node_id: Optional[int] = Form(None),
     house_id: Optional[int] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("submit_voice")),
     db: Session = Depends(get_db)
 ):
     """
@@ -125,30 +124,19 @@ async def create_voice_command_audio(
                 node_id=node_id,
                 house_id=house_id)
     
-    # Verifica estensione file
-    allowed_extensions = ['.wav', '.mp3', '.m4a', '.aac', '.ogg']
-    file_extension = os.path.splitext(audio_file.filename)[1].lower()
+    # Validazione avanzata del file audio
+    allowed_types = [
+        "audio/mpeg",
+        "audio/wav", 
+        "audio/mp4",
+        "audio/flac",
+        "audio/ogg"
+    ]
+    max_size = 100 * 1024 * 1024  # 100MB per file audio
     
-    if file_extension not in allowed_extensions:
-        logger.warning("Audio file upload rejected - unsupported format",
-                       user_id=current_user.id,
-                       filename=audio_file.filename,
-                       extension=file_extension)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Formato file non supportato. Formati consentiti: {', '.join(allowed_extensions)}"
-        )
-    
-    # Verifica dimensione file (max 50MB)
-    if audio_file.size and audio_file.size > 50 * 1024 * 1024:
-        logger.warning("Audio file upload rejected - file too large",
-                       user_id=current_user.id,
-                       filename=audio_file.filename,
-                       size=audio_file.size)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File troppo grande. Dimensione massima: 50MB"
-        )
+    # Sanifica e valida il file
+    safe_filename = sanitize_filename(audio_file.filename)
+    validate_file_upload(audio_file, allowed_types, max_size)
     
     try:
         # Salva il file audio su MinIO
@@ -160,7 +148,7 @@ async def create_voice_command_audio(
         # await minio_client.ensure_bucket_exists(bucket_name)
         
         # Carica il file
-        file_path = f"{current_user.id}/{file_id}{file_extension}"
+        file_path = f"{current_user.id}/{file_id}{os.path.splitext(safe_filename)[1]}"
         # await minio_client.upload_file(
         #     bucket_name=bucket_name,
         #     file_path=file_path,
@@ -206,9 +194,7 @@ async def create_voice_command_audio(
             "house_id": audio_log.house_id,
             "audio_url": audio_log.audio_url,
             "timestamp": audio_log.timestamp.isoformat(),
-            "command_type": "audio",
-            "file_path": file_path,
-            "bucket_name": bucket_name
+            "command_type": "audio"
         }
         
         # Pubblica messaggio nella coda
@@ -217,12 +203,10 @@ async def create_voice_command_audio(
             await rabbitmq_manager.publish_message(message_data)
             logger.info("Audio file message sent to queue",
                         audiolog_id=audio_log.id,
-                        file_id=file_id,
                         queue="voice_processing")
         except Exception as e:
             logger.error("Failed to send audio file to queue",
                          audiolog_id=audio_log.id,
-                         file_id=file_id,
                          error=str(e),
                          exc_info=True)
             # Non blocchiamo la risposta se la coda non è disponibile
@@ -233,6 +217,8 @@ async def create_voice_command_audio(
             message="File audio ricevuto e inviato in elaborazione"
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Audio file processing failed",
                      user_id=current_user.id,
@@ -241,119 +227,204 @@ async def create_voice_command_audio(
                      exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Errore durante il caricamento del file audio"
+            detail="Errore interno del server"
         )
 
 @router.get("/logs", response_model=AudioLogListResponse)
-@require_permission_in_tenant("read_voice_logs")
 async def get_audio_logs(
     house_id: Optional[int] = None,
     node_id: Optional[int] = None,
     status: Optional[str] = None,
     page: int = 1,
     size: int = 20,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("read_voice_logs")),
     db: Session = Depends(get_db)
 ):
     """
-    Ottiene la lista degli AudioLog dell'utente con filtri e paginazione.
+    Lista i log audio del tenant corrente.
+    Richiede permesso 'read_voice_logs' nel tenant attivo.
     """
-    skip = (page - 1) * size
-    
     try:
-        result = AudioLogService.get_audio_logs(
-            db, current_user, house_id, node_id, status, skip, size
-        )
-        return AudioLogListResponse(**result)
+        # Query base filtrata per tenant
+        query = select(AudioLog).where(AudioLog.tenant_id == current_user.tenant_id)
+        
+        # Filtri opzionali
+        if house_id:
+            query = query.where(AudioLog.house_id == house_id)
+        if node_id:
+            query = query.where(AudioLog.node_id == node_id)
+        if status:
+            query = query.where(AudioLog.processing_status == status)
+        
+        # Paginazione
+        skip = (page - 1) * size
+        query = query.offset(skip).limit(size)
+        
+        # Esegui query
+        audio_logs = safe_exec(db, query).all()
+        
+        return {
+            "items": audio_logs,
+            "page": page,
+            "size": size,
+            "total": len(audio_logs)  # TODO: Aggiungere count totale
+        }
+        
     except Exception as e:
+        logger.error("Errore durante listaggio log audio", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante il recupero dei log audio"
         )
 
 @router.get("/logs/{log_id}", response_model=AudioLogResponse)
-@require_permission_in_tenant("read_voice_logs")
 async def get_audio_log(
     log_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("read_voice_logs")),
     db: Session = Depends(get_db)
 ):
     """
-    Ottiene un AudioLog specifico.
+    Ottiene un log audio specifico del tenant corrente.
+    Richiede permesso 'read_voice_logs' nel tenant attivo.
     """
-    audio_log = AudioLogService.get_audio_log(db, log_id, current_user)
-    if not audio_log:
+    try:
+        audio_log = db.get(AudioLog, log_id)
+        if not audio_log or audio_log.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Log audio non trovato"
+            )
+        
+        return audio_log
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Errore durante recupero log audio", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="AudioLog non trovato"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante il recupero del log audio"
         )
-    return audio_log
 
 @router.put("/logs/{log_id}", response_model=AudioLogResponse)
-@require_permission_in_tenant("manage_voice_logs")
 async def update_audio_log(
     log_id: int,
     audio_log_data: AudioLogUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_voice_logs")),
     db: Session = Depends(get_db)
 ):
     """
-    Aggiorna un AudioLog specifico.
+    Aggiorna un log audio del tenant corrente.
+    Richiede permesso 'manage_voice_logs' nel tenant attivo.
     """
-    audio_log = AudioLogService.update_audio_log(db, log_id, audio_log_data, current_user)
-    if not audio_log:
+    try:
+        audio_log = db.get(AudioLog, log_id)
+        if not audio_log or audio_log.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Log audio non trovato"
+            )
+        
+        # Aggiorna i campi
+        for field, value in audio_log_data.dict(exclude_unset=True).items():
+            setattr(audio_log, field, value)
+        
+        db.add(audio_log)
+        db.commit()
+        db.refresh(audio_log)
+        
+        return audio_log
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Errore durante aggiornamento log audio", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="AudioLog non trovato"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante l'aggiornamento del log audio"
         )
-    return audio_log
 
 @router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
-@require_permission_in_tenant("manage_voice_logs")
 async def delete_audio_log(
     log_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_voice_logs")),
     db: Session = Depends(get_db)
 ):
     """
-    Elimina un AudioLog specifico.
+    Elimina un log audio del tenant corrente.
+    Richiede permesso 'manage_voice_logs' nel tenant attivo.
     """
-    success = AudioLogService.delete_audio_log(db, log_id, current_user)
-    if not success:
+    try:
+        audio_log = db.get(AudioLog, log_id)
+        if not audio_log or audio_log.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Log audio non trovato"
+            )
+        
+        db.delete(audio_log)
+        db.commit()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Errore durante eliminazione log audio", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="AudioLog non trovato"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errore durante l'eliminazione del log audio"
         )
 
 @router.get("/statuses")
 async def get_processing_statuses():
     """
-    Ottiene gli stati di elaborazione disponibili.
+    Restituisce i possibili stati di elaborazione dei comandi vocali.
+    Endpoint pubblico, non richiede autenticazione.
     """
     return {
-        "statuses": AudioLogService.get_processing_statuses(),
-        "descriptions": {
-            "received": "Ricevuto",
-            "transcribing": "In Trascrizione",
-            "analyzing": "In Analisi",
-            "completed": "Completato",
-            "failed": "Fallito"
-        }
+        "statuses": [
+            "received",
+            "processing", 
+            "completed",
+            "failed",
+            "cancelled"
+        ]
     }
 
 @router.get("/stats")
-@require_permission_in_tenant("read_voice_logs")
 async def get_voice_stats(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("read_voice_logs")),
     db: Session = Depends(get_db)
 ):
     """
-    Ottiene statistiche sui comandi vocali dell'utente.
+    Ottiene statistiche sui comandi vocali del tenant corrente.
+    Richiede permesso 'read_voice_logs' nel tenant attivo.
     """
     try:
-        stats = AudioLogService.get_user_voice_stats(db, current_user)
-        return stats
+        from sqlmodel import func
+        
+        # Query per statistiche
+        total_query = select(func.count(AudioLog.id)).where(
+            AudioLog.tenant_id == current_user.tenant_id
+        )
+        total = safe_exec(db, total_query).first()
+        
+        # Statistiche per stato
+        status_stats = {}
+        for status in ["received", "processing", "completed", "failed", "cancelled"]:
+            status_query = select(func.count(AudioLog.id)).where(
+                AudioLog.tenant_id == current_user.tenant_id,
+                AudioLog.processing_status == status
+            )
+            count = safe_exec(db, status_query).first()
+            status_stats[status] = count
+        
+        return {
+            "total_commands": total,
+            "status_breakdown": status_stats
+        }
+        
     except Exception as e:
+        logger.error("Errore durante recupero statistiche voice", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante il recupero delle statistiche"

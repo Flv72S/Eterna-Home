@@ -4,6 +4,7 @@ Integra path dinamici basati su tenant_id per isolamento completo.
 """
 
 import uuid
+import json
 from typing import Optional, List, BinaryIO, Dict, Any
 from fastapi import UploadFile, HTTPException, status
 from minio import Minio
@@ -25,6 +26,8 @@ from app.core.storage_utils import (
     get_allowed_extensions_for_folder,
     validate_folder
 )
+from app.services.antivirus_service import get_antivirus_service
+from app.security.encryption import encryption_service, generate_encrypted_path
 
 # Configurazione logging
 logger = logging.getLogger(__name__)
@@ -69,7 +72,7 @@ class MinIOService:
             )
     
     def _ensure_bucket_exists(self):
-        """Assicura che il bucket esista."""
+        """Assicura che il bucket esista e sia configurato come privato."""
         if not self.client:
             return
             
@@ -77,12 +80,53 @@ class MinIOService:
             if not self.client.bucket_exists(self.bucket_name):
                 self.client.make_bucket(self.bucket_name)
                 logger.info(f"Bucket {self.bucket_name} creato con successo")
+            
+            # Configura il bucket come privato (rimuove accesso pubblico)
+            self._configure_bucket_private()
+            
         except S3Error as e:
-            logger.error(f"Errore nella creazione del bucket: {e}")
+            logger.error(f"Errore nella creazione/configurazione del bucket: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Errore nella configurazione dello storage"
             )
+    
+    def _configure_bucket_private(self):
+        """Configura il bucket come completamente privato."""
+        try:
+            # Rimuove tutte le policy pubbliche
+            try:
+                self.client.delete_bucket_policy(self.bucket_name)
+                logger.info(f"Rimosse policy pubbliche dal bucket {self.bucket_name}")
+            except S3Error:
+                # Il bucket potrebbe non avere policy, ignoriamo l'errore
+                pass
+            
+            # Imposta policy privata esplicita
+            private_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "DenyPublicRead",
+                        "Effect": "Deny",
+                        "Principal": "*",
+                        "Action": "s3:GetObject",
+                        "Resource": f"arn:aws:s3:::{self.bucket_name}/*",
+                        "Condition": {
+                            "StringEquals": {
+                                "aws:PrincipalType": "Anonymous"
+                            }
+                        }
+                    }
+                ]
+            }
+            
+            self.client.set_bucket_policy(self.bucket_name, json.dumps(private_policy))
+            logger.info(f"Bucket {self.bucket_name} configurato come privato")
+            
+        except S3Error as e:
+            logger.warning(f"Non è stato possibile configurare la policy del bucket: {e}")
+            # Non blocchiamo l'operazione se la policy non può essere impostata
     
     def _get_content_type(self, filename: str) -> str:
         """Determina il content type del file basato sull'estensione."""
@@ -111,7 +155,7 @@ class MinIOService:
         
         return object_name
 
-    def upload_file(
+    async def upload_file(
         self,
         file: UploadFile,
         folder: str,
@@ -168,6 +212,48 @@ class MinIOService:
             file_content = file.file.read()
             file_size = len(file_content)
             
+            # Determina se il file deve essere cifrato (file sensibili)
+            sensitive_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ifc', '.rvt', '.dwg']
+            should_encrypt = any(file.filename.lower().endswith(ext) for ext in sensitive_extensions)
+            
+            # Cifra il file se necessario
+            is_encrypted = False
+            if should_encrypt:
+                try:
+                    # Cifra il contenuto
+                    encrypted_content, nonce = encryption_service.encrypt_file(file_content, str(tenant_id))
+                    
+                    # Genera path cifrato
+                    encrypted_filename = generate_encrypted_path(str(tenant_id), file.filename)
+                    
+                    # Aggiorna contenuto e path per il salvataggio
+                    file_content = encrypted_content
+                    file_size = len(encrypted_content)
+                    storage_path = encrypted_filename
+                    is_encrypted = True
+                    
+                    logger.info(f"File cifrato: {file.filename} -> {encrypted_filename}")
+                    
+                except Exception as e:
+                    logger.error(f"Errore durante cifratura file {file.filename}: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Errore durante la cifratura del file"
+                    )
+            
+            # Scansione antivirus (Micro-step 2.3)
+            antivirus_service = get_antivirus_service()
+            is_clean, scan_results = await antivirus_service.scan_file(file, file_content)
+            
+            if not is_clean:
+                logger.warning(f"File rifiutato per motivi di sicurezza: {file.filename}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File rifiutato per motivi di sicurezza. Minacce rilevate: {scan_results.get('threats_found', [])}"
+                )
+            
+            logger.info(f"File scansionato con successo: {file.filename} (scan_method: {scan_results.get('scan_method')})")
+            
             # In modalità sviluppo/test, simula il caricamento
             if not self.client:
                 logger.info(
@@ -184,6 +270,7 @@ class MinIOService:
                     "house_id": house_id,
                     "folder": folder,
                     "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                    "is_encrypted": is_encrypted,
                     "dev_mode": True
                 }
             
@@ -211,7 +298,8 @@ class MinIOService:
                 "tenant_id": str(tenant_id),
                 "house_id": house_id,
                 "folder": folder,
-                "uploaded_at": datetime.now(timezone.utc).isoformat()
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "is_encrypted": is_encrypted
             }
             
         except HTTPException:
@@ -265,13 +353,19 @@ class MinIOService:
                     f"[DEV] Simulazione download file: {storage_path} "
                     f"(tenant: {tenant_id}, house: {house_id})"
                 )
+                
+                # Simula contenuto cifrato se il file è nel path encrypted
+                is_encrypted = encryption_service.is_encrypted_file(storage_path)
+                content = b"Simulated encrypted file content" if is_encrypted else b"Simulated file content for development"
+                
                 return {
                     "filename": os.path.basename(storage_path),
-                    "content": b"Simulated file content for development",
+                    "content": content,
                     "content_type": "application/octet-stream",
                     "file_size": 1024,
                     "tenant_id": str(tenant_id),
                     "house_id": house_id,
+                    "is_encrypted": is_encrypted,
                     "dev_mode": True
                 }
             
@@ -284,9 +378,23 @@ class MinIOService:
                 # Determina content type
                 content_type = response.headers.get('content-type', 'application/octet-stream')
                 
+                # Verifica se il file è cifrato e decifralo se necessario
+                is_encrypted = encryption_service.is_encrypted_file(storage_path)
+                if is_encrypted:
+                    try:
+                        file_content = encryption_service.decrypt_file(file_content, str(tenant_id))
+                        file_size = len(file_content)
+                        logger.info(f"File decifrato: {storage_path}")
+                    except Exception as e:
+                        logger.error(f"Errore durante decifratura file {storage_path}: {e}")
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Errore durante la decifratura del file"
+                        )
+                
                 logger.info(
                     f"File scaricato: {storage_path} "
-                    f"(tenant: {tenant_id}, house: {house_id}, size: {file_size})"
+                    f"(tenant: {tenant_id}, house: {house_id}, size: {file_size}, encrypted: {is_encrypted})"
                 )
                 
                 return {
@@ -295,7 +403,8 @@ class MinIOService:
                     "content_type": content_type,
                     "file_size": file_size,
                     "tenant_id": str(tenant_id),
-                    "house_id": house_id
+                    "house_id": house_id,
+                    "is_encrypted": is_encrypted
                 }
                 
             except S3Error as e:

@@ -1,0 +1,641 @@
+Run started:2025-06-27 13:39:45.799398
+
+Test results:
+>> Issue: [B104:hardcoded_bind_all_interfaces] Possible binding to all interfaces.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-605 (https://cwe.mitre.org/data/definitions/605.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b104_hardcoded_bind_all_interfaces.html
+   Location: app/core\config.py:101:46
+100	    LOCAL_INTERFACE_PORT: int = Field(default=8080, description="Porta interfacce locali")
+101	    LOCAL_INTERFACE_HOST: str = Field(default="0.0.0.0", description="Host interfacce locali")
+102	    
+
+--------------------------------------------------
+>> Issue: [B324:hashlib] Use of weak MD5 hash for security. Consider usedforsecurity=False
+   Severity: High   Confidence: High
+   CWE: CWE-327 (https://cwe.mitre.org/data/definitions/327.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b324_hashlib.html
+   Location: app/core\storage\minio.py:88:23
+87	            content = await file.read()
+88	            checksum = hashlib.md5(content).hexdigest()
+89	            
+
+--------------------------------------------------
+>> Issue: [B324:hashlib] Use of weak MD5 hash for security. Consider usedforsecurity=False
+   Severity: High   Confidence: High
+   CWE: CWE-327 (https://cwe.mitre.org/data/definitions/327.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b324_hashlib.html
+   Location: app/core\storage\minio.py:115:34
+114	            stored_checksum = response.get('Metadata', {}).get('checksum', '')
+115	            calculated_checksum = hashlib.md5(content).hexdigest()
+116	            
+
+--------------------------------------------------
+>> Issue: [B104:hardcoded_bind_all_interfaces] Possible binding to all interfaces.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-605 (https://cwe.mitre.org/data/definitions/605.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b104_hardcoded_bind_all_interfaces.html
+   Location: app/main.py:135:26
+134	    import uvicorn
+135	    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:17:4
+16	    user = UserBase(**valid_data)
+17	    assert user.email == "test@example.com"
+18	    assert user.full_name == "Test User"
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:18:4
+17	    assert user.email == "test@example.com"
+18	    assert user.full_name == "Test User"
+19	    assert user.is_active is True
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:19:4
+18	    assert user.full_name == "Test User"
+19	    assert user.is_active is True
+20	    assert user.is_superuser is False
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:20:4
+19	    assert user.is_active is True
+20	    assert user.is_superuser is False
+21	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:40:4
+39	    user = UserCreate(**valid_data)
+40	    assert user.email == valid_data["email"]
+41	    assert user.full_name == valid_data["full_name"]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:41:4
+40	    assert user.email == valid_data["email"]
+41	    assert user.full_name == valid_data["full_name"]
+42	    assert user.password == valid_data["password"]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:42:4
+41	    assert user.full_name == valid_data["full_name"]
+42	    assert user.password == valid_data["password"]
+43	    assert user.is_active == valid_data["is_active"]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:43:4
+42	    assert user.password == valid_data["password"]
+43	    assert user.is_active == valid_data["is_active"]
+44	    assert user.is_superuser == valid_data["is_superuser"]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:44:4
+43	    assert user.is_active == valid_data["is_active"]
+44	    assert user.is_superuser == valid_data["is_superuser"]
+45	
+
+--------------------------------------------------
+>> Issue: [B106:hardcoded_password_funcarg] Possible hardcoded password: 'securepass123'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b106_hardcoded_password_funcarg.html
+   Location: app/schemas\test_user.py:49:8
+48	    with pytest.raises(ValidationError) as exc_info:
+49	        UserCreate(
+50	            email="invalid-email",
+51	            full_name="Test User",
+52	            password="securepass123"
+53	        )
+54	    assert "email" in str(exc_info.value)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:54:4
+53	        )
+54	    assert "email" in str(exc_info.value)
+55	
+
+--------------------------------------------------
+>> Issue: [B106:hardcoded_password_funcarg] Possible hardcoded password: 'short'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b106_hardcoded_password_funcarg.html
+   Location: app/schemas\test_user.py:59:8
+58	    with pytest.raises(ValidationError) as exc_info:
+59	        UserCreate(
+60	            email="test@example.com",
+61	            full_name="Test User",
+62	            password="short"
+63	        )
+64	    assert "password" in str(exc_info.value)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:64:4
+63	        )
+64	    assert "password" in str(exc_info.value)
+65	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:74:4
+73	    user = UserUpdate(**valid_data)
+74	    assert user.email == "new@example.com"
+75	    assert user.password == "newpass123"
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:75:4
+74	    assert user.email == "new@example.com"
+75	    assert user.password == "newpass123"
+76	    assert user.full_name is None
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'newpass123'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b105_hardcoded_password_string.html
+   Location: app/schemas\test_user.py:75:28
+74	    assert user.email == "new@example.com"
+75	    assert user.password == "newpass123"
+76	    assert user.full_name is None
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:76:4
+75	    assert user.password == "newpass123"
+76	    assert user.full_name is None
+77	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:90:4
+89	    user = UserUpdate(**partial_data)
+90	    assert user.email == partial_data["email"]
+91	    assert user.password == partial_data["password"]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:91:4
+90	    assert user.email == partial_data["email"]
+91	    assert user.password == partial_data["password"]
+92	    assert user.full_name is None
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:92:4
+91	    assert user.password == partial_data["password"]
+92	    assert user.full_name is None
+93	    assert user.is_active is None
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:93:4
+92	    assert user.full_name is None
+93	    assert user.is_active is None
+94	    assert user.is_superuser is None
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:94:4
+93	    assert user.is_active is None
+94	    assert user.is_superuser is None
+95	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:105:4
+104	    user = UserUpdate(**empty_data)
+105	    assert all(getattr(user, field) is None for field in empty_data)
+106	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:127:4
+126	    user_dict = user.model_dump()
+127	    assert "hashed_password" not in user_dict
+128	    assert "password" not in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:128:4
+127	    assert "hashed_password" not in user_dict
+128	    assert "password" not in user_dict
+129	    
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:131:4
+130	    # Verify all required fields are present
+131	    assert "id" in user_dict
+132	    assert "email" in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:132:4
+131	    assert "id" in user_dict
+132	    assert "email" in user_dict
+133	    assert "full_name" in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:133:4
+132	    assert "email" in user_dict
+133	    assert "full_name" in user_dict
+134	    assert "created_at" in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:134:4
+133	    assert "full_name" in user_dict
+134	    assert "created_at" in user_dict
+135	    assert "updated_at" in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:135:4
+134	    assert "created_at" in user_dict
+135	    assert "updated_at" in user_dict
+136	
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'secret_hash'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b105_hardcoded_password_string.html
+   Location: app/schemas\test_user.py:149:35
+148	            self.updated_at = datetime.now()
+149	            self.hashed_password = "secret_hash"
+150	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:157:4
+156	    user_dict = user.model_dump()
+157	    assert "hashed_password" not in user_dict
+158	    assert "password" not in user_dict 
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:158:4
+157	    assert "hashed_password" not in user_dict
+158	    assert "password" not in user_dict 
+159	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:177:4
+176	    
+177	    assert "hashed_password" not in user_dict
+178	    assert "password" not in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:178:4
+177	    assert "hashed_password" not in user_dict
+178	    assert "password" not in user_dict
+179	    assert all(field in user_dict for field in ["id", "email", "full_name", "created_at", "updated_at"])
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:179:4
+178	    assert "password" not in user_dict
+179	    assert all(field in user_dict for field in ["id", "email", "full_name", "created_at", "updated_at"])
+180	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:197:4
+196	    
+197	    assert "hashed_password" not in json_data
+198	    assert "password" not in json_data
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:198:4
+197	    assert "hashed_password" not in json_data
+198	    assert "password" not in json_data
+199	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:216:4
+215	    
+216	    assert "hashed_password" not in user_dict
+217	    assert "password" not in user_dict
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:217:4
+216	    assert "hashed_password" not in user_dict
+217	    assert "password" not in user_dict
+218	
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'secret_hash'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b105_hardcoded_password_string.html
+   Location: app/schemas\test_user.py:230:35
+229	            self.updated_at = datetime.now()
+230	            self.hashed_password = "secret_hash"
+231	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:235:4
+234	    
+235	    assert user.id == mock_user.id
+236	    assert user.email == mock_user.email
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:236:4
+235	    assert user.id == mock_user.id
+236	    assert user.email == mock_user.email
+237	    assert "hashed_password" not in user.model_dump()
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:237:4
+236	    assert user.email == mock_user.email
+237	    assert "hashed_password" not in user.model_dump()
+238	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:255:4
+254	    
+255	    assert updated_data["email"] == "new@example.com"
+256	    assert updated_data["full_name"] == "New Name"
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:256:4
+255	    assert updated_data["email"] == "new@example.com"
+256	    assert updated_data["full_name"] == "New Name"
+257	    assert updated_data["is_active"] is True
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:257:4
+256	    assert updated_data["full_name"] == "New Name"
+257	    assert updated_data["is_active"] is True
+258	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:266:4
+265	        )
+266	    assert "full_name" in str(exc_info.value)
+267	    assert "password" in str(exc_info.value)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:267:4
+266	    assert "full_name" in str(exc_info.value)
+267	    assert "password" in str(exc_info.value)
+268	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:273:4
+272	    user = UserUpdate(**empty_data)
+273	    assert all(getattr(user, field) is None for field in ["email", "full_name", "password", "is_active", "is_superuser"])
+274	
+
+--------------------------------------------------
+>> Issue: [B106:hardcoded_password_funcarg] Possible hardcoded password: 'securepass123'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b106_hardcoded_password_funcarg.html
+   Location: app/schemas\test_user.py:278:8
+277	    with pytest.raises(ValidationError) as exc_info:
+278	        UserCreate(
+279	            email=123,  # email deve essere stringa
+280	            full_name="Test User",
+281	            password="securepass123"
+282	        )
+283	    assert "email" in str(exc_info.value)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:283:4
+282	        )
+283	    assert "email" in str(exc_info.value)
+284	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:288:8
+287	    for field_name, field in UserBase.model_fields.items():
+288	        assert field.description, f"Campo {field_name} non ha una descrizione"
+289	    
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:291:8
+290	    for field_name, field in UserCreate.model_fields.items():
+291	        assert field.description, f"Campo {field_name} non ha una descrizione"
+292	    
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:294:8
+293	    for field_name, field in UserUpdate.model_fields.items():
+294	        assert field.description, f"Campo {field_name} non ha una descrizione"
+295	    
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b101_assert_used.html
+   Location: app/schemas\test_user.py:297:8
+296	    for field_name, field in UserRead.model_fields.items():
+297	        assert field.description, f"Campo {field_name} non ha una descrizione" 
+
+--------------------------------------------------
+>> Issue: [B324:hashlib] Use of weak MD5 hash for security. Consider usedforsecurity=False
+   Severity: High   Confidence: High
+   CWE: CWE-327 (https://cwe.mitre.org/data/definitions/327.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.5/plugins/b324_hashlib.html
+   Location: app/services\minio_service.py:100:20
+99	        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+100	        unique_id = hashlib.md5(f"{filename}_{timestamp}".encode()).hexdigest()[:8]
+101	        
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 12474
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 56
+		Medium: 2
+		High: 3
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 8
+		High: 53
+Files skipped (0):

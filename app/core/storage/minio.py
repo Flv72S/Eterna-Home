@@ -13,19 +13,22 @@ class MinioClient:
     def __init__(self):
         """Inizializza il client MinIO con le configurazioni specificate."""
         try:
+            # Configurazione endpoint con protocollo SSL se abilitato
+            endpoint_url = f"https://{settings.MINIO_ENDPOINT}" if settings.MINIO_USE_SSL else f"http://{settings.MINIO_ENDPOINT}"
+            
             self.s3_client = boto3.client(
                 's3',
-                endpoint_url=settings.MINIO_ENDPOINT,
+                endpoint_url=endpoint_url,
                 aws_access_key_id=settings.MINIO_ACCESS_KEY,
                 aws_secret_access_key=settings.MINIO_SECRET_KEY,
                 region_name=settings.MINIO_REGION,
                 use_ssl=settings.MINIO_USE_SSL,
-                verify=True  # Verifica certificati SSL
+                verify=settings.MINIO_VERIFY_SSL  # Verifica certificati SSL
             )
             self.bucket_name = settings.MINIO_BUCKET_NAME
             self._ensure_bucket_exists()
             self._setup_lifecycle_policy()
-            logger.info("MinIO client initialized successfully")
+            logger.info(f"MinIO client initialized successfully with SSL: {settings.MINIO_USE_SSL}")
         except Exception as e:
             logger.error(f"Failed to initialize MinIO client: {str(e)}")
             raise
@@ -95,7 +98,9 @@ class MinioClient:
                 Metadata={'checksum': checksum}
             )
             
-            url = f"{settings.MINIO_ENDPOINT}/{self.bucket_name}/{object_name}"
+            # Costruisci URL con protocollo corretto
+            protocol = "https" if settings.MINIO_USE_SSL else "http"
+            url = f"{protocol}://{settings.MINIO_ENDPOINT}/{self.bucket_name}/{object_name}"
             logger.info(f"File {object_name} uploaded successfully")
             return url, checksum
         except Exception as e:

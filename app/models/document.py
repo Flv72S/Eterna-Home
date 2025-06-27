@@ -35,6 +35,9 @@ class Document(SQLModel, table=True):
         description="ID del tenant per isolamento logico multi-tenant"
     )
     
+    # Campo per tracciare file cifrati
+    is_encrypted: bool = Field(default=False, description="Indica se il file è cifrato")
+    
     # Relazioni
     owner_id: int = Field(foreign_key="users.id")
     house_id: Optional[int] = Field(default=None, foreign_key="houses.id")

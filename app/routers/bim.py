@@ -30,6 +30,7 @@ from app.services.minio_service import get_minio_service
 from app.services.bim_parser import bim_parser
 from app.workers.conversion_worker import process_bim_model, batch_convert_models, get_conversion_status
 from app.db.utils import safe_exec
+from app.security.validators import validate_file_upload, sanitize_filename, TextValidator
 
 router = APIRouter(prefix="/api/v1/bim", tags=["BIM Models"])
 
@@ -50,22 +51,23 @@ async def upload_bim_model(
     Richiede permesso 'upload_bim' nel tenant attivo.
     """
     try:
-        # Validazione file
-        allowed_extensions = ['.ifc', '.rvt', '.dwg', '.dxf', '.skp', '.pln']
-        file_extension = os.path.splitext(file.filename)[1].lower()
+        # Validazione avanzata del file
+        allowed_types = [
+            "application/octet-stream",  # Per file BIM generici
+            "model/ifc",
+            "application/ifc"
+        ]
+        max_size = 500 * 1024 * 1024  # 500MB per file BIM
         
-        if file_extension not in allowed_extensions:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Formato file non supportato. Formati consentiti: {', '.join(allowed_extensions)}"
-            )
+        # Sanifica e valida il file
+        safe_filename = sanitize_filename(file.filename)
+        validate_file_upload(file, allowed_types, max_size)
         
-        # Validazione dimensione (max 100MB)
-        if file.size and file.size > 100 * 1024 * 1024:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File troppo grande. Dimensione massima: 100MB"
-            )
+        # Validazione campi testo
+        if name:
+            name = TextValidator.validate_text_field(name, "name", max_length=255)
+        if description:
+            description = TextValidator.validate_text_field(description, "description", max_length=1000)
         
         # Calcola checksum
         content = await file.read()
@@ -81,9 +83,9 @@ async def upload_bim_model(
         
         # Crea record nel database con tenant_id
         bim_model_data = BIMModelCreate(
-            name=name or file.filename,
+            name=name or safe_filename,
             description=description,
-            format=file_extension[1:],
+            format=os.path.splitext(safe_filename)[1][1:],
             file_url=upload_result["storage_path"],
             file_size=len(content),
             checksum=checksum,

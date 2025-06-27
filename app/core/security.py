@@ -19,15 +19,88 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(
         to_encode, 
         settings.SECRET_KEY, 
         algorithm=settings.ALGORITHM
     )
-    return encoded_jwt 
+    return encoded_jwt
+
+def create_refresh_token(data: Dict[str, Any]) -> str:
+    """
+    Crea un token JWT di refresh.
+    
+    Args:
+        data: Dati da includere nel token
+    
+    Returns:
+        str: Token JWT di refresh codificato
+    """
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(
+        to_encode, 
+        settings.SECRET_KEY, 
+        algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+def verify_token(token: str, token_type: str = "access") -> Optional[Dict[str, Any]]:
+    """
+    Verifica un token JWT.
+    
+    Args:
+        token: Token JWT da verificare
+        token_type: Tipo di token ("access" o "refresh")
+    
+    Returns:
+        Dict[str, Any]: Dati del token se valido, None altrimenti
+    """
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM]
+        )
+        
+        # Verifica che il tipo di token sia corretto
+        if payload.get("type") != token_type:
+            return None
+            
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.JWTError:
+        return None
+
+def verify_access_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Verifica un token di accesso.
+    
+    Args:
+        token: Token di accesso da verificare
+    
+    Returns:
+        Dict[str, Any]: Dati del token se valido, None altrimenti
+    """
+    return verify_token(token, "access")
+
+def verify_refresh_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Verifica un token di refresh.
+    
+    Args:
+        token: Token di refresh da verificare
+    
+    Returns:
+        Dict[str, Any]: Dati del token se valido, None altrimenti
+    """
+    return verify_token(token, "refresh")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

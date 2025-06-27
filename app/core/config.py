@@ -12,19 +12,61 @@ class Settings(BaseModel):
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
     
-    # Database
-    DATABASE_URL: str = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home"
+    # Database - Credenziali da environment variables
+    DATABASE_URL: str = Field(
+        default="postgresql+psycopg2://postgres:password@localhost:5432/eterna_home",
+        description="Database connection URL"
+    )
+    DATABASE_SSL_MODE: str = Field(
+        default="prefer",
+        description="SSL mode for database connection (disable, allow, prefer, require, verify-ca, verify-full)"
+    )
     
-    # JWT
-    SECRET_KEY: str = "your-secret-key-here"  # Cambiare in produzione
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # JWT - Configurazione sicura
+    SECRET_KEY: str = Field(
+        default="your-secret-key-here-change-in-production",
+        description="JWT secret key - MUST be changed in production"
+    )
+    ALGORITHM: str = Field(
+        default="HS256",
+        description="JWT algorithm (HS256, RS256)"
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=30,
+        description="Access token expiration time in minutes"
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7,
+        description="Refresh token expiration time in days"
+    )
     
-    # CORS
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+    # CORS - Configurazione restrittiva
+    BACKEND_CORS_ORIGINS: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],
+        description="Allowed CORS origins - restrict in production"
+    )
+    CORS_ALLOW_CREDENTIALS: bool = Field(
+        default=True,
+        description="Allow credentials in CORS requests"
+    )
+    CORS_ALLOWED_METHODS: list[str] = Field(
+        default=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        description="Allowed HTTP methods for CORS"
+    )
+    CORS_ALLOWED_HEADERS: list[str] = Field(
+        default=["*"],
+        description="Allowed headers for CORS"
+    )
     
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL"
+    )
+    REDIS_SSL: bool = Field(
+        default=False,
+        description="Use SSL for Redis connection"
+    )
     
     # Email
     SMTP_TLS: bool = True
@@ -39,14 +81,39 @@ class Settings(BaseModel):
     PASSWORD_MIN_LENGTH: int = 8
     PASSWORD_MAX_LENGTH: int = 100
     
-    # MinIO
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET_NAME: str = "default-bucket"
-    MINIO_REGION: str = "us-east-1"
-    MINIO_USE_SSL: bool = False
-    MINIO_LIFECYCLE_DAYS: int = 30
+    # MinIO - Configurazione sicura
+    MINIO_ENDPOINT: str = Field(
+        default="localhost:9000",
+        description="MinIO endpoint"
+    )
+    MINIO_ACCESS_KEY: str = Field(
+        default="minioadmin",
+        description="MinIO access key - change in production"
+    )
+    MINIO_SECRET_KEY: str = Field(
+        default="minioadmin",
+        description="MinIO secret key - change in production"
+    )
+    MINIO_BUCKET_NAME: str = Field(
+        default="eterna-home-storage",
+        description="Default MinIO bucket name"
+    )
+    MINIO_REGION: str = Field(
+        default="us-east-1",
+        description="MinIO region"
+    )
+    MINIO_USE_SSL: bool = Field(
+        default=False,
+        description="Use SSL for MinIO connection"
+    )
+    MINIO_VERIFY_SSL: bool = Field(
+        default=True,
+        description="Verify SSL certificates for MinIO"
+    )
+    MINIO_LIFECYCLE_DAYS: int = Field(
+        default=30,
+        description="Object lifecycle in days"
+    )
     
     # Token di test fisso per evitare problemi di timing nei test
     TEST_TOKEN: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxNzM1NjgwMDAwfQ.test_signature"
@@ -109,6 +176,12 @@ class Settings(BaseModel):
     ENABLE_IOT_INTEGRATION: bool = Field(default=True, description="Abilita integrazione IoT")
     ENABLE_BIM_INTEGRATION: bool = Field(default=True, description="Abilita integrazione BIM")
     ENABLE_DOCUMENT_INTEGRATION: bool = Field(default=True, description="Abilita integrazione documenti")
+    
+    # Security Settings
+    ENABLE_RATE_LIMITING: bool = Field(default=True, description="Abilita rate limiting")
+    RATE_LIMIT_REQUESTS: int = Field(default=100, description="Numero di richieste per minuto")
+    ENABLE_AUDIT_TRAIL: bool = Field(default=True, description="Abilita audit trail completo")
+    ENABLE_SECURITY_LOGGING: bool = Field(default=True, description="Abilita logging di sicurezza")
     
     model_config = ConfigDict(
         case_sensitive=True,

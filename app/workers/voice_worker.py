@@ -15,6 +15,9 @@ from app.models.audio_log import AudioLog
 from app.services.audio_log import AudioLogService
 from app.services.speech_to_text import SpeechToTextService
 from app.services.local_interface import LocalInterfaceService
+import re
+from app.core.logging_config import log_operation, log_security_event
+from app.utils.ai_security import sanitize_prompt
 
 logger = get_logger(__name__)
 
@@ -69,59 +72,129 @@ class VoiceWorker:
         logger.info("Voice Worker arrestato")
     
     async def process_message(self, message_data: Dict[str, Any]):
-        """Elabora un messaggio dalla coda."""
+        """Elabora un messaggio dalla coda con protezione payload e retry."""
+        allowed_keys = {"tenant_id", "user_id", "node_id", "audio_url", "transcribed_text", "timestamp"}
+        retry_count = message_data.get("_retry_count", 0)
+        extra_keys = set(message_data.keys()) - allowed_keys - {"audiolog_id", "command_type", "_retry_count"}
+        missing_keys = {"tenant_id", "user_id", "timestamp"} - set(message_data.keys())
+        # Filtro chiavi non consentite
+        if extra_keys:
+            log_security_event(
+                event="ai_payload_invalid_keys",
+                status="failed",
+                user_id=message_data.get("user_id"),
+                tenant_id=message_data.get("tenant_id"),
+                reason=f"Chiavi non consentite: {extra_keys}",
+                metadata={"payload": str(message_data)}
+            )
+            return
+        # Filtro chiavi mancanti
+        if missing_keys:
+            log_security_event(
+                event="ai_payload_missing_keys",
+                status="failed",
+                user_id=message_data.get("user_id"),
+                tenant_id=message_data.get("tenant_id"),
+                reason=f"Chiavi mancanti: {missing_keys}",
+                metadata={"payload": str(message_data)}
+            )
+            return
+        # Sanitizzazione prompt
+        transcribed_text = message_data.get("transcribed_text", "")
+        sanitized, reason = sanitize_prompt(transcribed_text)
+        if not sanitized:
+            log_security_event(
+                event="ai_prompt_blocked",
+                status="failed",
+                user_id=message_data.get("user_id"),
+                tenant_id=message_data.get("tenant_id"),
+                reason=reason,
+                metadata={"input": transcribed_text}
+            )
+            return
+        # Retry logic
         try:
-            audiolog_id = message_data.get("audiolog_id")
-            command_type = message_data.get("command_type", "text")
-            user_id = message_data.get("user_id")
-            
-            logger.info("Voice command processing started",
-                        audiolog_id=audiolog_id,
-                        user_id=user_id,
-                        command_type=command_type)
-            
-            if not audiolog_id:
-                logger.error("Messaggio senza audiolog_id")
+            await self._process_message_safe(message_data)
+        except Exception as e:
+            if retry_count < 1:
+                message_data["_retry_count"] = retry_count + 1
+                log_security_event(
+                    event="ai_worker_retry",
+                    status="failed",
+                    user_id=message_data.get("user_id"),
+                    tenant_id=message_data.get("tenant_id"),
+                    reason=str(e),
+                    metadata={"retry": retry_count + 1}
+                )
+                await self.process_message(message_data)
+            else:
+                log_security_event(
+                    event="ai_worker_failed",
+                    status="failed",
+                    user_id=message_data.get("user_id"),
+                    tenant_id=message_data.get("tenant_id"),
+                    reason=str(e),
+                    metadata={"payload": str(message_data)}
+                )
+    
+    async def _process_message_safe(self, message_data: Dict[str, Any]):
+        """Processa il messaggio dopo i controlli di sicurezza."""
+        audiolog_id = message_data.get("audiolog_id")
+        command_type = message_data.get("command_type", "text")
+        user_id = message_data.get("user_id")
+        tenant_id = message_data.get("tenant_id")
+        logger.info("Voice command processing started",
+                    audiolog_id=audiolog_id,
+                    user_id=user_id,
+                    command_type=command_type)
+        if not audiolog_id:
+            logger.error("Messaggio senza audiolog_id")
+            return
+        with Session(self.engine) as db:
+            audio_log = db.get(AudioLog, audiolog_id)
+            if not audio_log:
+                logger.error("AudioLog not found", audiolog_id=audiolog_id)
                 return
-            
-            # Crea sessione database
-            with Session(self.engine) as db:
-                # Recupera AudioLog
-                audio_log = db.get(AudioLog, audiolog_id)
-                if not audio_log:
-                    logger.error("AudioLog not found", audiolog_id=audiolog_id)
-                    return
-                
-                # Logging strutturato dell'interazione
-                logger.info("Voice command processing",
+            logger.info("Voice command processing",
+                        audiolog_id=audio_log.id,
+                        user_id=audio_log.user_id,
+                        tenant_id=str(audio_log.tenant_id),
+                        status=audio_log.processing_status,
+                        input_text=audio_log.transcribed_text)
+            await self.update_processing_status(db, audio_log, "transcribing")
+            try:
+                if command_type == "audio":
+                    await self.process_audio_message(db, audio_log, message_data)
+                else:
+                    await self.process_text_message(db, audio_log, message_data)
+            except Exception as e:
+                logger.error("Voice command processing failed",
                             audiolog_id=audio_log.id,
                             user_id=audio_log.user_id,
                             tenant_id=str(audio_log.tenant_id),
-                            status=audio_log.processing_status,
-                            input_text=audio_log.transcribed_text)
-                
-                # Aggiorna stato a "transcribing"
-                await self.update_processing_status(db, audio_log, "transcribing")
-                
-                try:
-                    if command_type == "audio":
-                        # Elabora file audio con servizio reale
-                        await self.process_audio_message(db, audio_log, message_data)
-                    else:
-                        # Elabora comando testuale
-                        await self.process_text_message(db, audio_log, message_data)
-                        
-                except Exception as e:
-                    logger.error("Voice command processing failed",
-                                audiolog_id=audio_log.id,
-                                user_id=audio_log.user_id,
-                                tenant_id=str(audio_log.tenant_id),
-                                error=str(e),
-                                exc_info=True)
-                    await self.update_processing_status(db, audio_log, "failed")
-                    
-        except Exception as e:
-            logger.error("Message processing error", error=str(e), exc_info=True)
+                            error=str(e),
+                            exc_info=True)
+                await self.update_processing_status(db, audio_log, "failed")
+                log_operation(
+                    operation="ai_interaction",
+                    status="failed",
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    resource_type="ai",
+                    resource_id=audiolog_id,
+                    metadata={"input": message_data.get("transcribed_text", ""), "output": None, "reason": str(e)}
+                )
+                raise
+            # Log di successo
+            log_operation(
+                operation="ai_interaction",
+                status="completed",
+                user_id=user_id,
+                tenant_id=tenant_id,
+                resource_type="ai",
+                resource_id=audiolog_id,
+                metadata={"input": message_data.get("transcribed_text", ""), "output": getattr(audio_log, "response_text", None)}
+            )
     
     async def process_audio_message(self, db: Session, audio_log: AudioLog, message_data: Dict[str, Any]):
         """Elabora un messaggio audio con servizio di trascrizione reale."""

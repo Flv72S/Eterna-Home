@@ -168,6 +168,13 @@ class MultiTenantLogger:
 # Logger globale
 multi_tenant_logger = MultiTenantLogger()
 
+def get_logger(name: str) -> MultiTenantLogger:
+    """
+    Restituisce un logger per il modulo specificato.
+    Mantiene compatibilità con il logging standard.
+    """
+    return MultiTenantLogger(name)
+
 def set_tenant_context(tenant_id: Optional[uuid.UUID] = None, user_id: Optional[int] = None):
     """
     Imposta il contesto del tenant per il logging.

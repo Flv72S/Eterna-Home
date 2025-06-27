@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 import uuid
@@ -44,15 +45,15 @@ class House(SQLModel, table=True):
     # Proprietario della casa (relazione one-to-many)
     owner: "User" = Relationship(back_populates="owned_houses", sa_relationship_kwargs={"lazy": "select"})
     
-    # Utenti associati alla casa (relazione many-to-many tramite UserHouse)
-    users: List["User"] = Relationship(
-        back_populates="houses",
-        link_model=UserHouse,
-        sa_relationship_kwargs={
-            "primaryjoin": "House.id == UserHouse.house_id",
-            "secondaryjoin": "UserHouse.user_id == User.id"
-        }
-    )
+    # Utenti associati alla casa (relazione many-to-many tramite UserHouse) - temporaneamente commentata
+    # users: List["User"] = Relationship(
+    #     back_populates="houses",
+    #     link_model="UserHouse",
+    #     sa_relationship_kwargs={
+    #         "primaryjoin": "House.id == UserHouse.house_id",
+    #         "secondaryjoin": "UserHouse.user_id == User.id"
+    #     }
+    # )
     
     # Relazione con UserHouse per accesso diretto alle associazioni
     user_houses: List["UserHouse"] = Relationship(

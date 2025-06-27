@@ -139,6 +139,9 @@ class BIMModel(SQLModel, table=True):
         description="ID del tenant per isolamento logico multi-tenant"
     )
     
+    # Campo per tracciare file cifrati
+    is_encrypted: bool = Field(default=False, description="Indica se il file è cifrato")
+    
     # Metadati BIM estratti dal parsing
     total_area: Optional[float] = Field(default=None, description="Superficie totale in m²")
     total_volume: Optional[float] = Field(default=None, description="Volume totale in m³")

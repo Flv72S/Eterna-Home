@@ -14,125 +14,190 @@ from app.core.logging_multi_tenant import (
     set_tenant_context,
     clear_tenant_context
 )
+from app.core.logging_config import (
+    get_logger,
+    set_context,
+    clear_context,
+    log_security_event,
+    log_operation
+)
 
 logger = get_logger(__name__)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware per il logging delle richieste API con supporto multi-tenant."""
+    """
+    Middleware per logging automatico delle richieste HTTP.
+    Include contesto multi-tenant e tracciamento delle operazioni.
+    """
     
     def __init__(self, app: ASGIApp):
         super().__init__(app)
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Genera Trace ID per la richiesta
+        # Genera ID univoci per la request
+        request_id = str(uuid.uuid4())
         trace_id = str(uuid.uuid4())
-        set_trace_id(trace_id)
         
-        # Estrai tenant_id e user_id dagli headers (se disponibili)
-        tenant_id = request.headers.get("X-Tenant-ID")
-        user_id = request.headers.get("X-User-ID")
+        # Inizializza il contesto
+        set_context(trace_id=trace_id, request_id=request_id)
         
-        # Imposta il contesto del tenant per il logging
-        if tenant_id:
-            try:
-                tenant_uuid = uuid.UUID(tenant_id)
-                set_tenant_context(tenant_uuid, int(user_id) if user_id else None)
-            except (ValueError, TypeError):
-                # Se i valori non sono validi, non impostare il contesto
-                pass
-        
-        # Log della richiesta in arrivo
+        # Log dell'inizio della request
         start_time = time.time()
         
-        # Log con sistema multi-tenant
-        extra_fields = {
-            "event": "api_request_started",
-            "method": request.method,
-            "url": str(request.url),
-            "path": request.url.path,
-            "query_params": dict(request.query_params),
-            "client_ip": request.client.host if request.client else None,
-            "user_agent": request.headers.get("user-agent"),
-            "trace_id": trace_id
-        }
+        # Estrai informazioni dalla request
+        method = request.method
+        url = str(request.url)
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "unknown")
         
-        multi_tenant_logger.info("API request started", extra_fields)
-        
-        # Log anche con il sistema legacy per compatibilità
-        logger.info("API request started",
-                    method=request.method,
-                    url=str(request.url),
-                    path=request.url.path,
-                    query_params=dict(request.query_params),
-                    client_ip=request.client.host if request.client else None,
-                    user_agent=request.headers.get("user-agent"),
-                    trace_id=trace_id)
+        # Log della request in arrivo
+        logger.info(
+            "Request started",
+            method=method,
+            url=url,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            event="request_started",
+            status="started"
+        )
         
         try:
-            # Processa la richiesta
+            # Processa la request
             response = await call_next(request)
             
-            # Calcola il tempo di risposta
-            process_time = time.time() - start_time
+            # Calcola durata
+            duration = time.time() - start_time
             
-            # Log della risposta con sistema multi-tenant
-            response_extra_fields = {
-                "event": "api_request_completed",
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "process_time": round(process_time, 4),
-                "trace_id": trace_id
-            }
+            # Log del completamento
+            logger.info(
+                "Request completed",
+                method=method,
+                url=url,
+                status_code=response.status_code,
+                duration=duration,
+                event="request_completed",
+                status="success" if response.status_code < 400 else "failed"
+            )
             
-            multi_tenant_logger.info("API request completed", response_extra_fields)
-            
-            # Log anche con il sistema legacy
-            logger.info("API request completed",
-                        method=request.method,
-                        path=request.url.path,
-                        status_code=response.status_code,
-                        process_time=round(process_time, 4),
-                        trace_id=trace_id)
-            
-            # Aggiungi Trace ID all'header della risposta
-            response.headers["X-Trace-ID"] = trace_id
+            # Log operazioni specifiche
+            await self._log_specific_operations(request, response, duration)
             
             return response
             
         except Exception as e:
-            # Calcola il tempo di risposta
-            process_time = time.time() - start_time
+            # Calcola durata
+            duration = time.time() - start_time
             
-            # Log dell'errore con sistema multi-tenant
-            error_extra_fields = {
-                "event": "api_request_failed",
-                "method": request.method,
-                "path": request.url.path,
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "process_time": round(process_time, 4),
-                "trace_id": trace_id
-            }
+            # Log dell'errore
+            logger.error(
+                "Request failed",
+                method=method,
+                url=url,
+                error=str(e),
+                duration=duration,
+                event="request_failed",
+                status="error"
+            )
             
-            multi_tenant_logger.error("API request failed", error_extra_fields)
+            # Log evento di sicurezza per errori 5xx
+            if hasattr(e, 'status_code') and e.status_code >= 500:
+                log_security_event(
+                    event="server_error",
+                    status="error",
+                    endpoint=url,
+                    reason=str(e),
+                    ip_address=client_ip
+                )
             
-            # Log anche con il sistema legacy
-            logger.error("API request failed",
-                         method=request.method,
-                         path=request.url.path,
-                         error=str(e),
-                         process_time=round(process_time, 4),
-                         trace_id=trace_id,
-                         exc_info=True)
-            
-            # Rilancia l'eccezione
             raise
         finally:
-            # Pulisci il Trace ID e il contesto del tenant
-            clear_trace_id()
-            clear_tenant_context()
+            # Pulisci il contesto
+            clear_context()
+    
+    async def _log_specific_operations(self, request: Request, response: Response, duration: float):
+        """Logga operazioni specifiche basate sull'endpoint."""
+        url = str(request.url.path)
+        method = request.method
+        status_code = response.status_code
+        
+        # Autenticazione
+        if "/auth/" in url:
+            if "login" in url:
+                log_operation(
+                    operation="user_login",
+                    status="success" if status_code == 200 else "failed",
+                    endpoint=url
+                )
+            elif "refresh" in url:
+                log_operation(
+                    operation="token_refresh",
+                    status="success" if status_code == 200 else "failed",
+                    endpoint=url
+                )
+        
+        # Operazioni sui documenti
+        elif "/documents/" in url:
+            if method == "POST" and "upload" in url:
+                log_operation(
+                    operation="document_upload",
+                    status="success" if status_code == 200 else "failed",
+                    endpoint=url
+                )
+            elif method == "GET" and "download" in url:
+                log_operation(
+                    operation="document_download",
+                    status="success" if status_code == 200 else "failed",
+                    endpoint=url
+                )
+            elif method == "DELETE":
+                log_operation(
+                    operation="document_delete",
+                    status="success" if status_code == 200 else "failed",
+                    endpoint=url
+                )
+        
+        # Operazioni BIM
+        elif "/bim/" in url:
+            log_operation(
+                operation="bim_operation",
+                status="success" if status_code == 200 else "failed",
+                endpoint=url
+            )
+        
+        # Operazioni AI
+        elif "/ai/" in url:
+            log_operation(
+                operation="ai_interaction",
+                status="success" if status_code == 200 else "failed",
+                endpoint=url
+            )
+        
+        # Operazioni attivatori
+        elif "/activator/" in url:
+            log_operation(
+                operation="activator_control",
+                status="success" if status_code == 200 else "failed",
+                endpoint=url
+            )
+        
+        # Operazioni voice
+        elif "/voice/" in url:
+            log_operation(
+                operation="voice_command",
+                status="success" if status_code == 200 else "failed",
+                endpoint=url
+            )
+        
+        # Log eventi di sicurezza per errori 4xx
+        if 400 <= status_code < 500:
+            log_security_event(
+                event="client_error",
+                status="failed",
+                endpoint=url,
+                reason=f"HTTP {status_code}",
+                ip_address=request.client.host if request.client else "unknown"
+            )
 
 
 class ErrorLoggingMiddleware(BaseHTTPMiddleware):
@@ -168,25 +233,74 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
-class SecurityLoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware per il logging degli eventi di sicurezza."""
+class SecurityMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware per logging specifico degli eventi di sicurezza.
+    """
     
     def __init__(self, app: ASGIApp):
         super().__init__(app)
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Log tentativi di accesso a endpoint sensibili
-        sensitive_paths = ["/api/v1/admin", "/api/v1/users", "/api/v1/ai"]
+        # Estrai informazioni di sicurezza
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "unknown")
         
-        if any(path in request.url.path for path in sensitive_paths):
-            extra_fields = {
-                "event": "sensitive_endpoint_access",
-                "method": request.method,
-                "path": request.url.path,
-                "client_ip": request.client.host if request.client else None,
-                "user_agent": request.headers.get("user-agent")
-            }
-            
-            multi_tenant_logger.log_security_event("Sensitive endpoint access", extra_fields)
+        # Controlla header sospetti
+        suspicious_headers = self._check_suspicious_headers(request)
+        if suspicious_headers:
+            log_security_event(
+                event="suspicious_headers",
+                status="warning",
+                endpoint=str(request.url.path),
+                reason=f"Suspicious headers detected: {suspicious_headers}",
+                ip_address=client_ip,
+                metadata={"user_agent": user_agent}
+            )
         
-        return await call_next(request) 
+        # Controlla rate limiting (se implementato)
+        # TODO: Integrare con il sistema di rate limiting esistente
+        
+        response = await call_next(request)
+        
+        # Log accessi negati
+        if response.status_code == 403:
+            log_security_event(
+                event="access_denied",
+                status="unauthorized",
+                endpoint=str(request.url.path),
+                reason="Forbidden access",
+                ip_address=client_ip,
+                metadata={"user_agent": user_agent}
+            )
+        elif response.status_code == 401:
+            log_security_event(
+                event="authentication_failed",
+                status="unauthorized",
+                endpoint=str(request.url.path),
+                reason="Authentication required",
+                ip_address=client_ip,
+                metadata={"user_agent": user_agent}
+            )
+        
+        return response
+    
+    def _check_suspicious_headers(self, request: Request) -> list:
+        """Controlla header sospetti nella request."""
+        suspicious = []
+        
+        # Header che potrebbero indicare attacchi
+        suspicious_headers = [
+            "x-forwarded-for",
+            "x-real-ip",
+            "x-forwarded-host",
+            "x-forwarded-proto",
+            "x-original-url",
+            "x-rewrite-url"
+        ]
+        
+        for header in suspicious_headers:
+            if header in request.headers:
+                suspicious.append(header)
+        
+        return suspicious 

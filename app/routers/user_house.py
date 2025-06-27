@@ -23,10 +23,9 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/user-house", tags=["user-house"])
 
 @router.get("/", response_model=UserHouseList)
-@require_permission_in_tenant("manage_house_access")
 async def get_user_houses(
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_house_access")),
     db: Session = Depends(get_db),
     user_id: Optional[int] = Query(None, description="Filtra per ID utente"),
     house_id: Optional[int] = Query(None, description="Filtra per ID casa"),
@@ -71,11 +70,10 @@ async def get_user_houses(
         )
 
 @router.post("/", response_model=UserHouseResponse)
-@require_permission_in_tenant("manage_house_access")
 async def create_user_house(
     user_house_data: UserHouseCreate,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_house_access")),
     db: Session = Depends(get_db)
 ):
     """
@@ -113,12 +111,11 @@ async def create_user_house(
         )
 
 @router.get("/{user_id}/{house_id}", response_model=UserHouseResponse)
-@require_permission_in_tenant("manage_house_access")
 async def get_user_house(
     user_id: int,
     house_id: int,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_house_access")),
     db: Session = Depends(get_db)
 ):
     """
@@ -177,13 +174,12 @@ async def get_user_house(
         )
 
 @router.put("/{user_id}/{house_id}", response_model=UserHouseResponse)
-@require_permission_in_tenant("manage_house_access")
 async def update_user_house(
     user_id: int,
     house_id: int,
     update_data: UserHouseUpdate,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_house_access")),
     db: Session = Depends(get_db)
 ):
     """
@@ -229,12 +225,11 @@ async def update_user_house(
         )
 
 @router.delete("/{user_id}/{house_id}")
-@require_permission_in_tenant("manage_house_access")
 async def delete_user_house(
     user_id: int,
     house_id: int,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission_in_tenant("manage_house_access")),
     db: Session = Depends(get_db)
 ):
     """

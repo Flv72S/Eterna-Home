@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 import uuid
@@ -78,6 +79,10 @@ class User(SQLModel, table=True):
 
     # Campi di stato
     is_verified: bool = Field(default=False, description="Indica se l'email dell'utente è verificata")
+    
+    # Campi MFA (Multi-Factor Authentication)
+    mfa_enabled: bool = Field(default=False, description="Indica se l'MFA è abilitato per l'utente")
+    mfa_secret: Optional[str] = Field(default=None, description="Segreto TOTP per l'MFA")
 
     # Campi di audit
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -107,15 +112,15 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     
-    # Relazione many-to-many con House tramite UserHouse
-    houses: List["House"] = Relationship(
-        back_populates="users",
-        link_model=UserHouse,
-        sa_relationship_kwargs={
-            "primaryjoin": "User.id == UserHouse.user_id",
-            "secondaryjoin": "UserHouse.house_id == House.id"
-        }
-    )
+    # Relazione many-to-many con House tramite UserHouse (temporaneamente commentata)
+    # houses: List["House"] = Relationship(
+    #     back_populates="users",
+    #     link_model="UserHouse",
+    #     sa_relationship_kwargs={
+    #         "primaryjoin": "User.id == UserHouse.user_id",
+    #         "secondaryjoin": "UserHouse.house_id == House.id"
+    #     }
+    # )
     
     # Relazione con UserHouse per accesso diretto alle associazioni
     user_houses: List["UserHouse"] = Relationship(
@@ -148,15 +153,15 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     
-    # Relazione many-to-many con Role
-    roles: List["Role"] = Relationship(
-        back_populates="users",
-        link_model=UserRole,
-        sa_relationship_kwargs={
-            "primaryjoin": "User.id == UserRole.user_id",
-            "secondaryjoin": "UserRole.role_id == Role.id"
-        }
-    )
+    # Relazione many-to-many con Role (temporaneamente commentata)
+    # roles: List["Role"] = Relationship(
+    #     back_populates="users",
+    #     link_model="UserRole",
+    #     sa_relationship_kwargs={
+    #         "primaryjoin": "User.id == UserRole.user_id",
+    #         "secondaryjoin": "UserRole.role_id == Role.id"
+    #     }
+    # )
     
     # Relazione con UserTenantRole per ruoli multi-tenant
     tenant_roles: List["UserTenantRole"] = Relationship(
@@ -164,11 +169,11 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
-    # Relazione many-to-many con Permission
-    permissions: List["Permission"] = Relationship(
-        back_populates="users",
-        link_model=UserPermission
-    )
+    # Relazione many-to-many con Permission (temporaneamente commentata)
+    # permissions: List["Permission"] = Relationship(
+    #     back_populates="users",
+    #     link_model="UserPermission"
+    # )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"

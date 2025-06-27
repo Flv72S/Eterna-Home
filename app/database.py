@@ -8,9 +8,27 @@ from app.models.maintenance import MaintenanceRecord
 from app.models.room import Room
 from app.models.booking import Booking
 from app.models.audio_log import AudioLog
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_engine():
-    return create_engine(settings.DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10, echo=True)
+    """Crea l'engine del database con configurazioni di sicurezza."""
+    # Configurazione SSL per PostgreSQL
+    connect_args = {}
+    
+    if settings.DATABASE_SSL_MODE and settings.DATABASE_SSL_MODE != "disable":
+        connect_args["sslmode"] = settings.DATABASE_SSL_MODE
+        logger.info(f"Database SSL mode: {settings.DATABASE_SSL_MODE}")
+    
+    return create_engine(
+        settings.DATABASE_URL, 
+        pool_pre_ping=True, 
+        pool_size=5, 
+        max_overflow=10, 
+        echo=True,
+        connect_args=connect_args
+    )
 
 engine = get_engine()
 

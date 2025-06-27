@@ -129,9 +129,16 @@ def require_permission_in_tenant(permission: str):
             "read_bim_models": ["viewer", "editor", "admin", "super_admin"],
             "write_bim_models": ["editor", "admin", "super_admin"],
             "delete_bim_models": ["admin", "super_admin"],
+            "upload_bim": ["editor", "admin", "super_admin"],
             "read_audio_logs": ["viewer", "editor", "admin", "super_admin"],
             "write_audio_logs": ["editor", "admin", "super_admin"],
             "delete_audio_logs": ["admin", "super_admin"],
+            "manage_voice_logs": ["admin", "super_admin"],
+            "submit_voice": ["viewer", "editor", "admin", "super_admin"],
+            "read_voice_logs": ["viewer", "editor", "admin", "super_admin"],
+            "manage_house_access": ["admin", "super_admin"],
+            "read_house_access": ["viewer", "editor", "admin", "super_admin"],
+            "write_house_access": ["editor", "admin", "super_admin"],
         }
         
         # Ottieni i ruoli richiesti per il permesso
@@ -195,9 +202,16 @@ def require_any_permission_in_tenant(permissions: List[str]):
             "read_bim_models": ["viewer", "editor", "admin", "super_admin"],
             "write_bim_models": ["editor", "admin", "super_admin"],
             "delete_bim_models": ["admin", "super_admin"],
+            "upload_bim": ["editor", "admin", "super_admin"],
             "read_audio_logs": ["viewer", "editor", "admin", "super_admin"],
             "write_audio_logs": ["editor", "admin", "super_admin"],
             "delete_audio_logs": ["admin", "super_admin"],
+            "manage_voice_logs": ["admin", "super_admin"],
+            "submit_voice": ["viewer", "editor", "admin", "super_admin"],
+            "read_voice_logs": ["viewer", "editor", "admin", "super_admin"],
+            "manage_house_access": ["admin", "super_admin"],
+            "read_house_access": ["viewer", "editor", "admin", "super_admin"],
+            "write_house_access": ["editor", "admin", "super_admin"],
         }
         
         # Ottieni tutti i ruoli richiesti per i permessi

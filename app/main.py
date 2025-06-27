@@ -7,8 +7,14 @@ import os
 from typing import List
 
 from app.core.config import settings
-from app.core.logging import setup_logging, get_logger, set_trace_id, get_trace_id
-from app.core.middleware import LoggingMiddleware, ErrorLoggingMiddleware, SecurityLoggingMiddleware
+from app.core.logging_config import (
+    setup_logging, 
+    get_logger, 
+    set_context, 
+    clear_context,
+    log_operation
+)
+from app.core.middleware import LoggingMiddleware, SecurityMiddleware
 from app.database import get_db, engine
 from app.routers import (
     auth, users, roles, house as house_router, node as node_router, 
@@ -18,13 +24,13 @@ from app.routers import (
     user_house
 )
 from app.core.redis import redis_client
-from app.core.limiter import limiter
+from app.security.limiter import security_limiter, rate_limit_middleware
 
-# Configura il logging strutturato
+# Configura il logging strutturato centralizzato
 setup_logging(
-    level=settings.LOG_LEVEL if hasattr(settings, 'LOG_LEVEL') else "INFO",
-    json_format=True,
-    include_trace_id=True
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    json_format=os.getenv("LOG_FORMAT", "json").lower() == "json",
+    log_dir=os.getenv("LOG_DIR", "logs")
 )
 
 logger = get_logger(__name__)
@@ -38,42 +44,61 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting up Eterna-Home API", 
-                service="eterna-home-api",
-                version="1.0.0",
-                environment=os.getenv("ENVIRONMENT", "development"))
+    logger.info(
+        "Starting up Eterna-Home API",
+        event="application_startup",
+        status="started",
+        service="eterna-home-api",
+        version="1.0.0",
+        environment=os.getenv("ENVIRONMENT", "development")
+    )
     
     # Test Redis connection
     try:
         await redis_client.ping()
-        logger.info("Redis connection successful", 
-                    component="redis",
-                    status="connected")
+        logger.info(
+            "Redis connection successful",
+            event="redis_connection",
+            status="success",
+            component="redis"
+        )
     except Exception as e:
-        logger.error("Redis connection failed", 
-                     component="redis",
-                     error=str(e),
-                     exc_info=True)
+        logger.error(
+            "Redis connection failed",
+            event="redis_connection",
+            status="failed",
+            component="redis",
+            error=str(e)
+        )
     
     # Test database connection
     try:
         with engine.connect() as conn:
             conn.execute("SELECT 1")
-        logger.info("Database connection successful", 
-                    component="database",
-                    status="connected")
+        logger.info(
+            "Database connection successful",
+            event="database_connection",
+            status="success",
+            component="database"
+        )
     except Exception as e:
-        logger.error("Database connection failed", 
-                     component="database",
-                     error=str(e),
-                     exc_info=True)
+        logger.error(
+            "Database connection failed",
+            event="database_connection",
+            status="failed",
+            component="database",
+            error=str(e)
+        )
     
     yield
     
     # Shutdown
-    logger.info("Shutting down Eterna-Home API", 
-                service="eterna-home-api",
-                trace_id=get_trace_id())
+    logger.info(
+        "Shutting down Eterna-Home API",
+        event="application_shutdown",
+        status="shutdown",
+        service="eterna-home-api"
+    )
     if redis_client:
         await redis_client.close()
 
@@ -84,22 +109,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Middleware per il logging
+# Middleware per il logging e sicurezza
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(ErrorLoggingMiddleware)
-app.add_middleware(SecurityLoggingMiddleware)
+app.add_middleware(SecurityMiddleware)
 
-# CORS middleware
+# CORS middleware - Configurazione sicura dalle variabili d'ambiente
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOWED_METHODS,
+    allow_headers=settings.CORS_ALLOWED_HEADERS,
 )
 
-# Rate limiting setup - use the correct slowapi syntax
-app.state.limiter = limiter
+# Rate limiting setup - nuovo sistema avanzato
+if settings.ENABLE_RATE_LIMITING:
+    app.state.limiter = security_limiter.limiter
+    app.add_exception_handler(Exception, rate_limit_middleware)
+    logger.info(
+        "Rate limiting enabled",
+        event="rate_limiting_setup",
+        status="enabled"
+    )
+else:
+    logger.info(
+        "Rate limiting disabled",
+        event="rate_limiting_setup",
+        status="disabled"
+    )
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
@@ -122,12 +159,22 @@ app.include_router(user_house.router, tags=["User House Management"])
 
 @app.get("/")
 async def root():
-    logger.info("Root endpoint accessed")
+    logger.info(
+        "Root endpoint accessed",
+        event="endpoint_access",
+        status="success",
+        endpoint="/"
+    )
     return {"message": "Eterna-Home API is running!"}
 
 @app.get("/health")
 async def health_check():
-    logger.info("Health check endpoint accessed")
+    logger.info(
+        "Health check endpoint accessed",
+        event="health_check",
+        status="success",
+        endpoint="/health"
+    )
     return {"status": "healthy", "message": "Eterna-Home API is operational"}
 
 if __name__ == "__main__":
