@@ -1,0 +1,359 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="assign-container">
+    <div class="header">
+        <h2>Assegnazione Ruoli agli Utenti</h2>
+        <a href="/admin/roles" class="btn btn-secondary">← Torna ai Ruoli</a>
+    </div>
+
+    <div class="assign-content">
+        <div class="info-section">
+            <h3>📋 Informazioni</h3>
+            <p>Assegna ruoli agli utenti del tenant corrente. Puoi anche associare l'utente a una casa specifica.</p>
+        </div>
+
+        <form method="POST" action="/admin/roles/assign" class="assign-form">
+            <div class="form-section">
+                <h3>Selezione Utente e Ruolo</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user_id">Utente *</label>
+                        <select id="user_id" name="user_id" required class="form-control">
+                            <option value="">Seleziona un utente...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text">Utente a cui assegnare il ruolo</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="role_id">Ruolo *</label>
+                        <select id="role_id" name="role_id" required class="form-control">
+                            <option value="">Seleziona un ruolo...</option>
+                            {% for role in roles %}
+                            <option value="{{ role.id }}">{{ role.name }} - {{ role.description }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text">Ruolo da assegnare all'utente</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Associazione Casa (Opzionale)</h3>
+                <p class="section-description">Associa l'utente a una casa specifica per limitare l'accesso:</p>
+                
+                <div class="form-group">
+                    <label for="house_id">Casa</label>
+                    <select id="house_id" name="house_id" class="form-control">
+                        <option value="">Nessuna casa specifica (accesso a tutto il tenant)</option>
+                        {% for house in houses %}
+                        <option value="{{ house.id }}">{{ house.name }} - {{ house.address }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text">Se selezionata, l'utente avrà accesso solo a questa casa</small>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Assegna Ruolo</button>
+                <a href="/admin/roles" class="btn btn-secondary">Annulla</a>
+            </div>
+        </form>
+
+        <div class="current-assignments">
+            <h3>📊 Assegnazioni Attuali</h3>
+            <div class="assignments-grid">
+                {% for user in users %}
+                <div class="assignment-card">
+                    <div class="user-info">
+                        <h4>{{ user.username }}</h4>
+                        <p class="user-email">{{ user.email }}</p>
+                    </div>
+                    <div class="current-role">
+                        <span class="role-badge">Ruolo attuale: <strong>{{ user.role or 'N/A' }}</strong></span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.assign-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.header h2 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.assign-content {
+    display: grid;
+    gap: 30px;
+}
+
+.info-section {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.info-section h3 {
+    margin: 0 0 10px 0;
+    color: #1976d2;
+}
+
+.info-section p {
+    margin: 0;
+    color: #1565c0;
+}
+
+.assign-form {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.form-section {
+    padding: 30px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+}
+
+.section-description {
+    color: #6c757d;
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.form-actions {
+    padding: 30px;
+    background: #f8f9fa;
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+}
+
+.current-assignments {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.current-assignments h3 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+}
+
+.assignments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.assignment-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.assignment-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-info h4 {
+    margin: 0 0 5px 0;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.user-email {
+    margin: 0 0 10px 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.current-role {
+    display: flex;
+    align-items: center;
+}
+
+.role-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+    
+    .assignments-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+// Validazione del form
+document.querySelector('.assign-form').addEventListener('submit', function(e) {
+    const userId = document.getElementById('user_id').value;
+    const roleId = document.getElementById('role_id').value;
+    
+    if (!userId) {
+        e.preventDefault();
+        alert('Seleziona un utente');
+        return;
+    }
+    
+    if (!roleId) {
+        e.preventDefault();
+        alert('Seleziona un ruolo');
+        return;
+    }
+    
+    // Conferma prima di assegnare
+    const userName = document.getElementById('user_id').options[document.getElementById('user_id').selectedIndex].text;
+    const roleName = document.getElementById('role_id').options[document.getElementById('role_id').selectedIndex].text;
+    
+    if (!confirm(`Confermi di assegnare il ruolo "${roleName}" all'utente "${userName}"?`)) {
+        e.preventDefault();
+        return;
+    }
+});
+
+// Aggiorna le informazioni dell'utente selezionato
+document.getElementById('user_id').addEventListener('change', function() {
+    const selectedUserId = this.value;
+    const assignmentCards = document.querySelectorAll('.assignment-card');
+    
+    assignmentCards.forEach(card => {
+        card.style.opacity = '0.5';
+    });
+    
+    if (selectedUserId) {
+        // Trova la card corrispondente all'utente selezionato
+        const userEmail = this.options[this.selectedIndex].text.match(/\((.*?)\)/)[1];
+        const targetCard = Array.from(assignmentCards).find(card => 
+            card.querySelector('.user-email').textContent === userEmail
+        );
+        
+        if (targetCard) {
+            targetCard.style.opacity = '1';
+            targetCard.style.border = '2px solid #007bff';
+        }
+    }
+});
+</script>
+{% endblock %} 

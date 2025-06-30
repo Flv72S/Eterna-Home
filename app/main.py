@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from contextlib import asynccontextmanager
 import os
 from typing import List
@@ -21,8 +22,9 @@ from app.routers import (
     document as document_router, documents as documents_router, 
     bim as bim_router, node_areas, main_areas, area_reports, 
     voice, local_interface, secure_area, ai_assistant, activator,
-    user_house
+    user_house, system
 )
+from app.routers.admin import dashboard as admin_dashboard, roles as admin_roles
 from app.core.redis import redis_client
 from app.security.limiter import security_limiter, rate_limit_middleware
 
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info(
         "Starting up Eterna-Home API",
-        event="application_startup",
+        event_name="application_startup",
         status="started",
         service="eterna-home-api",
         version="1.0.0",
@@ -55,17 +57,26 @@ async def lifespan(app: FastAPI):
     
     # Test Redis connection
     try:
-        await redis_client.ping()
-        logger.info(
-            "Redis connection successful",
-            event="redis_connection",
-            status="success",
-            component="redis"
-        )
+        if redis_client:
+            await redis_client.ping()
+            logger.info(
+                "Redis connection successful",
+                event_name="redis_connection",
+                status="success",
+                component="redis"
+            )
+        else:
+            logger.warning(
+                "Redis connection failed",
+                event_name="redis_connection",
+                status="failed",
+                component="redis",
+                error="Redis client not initialized"
+            )
     except Exception as e:
         logger.error(
             "Redis connection failed",
-            event="redis_connection",
+            event_name="redis_connection",
             status="failed",
             component="redis",
             error=str(e)
@@ -74,17 +85,17 @@ async def lifespan(app: FastAPI):
     # Test database connection
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         logger.info(
             "Database connection successful",
-            event="database_connection",
+            event_name="database_connection",
             status="success",
             component="database"
         )
     except Exception as e:
         logger.error(
             "Database connection failed",
-            event="database_connection",
+            event_name="database_connection",
             status="failed",
             component="database",
             error=str(e)
@@ -95,7 +106,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info(
         "Shutting down Eterna-Home API",
-        event="application_shutdown",
+        event_name="application_shutdown",
         status="shutdown",
         service="eterna-home-api"
     )
@@ -128,13 +139,13 @@ if settings.ENABLE_RATE_LIMITING:
     app.add_exception_handler(Exception, rate_limit_middleware)
     logger.info(
         "Rate limiting enabled",
-        event="rate_limiting_setup",
+        event_name="rate_limiting_setup",
         status="enabled"
     )
 else:
     logger.info(
         "Rate limiting disabled",
-        event="rate_limiting_setup",
+        event_name="rate_limiting_setup",
         status="disabled"
     )
 
@@ -157,11 +168,18 @@ app.include_router(ai_assistant.router, prefix="/api/v1", tags=["AI Assistant"])
 app.include_router(activator.router, prefix="/api/v1", tags=["Physical Activators"])
 app.include_router(user_house.router, tags=["User House Management"])
 
+# Include admin dashboard router
+app.include_router(admin_dashboard.router, tags=["admin"])
+app.include_router(admin_roles.router, tags=["admin"])
+
+# Include system monitoring router
+app.include_router(system.router, tags=["system"])
+
 @app.get("/")
 async def root():
     logger.info(
         "Root endpoint accessed",
-        event="endpoint_access",
+        event_name="endpoint_access",
         status="success",
         endpoint="/"
     )
@@ -171,7 +189,7 @@ async def root():
 async def health_check():
     logger.info(
         "Health check endpoint accessed",
-        event="health_check",
+        event_name="health_check",
         status="success",
         endpoint="/health"
     )

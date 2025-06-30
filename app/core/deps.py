@@ -216,3 +216,46 @@ def require_single_role(required_role: str):
 
 # Alias per compatibilità
 require_role = require_single_role 
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    session: Session = Depends(get_session)
+) -> Optional[User]:
+    """
+    Dependency opzionale per ottenere l'utente corrente.
+    Restituisce None se non è fornito un token valido.
+    
+    Returns:
+        Optional[User]: L'utente autenticato o None se non autenticato
+    """
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM]
+        )
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+    except JWTError:
+        return None
+
+    # Try to get user from cache first
+    cached_user = get_cached_user(email)
+    if cached_user:
+        return User(**cached_user)
+
+    # If not in cache, get from database
+    query = select(User).where(User.email == email)
+    result = safe_exec(session, query)
+    user = result.first()
+    if user is None:
+        return None
+
+    # Cache the user for future requests
+    cache_user(user, email)
+    
+    return user 

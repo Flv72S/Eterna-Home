@@ -1,0 +1,52 @@
+{
+  "timestamp": 1751123593.8483887,
+  "results": {
+    "file_structure": {
+      "status": "success",
+      "found_count": 10,
+      "missing_count": 0,
+      "missing_files": []
+    },
+    "system_router": {
+      "status": "success",
+      "found_endpoints": [
+        "@router.get(\"/health\")",
+        "@router.get(\"/ready\")",
+        "@router.get(\"/metrics\""
+      ],
+      "total_endpoints": 3
+    },
+    "security_scripts": {
+      "status": "success",
+      "scripts": {
+        "owasp_zap": "valid",
+        "nikto": "valid"
+      }
+    },
+    "dependencies": {
+      "status": "success",
+      "modules": {
+        "fastapi": "available",
+        "sqlmodel": "available",
+        "psutil": "available",
+        "redis": "available",
+        "requests": "available"
+      }
+    },
+    "configuration": {
+      "status": "success",
+      "found_settings": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "SECRET_KEY",
+        "MINIO_ENDPOINT"
+      ],
+      "total_settings": 4
+    }
+  },
+  "summary": {
+    "total": 5,
+    "success": 5,
+    "failed": 0
+  }
+}

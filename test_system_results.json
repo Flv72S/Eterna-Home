@@ -1,0 +1,26 @@
+{
+  "timestamp": 1751122845.2719111,
+  "results": {
+    "health": {
+      "status": "failed",
+      "error": "Connection refused"
+    },
+    "ready": {
+      "status": "failed",
+      "error": "Connection refused"
+    },
+    "metrics": {
+      "status": "failed",
+      "error": "Connection refused"
+    },
+    "security": {
+      "owasp_zap": "error",
+      "nikto": "error"
+    }
+  },
+  "summary": {
+    "total": 5,
+    "success": 0,
+    "failed": 5
+  }
+}

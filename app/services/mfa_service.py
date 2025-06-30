@@ -20,7 +20,6 @@ class MFAService:
     
     def __init__(self):
         self.issuer_name = "Eterna-Home"
-        self.algorithm = pyotp.TOTP.ALGORITHM_SHA1
         self.digits = 6
         self.interval = 30  # secondi
     
