@@ -1,21 +1,11 @@
 from datetime import datetime
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy.orm import Mapped
 from pydantic import ConfigDict
 
-if TYPE_CHECKING:
-    from app.models.user import User
-    from app.models.role import Role
-
-class RolePermission(SQLModel, table=True):
-    __tablename__ = "role_permissions"
-    role_id: int = Field(foreign_key="roles.id", primary_key=True)
-    permission_id: int = Field(foreign_key="permissions.id", primary_key=True)
-
-class UserPermission(SQLModel, table=True):
-    __tablename__ = "user_permissions"
-    user_id: int = Field(foreign_key="users.id", primary_key=True)
-    permission_id: int = Field(foreign_key="permissions.id", primary_key=True)
+from .user_permission import UserPermission
+from .role_permission import RolePermission
 
 class PermissionBase(SQLModel):
     name: str = Field(unique=True, index=True, description="Nome del permesso")
@@ -24,19 +14,30 @@ class PermissionBase(SQLModel):
     action: str = Field(description="Azione consentita (view, edit, delete, manage)")
     is_active: bool = Field(default=True, description="Permesso attivo o disabilitato")
 
-class Permission(PermissionBase, table=True):
+class Permission(SQLModel, table=True):
     __tablename__ = "permissions"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    description: Optional[str] = None
+    
+    # Relazioni many-to-many
+    users: Mapped[List["User"]] = Relationship(
+        back_populates="permissions",
+        link_model=UserPermission,
+        sa_relationship_kwargs={
+            "foreign_keys": [UserPermission.permission_id, UserPermission.user_id]
+        }
+    )
+    roles: Mapped[List["Role"]] = Relationship(
+        back_populates="permissions",
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            "foreign_keys": [RolePermission.permission_id, RolePermission.role_id]
+        }
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    roles: List["Role"] = Relationship(
-        back_populates="permissions",
-        link_model=RolePermission
-    )
-    users: List["User"] = Relationship(
-        back_populates="permissions",
-        link_model=UserPermission
-    )
     model_config = ConfigDict(
         from_attributes=True,
         validate_by_name=True,

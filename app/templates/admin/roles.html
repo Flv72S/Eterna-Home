@@ -1,0 +1,22 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2>Ruoli</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Nome Ruolo</th>
+      <th>Permessi Associati</th>
+      <th>Numero Utenti</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for role in roles %}
+    <tr>
+      <td>{{ role.name }}</td>
+      <td>{{ role.permissions|join(', ') }}</td>
+      <td>{{ role.users_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %} 

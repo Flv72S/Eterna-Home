@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 
 class MainAreaBase(BaseModel):
@@ -9,13 +9,15 @@ class MainAreaBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Nome dell'area principale")
     description: Optional[str] = Field(None, max_length=500, description="Descrizione dell'area")
     
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError('Il nome non può essere vuoto')
         return v.strip()
     
-    @validator('description')
+    @field_validator('description')
+    @classmethod
     def validate_description(cls, v):
         if v is not None and not v.strip():
             return None
@@ -32,13 +34,15 @@ class MainAreaUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         if v is not None and not v.strip():
             raise ValueError('Il nome non può essere vuoto')
         return v.strip() if v else v
     
-    @validator('description')
+    @field_validator('description')
+    @classmethod
     def validate_description(cls, v):
         if v is not None and not v.strip():
             return None

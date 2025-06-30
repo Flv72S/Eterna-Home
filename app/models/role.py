@@ -4,6 +4,7 @@ Modello Role per la gestione dei ruoli utente
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy.orm import Mapped
 from pydantic import ConfigDict
 from app.models.user_role import UserRole
 from app.models.permission import RolePermission
@@ -20,28 +21,30 @@ class RoleBase(SQLModel):
     is_active: bool = Field(default=True, description="Ruolo attivo o disabilitato")
 
 
-class Role(RoleBase, table=True):
+class Role(SQLModel, table=True):
     """Modello Role per il database"""
     __tablename__ = "roles"
     
     id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    # Relazione many-to-many con User
-    users: List["User"] = Relationship(
+    # Relazioni many-to-many
+    users: Mapped[List["User"]] = Relationship(
         back_populates="roles",
         link_model=UserRole,
         sa_relationship_kwargs={
-            "primaryjoin": "Role.id == UserRole.role_id",
-            "secondaryjoin": "UserRole.user_id == User.id"
+            "foreign_keys": [UserRole.role_id, UserRole.user_id]
         }
     )
-    
-    # Relazione many-to-many con Permission
-    permissions: List["Permission"] = Relationship(
+    permissions: Mapped[List["Permission"]] = Relationship(
         back_populates="roles",
-        link_model=RolePermission
+        link_model=RolePermission,
+        sa_relationship_kwargs={
+            "foreign_keys": [RolePermission.role_id, RolePermission.permission_id]
+        }
     )
     
     model_config = ConfigDict(

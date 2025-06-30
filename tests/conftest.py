@@ -28,7 +28,7 @@ from app.models.maintenance import MaintenanceRecord
 from app.models.role import Role
 from app.models.user_role import UserRole
 from app.core.config import settings
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, create_access_token
 from app.services.minio_service import get_minio_service
 
 # Configurazione del logging
@@ -41,6 +41,8 @@ from tests.conftest_redis import redis_client, override_redis_client
 # Configurazione del database di test
 # Sovrascrive la configurazione per usare il database di test
 os.environ["DATABASE_URL"] = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
+# Disabilita Redis per i test se non configurato
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
 TEST_DATABASE_URL = "postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test?sslmode=disable"
 TEST_DATABASE_NAME = "eterna_home_test"
@@ -345,3 +347,79 @@ def mock_minio():
         instance.make_bucket.return_value = None
         minio_mock.return_value = instance
         yield
+
+@pytest.fixture
+def client():
+    """Client di test per FastAPI"""
+    return TestClient(app)
+
+@pytest.fixture
+def test_db():
+    """Database di test in memoria"""
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
+
+@pytest.fixture
+def admin_user():
+    """Utente admin per i test"""
+    return {
+        "id": 1,
+        "email": "admin@test.com",
+        "username": "admin",
+        "is_active": True,
+        "tenant_id": "house_123"
+    }
+
+@pytest.fixture
+def regular_user():
+    """Utente normale per i test"""
+    return {
+        "id": 2,
+        "email": "user@test.com",
+        "username": "user",
+        "is_active": True,
+        "tenant_id": "house_123"
+    }
+
+@pytest.fixture
+def admin_token(admin_user):
+    """Token JWT per utente admin"""
+    return create_access_token(
+        data={
+            "sub": str(admin_user["id"]),
+            "email": admin_user["email"],
+            "tenant_id": admin_user["tenant_id"],
+            "permissions": ["manage_users", "manage_roles", "manage_houses"]
+        }
+    )
+
+@pytest.fixture
+def regular_token(regular_user):
+    """Token JWT per utente normale"""
+    return create_access_token(
+        data={
+            "sub": str(regular_user["id"]),
+            "email": regular_user["email"],
+            "tenant_id": regular_user["tenant_id"],
+            "permissions": ["read_own_data"]
+        }
+    )
+
+@pytest.fixture
+def mock_current_user():
+    """Mock per get_current_user"""
+    with patch('app.routers.admin.dashboard.get_current_user') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_db_session():
+    """Mock per get_db"""
+    with patch('app.routers.admin.dashboard.get_db') as mock:
+        yield mock

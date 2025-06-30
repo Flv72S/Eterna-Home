@@ -7,6 +7,8 @@ from pydantic import ConfigDict, EmailStr
 from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
 from app.models.enums import UserRole as UserRoleEnum
 from app.models.permission import UserPermission
+from typing_extensions import Annotated
+from sqlalchemy.orm import Mapped
 
 if TYPE_CHECKING:
     from app.models.house import House
@@ -153,15 +155,14 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     
-    # Relazione many-to-many con Role (temporaneamente commentata)
-    # roles: List["Role"] = Relationship(
-    #     back_populates="users",
-    #     link_model="UserRole",
-    #     sa_relationship_kwargs={
-    #         "primaryjoin": "User.id == UserRole.user_id",
-    #         "secondaryjoin": "UserRole.role_id == Role.id"
-    #     }
-    # )
+    # Relazione many-to-many con Role
+    roles: Mapped[List["Role"]] = Relationship(
+        back_populates="users",
+        link_model=UserRole,
+        sa_relationship_kwargs={
+            "foreign_keys": [UserRole.user_id, UserRole.role_id]
+        }
+    )
     
     # Relazione con UserTenantRole per ruoli multi-tenant
     tenant_roles: List["UserTenantRole"] = Relationship(
@@ -169,11 +170,14 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
-    # Relazione many-to-many con Permission (temporaneamente commentata)
-    # permissions: List["Permission"] = Relationship(
-    #     back_populates="users",
-    #     link_model="UserPermission"
-    # )
+    # Relazione many-to-many con Permission
+    permissions: Mapped[List["Permission"]] = Relationship(
+        back_populates="users",
+        link_model=UserPermission,
+        sa_relationship_kwargs={
+            "foreign_keys": [UserPermission.user_id, UserPermission.permission_id]
+        }
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"

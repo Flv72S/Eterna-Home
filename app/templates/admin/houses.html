@@ -1,0 +1,22 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2>Case</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Nome Casa</th>
+      <th>Indirizzo</th>
+      <th>Numero Utenti</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for house in houses %}
+    <tr>
+      <td>{{ house.name }}</td>
+      <td>{{ house.address }}</td>
+      <td>{{ house.users_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %} 

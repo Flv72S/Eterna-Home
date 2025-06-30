@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 
 class NodeAreaBase(BaseModel):
@@ -10,14 +10,16 @@ class NodeAreaBase(BaseModel):
     category: str = Field(..., description="Categoria dell'area")
     has_physical_tag: bool = Field(default=True, description="Se l'area ha un tag fisico NFC")
     
-    @validator('category')
+    @field_validator('category')
+    @classmethod
     def validate_category(cls, v):
         allowed_categories = ['residential', 'technical', 'shared']
         if v not in allowed_categories:
             raise ValueError(f'Categoria deve essere una di: {", ".join(allowed_categories)}')
         return v
     
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError('Il nome non può essere vuoto')
@@ -35,7 +37,8 @@ class NodeAreaUpdate(BaseModel):
     category: Optional[str] = None
     has_physical_tag: Optional[bool] = None
     
-    @validator('category')
+    @field_validator('category')
+    @classmethod
     def validate_category(cls, v):
         if v is not None:
             allowed_categories = ['residential', 'technical', 'shared']
@@ -43,7 +46,8 @@ class NodeAreaUpdate(BaseModel):
                 raise ValueError(f'Categoria deve essere una di: {", ".join(allowed_categories)}')
         return v
     
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         if v is not None and not v.strip():
             raise ValueError('Il nome non può essere vuoto')

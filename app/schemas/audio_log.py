@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 
 class AudioLogBase(BaseModel):
@@ -13,7 +13,8 @@ class AudioLogBase(BaseModel):
     response_text: Optional[str] = Field(None, max_length=1000, description="Risposta generata dal sistema")
     processing_status: str = Field(default="received", description="Stato di elaborazione del comando")
     
-    @validator('processing_status')
+    @field_validator('processing_status')
+    @classmethod
     def validate_processing_status(cls, v):
         allowed_statuses = ['received', 'transcribing', 'analyzing', 'completed', 'failed']
         if v not in allowed_statuses:
@@ -33,7 +34,8 @@ class AudioLogUpdate(BaseModel):
     processing_status: Optional[str] = None
     audio_url: Optional[str] = Field(None, max_length=500)
     
-    @validator('processing_status')
+    @field_validator('processing_status')
+    @classmethod
     def validate_processing_status(cls, v):
         if v is not None:
             allowed_statuses = ['received', 'transcribing', 'analyzing', 'completed', 'failed']
@@ -68,7 +70,8 @@ class VoiceCommandRequest(BaseModel):
     node_id: Optional[int] = Field(None, description="ID del nodo associato")
     house_id: Optional[int] = Field(None, description="ID della casa associata")
     
-    @validator('transcribed_text')
+    @field_validator('transcribed_text')
+    @classmethod
     def validate_transcribed_text(cls, v):
         if v is not None and not v.strip():
             raise ValueError('Il testo trascritto non può essere vuoto')

@@ -58,7 +58,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             url=url,
             client_ip=client_ip,
             user_agent=user_agent,
-            event="request_started",
+            event_name="request_started",
             status="started"
         )
         
@@ -76,7 +76,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 url=url,
                 status_code=response.status_code,
                 duration=duration,
-                event="request_completed",
+                event_name="request_completed",
                 status="success" if response.status_code < 400 else "failed"
             )
             
@@ -96,7 +96,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 url=url,
                 error=str(e),
                 duration=duration,
-                event="request_failed",
+                event_name="request_failed",
                 status="error"
             )
             
@@ -212,7 +212,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Log dell'errore con sistema multi-tenant
             error_extra_fields = {
-                "event": "unhandled_exception",
+                "event_name": "unhandled_exception",
                 "method": request.method,
                 "path": request.url.path,
                 "error": str(e),
@@ -267,7 +267,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if response.status_code == 403:
             log_security_event(
                 event="access_denied",
-                status="unauthorized",
+                status="denied",
                 endpoint=str(request.url.path),
                 reason="Forbidden access",
                 ip_address=client_ip,
@@ -276,7 +276,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         elif response.status_code == 401:
             log_security_event(
                 event="authentication_failed",
-                status="unauthorized",
+                status="failed",
                 endpoint=str(request.url.path),
                 reason="Authentication required",
                 ip_address=client_ip,

@@ -4,7 +4,7 @@ from app.utils.ai_security import sanitize_prompt
 @pytest.mark.parametrize("text,expected", [
     ("Accendi le luci", (True, None)),
     ("<script>alert('x')</script>", (False, "Pattern pericoloso rilevato: <script.*?>.*?</script>")),
-    ("{{ dangerous }}", (False, "Pattern pericoloso rilevato: \\{\\{.*?\\}\}\")),
+    ("{{ dangerous }}", (False, "Pattern pericoloso rilevato: \\{\\{.*?\\}\\}")),
     ("os.system('rm -rf /')", (False, "Pattern pericoloso rilevato: (os\\.|subprocess\\.|eval\\(|exec\\()")),
     ("' OR 1=1; --", (False, "Pattern pericoloso rilevato: --|/\\*|\\*/|;")),
     ("A"*501, (False, "Prompt troppo lungo (>500 caratteri)")),

@@ -19,7 +19,6 @@ from app.core.redis import get_redis_client
 from app.core.storage.minio import get_minio_client
 from app.models.user import User
 from app.core.deps import get_current_user_optional
-from app.core.logging_multi_tenant import logger
 
 # Router per endpoint di sistema
 router = APIRouter(prefix="/system", tags=["system"])

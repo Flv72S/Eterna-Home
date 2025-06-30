@@ -1,0 +1,12 @@
+from datetime import datetime
+from typing import Optional
+from sqlmodel import SQLModel, Field
+
+class RolePermission(SQLModel, table=True):
+    """Tabella intermedia per relazione many-to-many Role-Permission"""
+    __tablename__ = "role_permissions"
+    
+    role_id: Optional[int] = Field(default=None, foreign_key="roles.id", primary_key=True)
+    permission_id: Optional[int] = Field(default=None, foreign_key="permissions.id", primary_key=True)
+    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_by: Optional[int] = Field(default=None, foreign_key="users.id", description="ID dell'utente che ha assegnato il permesso al ruolo") 

@@ -1,9 +1,9 @@
 """Test suite per il modello MaintenanceRecord e le sue relazioni."""
 import pytest
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
-from app.models.maintenance import MaintenanceRecord, MaintenanceType, MaintenanceStatus
+from app.models.maintenance import MaintenanceRecord
 from app.models.node import Node
 from app.models.house import House
 from app.models.user import User
@@ -30,8 +30,8 @@ def test_house(session: Session, test_user: User) -> House:
         name="Test House",
         address="123 Test St",
         owner_id=test_user.id,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC)
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     session.add(house)
     session.commit()
@@ -48,8 +48,8 @@ def test_node(session: Session, test_house: House) -> Node:
         node_type="sensor",
         location="Living Room",
         house_id=test_house.id,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC)
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     session.add(node)
     session.commit()
@@ -62,10 +62,10 @@ def test_create_maintenance_record(session: Session, test_node: Node):
     # Crea un record di manutenzione
     maintenance = MaintenanceRecord(
         node_id=test_node.id,
-        timestamp=datetime.now(UTC),
-        maintenance_type=MaintenanceType.ROUTINE,
+        timestamp=datetime.now(timezone.utc),
+        maintenance_type="ROUTINE",
         description="Test maintenance",
-        status=MaintenanceStatus.PENDING,
+        status="PENDING",
         notes="Test notes"
     )
     
@@ -77,9 +77,9 @@ def test_create_maintenance_record(session: Session, test_node: Node):
     # Verifica che il record sia stato creato correttamente
     assert maintenance.id is not None
     assert maintenance.node_id == test_node.id
-    assert maintenance.maintenance_type == MaintenanceType.ROUTINE
+    assert maintenance.maintenance_type == "ROUTINE"
     assert maintenance.description == "Test maintenance"
-    assert maintenance.status == MaintenanceStatus.PENDING
+    assert maintenance.status == "PENDING"
     assert maintenance.notes == "Test notes"
     
     # Verifica che il record sia recuperabile dal database
@@ -93,18 +93,18 @@ def test_maintenance_node_relationship(session: Session, test_node: Node):
     # Crea due record di manutenzione per lo stesso nodo
     maintenance1 = MaintenanceRecord(
         node_id=test_node.id,
-        timestamp=datetime.now(UTC),
-        maintenance_type=MaintenanceType.ROUTINE,
+        timestamp=datetime.now(timezone.utc),
+        maintenance_type="ROUTINE",
         description="First maintenance",
-        status=MaintenanceStatus.PENDING
+        status="PENDING"
     )
     
     maintenance2 = MaintenanceRecord(
         node_id=test_node.id,
-        timestamp=datetime.now(UTC),
-        maintenance_type=MaintenanceType.CORRECTIVE,
+        timestamp=datetime.now(timezone.utc),
+        maintenance_type="CORRECTIVE",
         description="Second maintenance",
-        status=MaintenanceStatus.COMPLETED
+        status="COMPLETED"
     )
     
     session.add_all([maintenance1, maintenance2])
@@ -128,10 +128,10 @@ def test_maintenance_record_constraints(session: Session, test_node: Node):
     # Verifica che non si possa creare un record senza node_id
     with pytest.raises(IntegrityError):
         maintenance = MaintenanceRecord(
-            timestamp=datetime.now(UTC),
-            maintenance_type=MaintenanceType.ROUTINE,
+            timestamp=datetime.now(timezone.utc),
+            maintenance_type="ROUTINE",
             description="Test maintenance",
-            status=MaintenanceStatus.PENDING
+            status="PENDING"
         )
         session.add(maintenance)
         try:

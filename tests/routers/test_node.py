@@ -5,7 +5,7 @@ from app.main import app
 from app.models.node import Node
 from app.models.house import House
 from app.models.user import User
-from app.api.v1.auth import create_access_token
+from app.core.security import create_access_token
 import time
 from app.models.enums import UserRole
 from app.utils.password import get_password_hash

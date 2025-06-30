@@ -8,6 +8,7 @@ from .room import Room
 from .booking import Booking
 from .maintenance import MaintenanceRecord
 from .role import Role, UserRole
+from .permission import Permission, RolePermission, UserPermission
 from .user_tenant_role import UserTenantRole
 from .bim_model import BIMModel, BIMFormat, BIMSoftware, BIMLevelOfDetail
 from .audio_log import AudioLog, AudioLogCreate, AudioLogUpdate
@@ -41,6 +42,9 @@ __all__ = [
     'MaintenanceRecord',
     'Role',
     'UserRole',
+    'Permission',
+    'RolePermission',
+    'UserPermission',
     'UserTenantRole',
     'BIMModel',
     'BIMFormat',

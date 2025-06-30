@@ -14,7 +14,7 @@ class Settings(BaseModel):
     
     # Database - Credenziali da environment variables
     DATABASE_URL: str = Field(
-        default="postgresql+psycopg2://postgres:password@localhost:5432/eterna_home",
+        default="postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test",
         description="Database connection URL"
     )
     DATABASE_SSL_MODE: str = Field(

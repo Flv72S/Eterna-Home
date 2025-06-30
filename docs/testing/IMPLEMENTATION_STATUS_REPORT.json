@@ -1,0 +1,144 @@
+{
+  "generated": "2025-06-28T20:42:31.978271",
+  "total_tests": 17,
+  "passed": 1,
+  "failed": 13,
+  "results": [
+    {
+      "test": "Multi-tenant Isolation",
+      "file": "tests/test_multitenant_isolation.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 45.24,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "RBAC/PBAC Decorators",
+      "file": "tests/test_rbac_pbac.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 28.47,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "Structured Logging",
+      "file": "tests/test_logging_structlog.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 28.28,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "User Tenant Roles",
+      "file": "tests/test_user_tenant_roles.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 28.79,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "User-House Relationships",
+      "file": "tests/test_userhouse.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 24.01,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "Document Upload",
+      "file": "tests/test_document_upload.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 29.92,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "Voice Commands",
+      "file": "tests/test_voice_commands.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 25.33,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "MFA Enable/Disable",
+      "file": "tests/test_mfa_enable_disable.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 29.39,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "System Router",
+      "file": "tests/test_system_router.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 29.02,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "File Validation",
+      "file": "tests/test_file_validation.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 24.81,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "Rate Limiting",
+      "file": "tests/test_rate_limiting.py",
+      "status": "❌ Failed",
+      "error": "INFO:app.database:Database SSL mode: prefer\nDEBUG:passlib.utils.compat:loaded lazy attr 'SafeConfigParser': <class 'configparser.ConfigParser'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'NativeStringIO': <class '_io.StringIO'>\nDEBUG:passlib.utils.compat:loaded lazy attr 'BytesIO': <class '_io.BytesIO'>\nDEBUG:passlib.registry:registered 'bcrypt' handler: <class 'passlib.handlers.bcrypt.bcrypt'>\nC:\\Users\\flavi\\AppData\\Roaming\\Python\\Python313\\site-packages\\_pytest\\config\\__init__.py:331: PluggyT",
+      "duration": 23.47,
+      "notes": "Exit code: 4"
+    },
+    {
+      "test": "File exists: docs/security/owasp_report.html",
+      "file": "docs/security/owasp_report.html",
+      "status": "❌ Missing",
+      "error": null,
+      "duration": 0,
+      "notes": "File does not exist"
+    },
+    {
+      "test": "File exists: docs/security/nikto_report.html",
+      "file": "docs/security/nikto_report.html",
+      "status": "❌ Missing",
+      "error": null,
+      "duration": 0,
+      "notes": "File does not exist"
+    },
+    {
+      "test": "File exists: docs/security/bandit_report.json",
+      "file": "docs/security/bandit_report.json",
+      "status": "✅ Present",
+      "error": null,
+      "duration": 0,
+      "notes": "Size: 82498 bytes"
+    },
+    {
+      "test": "API endpoint: /health",
+      "file": "/health",
+      "status": "🔌 Connection Error",
+      "error": null,
+      "duration": 0,
+      "notes": "Server not running or endpoint not available"
+    },
+    {
+      "test": "API endpoint: /ready",
+      "file": "/ready",
+      "status": "🔌 Connection Error",
+      "error": null,
+      "duration": 0,
+      "notes": "Server not running or endpoint not available"
+    },
+    {
+      "test": "API endpoint: /metrics",
+      "file": "/metrics",
+      "status": "🔌 Connection Error",
+      "error": null,
+      "duration": 0,
+      "notes": "Server not running or endpoint not available"
+    }
+  ]
+}
