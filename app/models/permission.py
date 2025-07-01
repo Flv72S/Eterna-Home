@@ -8,6 +8,7 @@ from .user_permission import UserPermission
 from .role_permission import RolePermission
 if TYPE_CHECKING:
     from .role import Role
+    from .user import User
 
 class PermissionBase(SQLModel):
     name: str = Field(unique=True, index=True, description="Nome del permesso")
@@ -23,14 +24,15 @@ class Permission(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     description: Optional[str] = None
     
-    roles: list["Role"] = Relationship(
+    # Relazioni con sintassi corretta per SQLModel
+    roles: List["Role"] = Relationship(
         back_populates="permissions",
         link_model=RolePermission
     )
-    # users: Any = Relationship(
-    #     back_populates="permissions",
-    #     link_model=UserPermission
-    # )
+    users: List["User"] = Relationship(
+        back_populates="permissions",
+        link_model=UserPermission
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     model_config = ConfigDict(

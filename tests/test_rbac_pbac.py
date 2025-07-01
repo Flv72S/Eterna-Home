@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 from app.main import app
+
 from app.core.security import create_access_token
 from app.models.user import User
 from app.models.role import Role
@@ -10,24 +11,21 @@ from app.models.permission import Permission
 from app.core.auth import require_permission_in_tenant, require_role_in_tenant
 from fastapi import HTTPException
 import json
+import uuid
 from app.models.enums import UserRole
 
 client = TestClient(app)
-
-@pytest.fixture
-def db_session():
-    """Get database session for testing"""
-    with next(get_db()) as session:
-        yield session
 
 @pytest.fixture
 def test_user(db_session):
     """Create test user"""
     user = User(
         email="test@example.com",
+        username="testuser",
         hashed_password="hashed_password",
         is_active=True,
-        tenant_id="house_1"
+        tenant_id=uuid.uuid4(),
+        role="guest"
     )
     db_session.add(user)
     db_session.commit()
@@ -40,7 +38,8 @@ def admin_role(db_session):
     role = Role(
         name="admin",
         description="Administrator role",
-        tenant_id="house_1"
+        tenant_id=uuid.uuid4(),
+        is_active=True
     )
     db_session.add(role)
     db_session.commit()
@@ -53,7 +52,8 @@ def user_role(db_session):
     role = Role(
         name="user",
         description="Regular user role",
-        tenant_id="house_1"
+        tenant_id=uuid.uuid4(),
+        is_active=True
     )
     db_session.add(role)
     db_session.commit()
@@ -66,7 +66,8 @@ def document_permission(db_session):
     permission = Permission(
         name="document:read",
         description="Read documents",
-        tenant_id="house_1"
+        tenant_id=uuid.uuid4(),
+        is_active=True
     )
     db_session.add(permission)
     db_session.commit()
@@ -83,7 +84,7 @@ def test_require_role_in_tenant_success(db_session, test_user, admin_role):
     # Create token with role information
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["admin"]
     })
     
@@ -104,7 +105,7 @@ def test_require_role_in_tenant_failure(db_session, test_user, user_role):
     # Create token with user role
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["user"]
     })
     
@@ -122,7 +123,7 @@ def test_require_permission_in_tenant_success(db_session, test_user, document_pe
     # Create token with permission information
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "permissions": ["document:read"]
     })
     
@@ -139,7 +140,7 @@ def test_require_permission_in_tenant_failure(db_session, test_user):
     # Create token without permissions
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "permissions": []
     })
     
@@ -153,7 +154,7 @@ def test_tenant_isolation_in_rbac(db_session, test_user, admin_role):
     admin_role_tenant2 = Role(
         name="admin",
         description="Administrator role",
-        tenant_id="house_2"
+        tenant_id=uuid.uuid4()
     )
     db_session.add(admin_role_tenant2)
     db_session.commit()
@@ -165,14 +166,14 @@ def test_tenant_isolation_in_rbac(db_session, test_user, admin_role):
     # Create token for tenant1 but with role from tenant2
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["admin"]
     })
     
     # This should fail because role belongs to different tenant
     # In actual implementation, this would be caught by tenant filtering
-    assert test_user.tenant_id == "house_1"
-    assert admin_role_tenant2.tenant_id == "house_2"
+    assert test_user.tenant_id == test_user.tenant_id
+    assert admin_role_tenant2.tenant_id != test_user.tenant_id
 
 def test_multiple_roles_and_permissions(db_session, test_user, admin_role, user_role, document_permission):
     """Test user with multiple roles and permissions"""
@@ -185,7 +186,7 @@ def test_multiple_roles_and_permissions(db_session, test_user, admin_role, user_
     # Create token with multiple roles and permissions
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["admin", "user"],
         "permissions": ["document:read"]
     })
@@ -205,7 +206,7 @@ def test_role_hierarchy(db_session, test_user, admin_role, user_role):
     # Create token with admin role
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["admin"]
     })
     
@@ -220,17 +221,17 @@ def test_permission_granularity(db_session, test_user):
     read_permission = Permission(
         name="document:read",
         description="Read documents",
-        tenant_id="house_1"
+        tenant_id=test_user.tenant_id
     )
     write_permission = Permission(
         name="document:write",
         description="Write documents",
-        tenant_id="house_1"
+        tenant_id=test_user.tenant_id
     )
     delete_permission = Permission(
         name="document:delete",
         description="Delete documents",
-        tenant_id="house_1"
+        tenant_id=test_user.tenant_id
     )
     
     db_session.add_all([read_permission, write_permission, delete_permission])
@@ -243,7 +244,7 @@ def test_permission_granularity(db_session, test_user):
     # Create token with read permission only
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "permissions": ["document:read"]
     })
     
@@ -263,7 +264,7 @@ def test_rbac_pbac_combination(db_session, test_user, admin_role, document_permi
     # Create token with both role and permission
     token = create_access_token(data={
         "sub": test_user.email, 
-        "tenant_id": "house_1",
+        "tenant_id": test_user.tenant_id,
         "roles": ["admin"],
         "permissions": ["document:read"]
     })

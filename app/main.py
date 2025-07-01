@@ -18,9 +18,9 @@ from app.core.logging_config import (
 from app.core.middleware import LoggingMiddleware, SecurityMiddleware
 from app.database import get_db, engine
 from app.routers import (
-    auth, users, roles, house as house_router, node as node_router, 
-    document as document_router, documents as documents_router, 
-    bim as bim_router, node_areas, main_areas, area_reports, 
+    auth, users, roles, house, node, 
+    document, documents, 
+    bim, node_areas, main_areas, area_reports, 
     voice, local_interface, secure_area, ai_assistant, activator,
     user_house, system
 )
@@ -150,14 +150,14 @@ else:
     )
 
 # Include routers
-app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(roles.router, prefix="/api/v1", tags=["roles"])
-app.include_router(house_router.router, prefix="/api/v1", tags=["houses"])
-app.include_router(node_router.router, prefix="/api/v1", tags=["nodes"])
-# app.include_router(document_router.router, prefix="/api/v1", tags=["documents"])
-app.include_router(documents_router.router, prefix="/api/v1", tags=["documents"])
-app.include_router(bim_router.router, prefix="/api/v1", tags=["BIM Models"])
+app.include_router(house.router, prefix="/api/v1", tags=["houses"])
+app.include_router(node.router, prefix="/api/v1", tags=["nodes"])
+app.include_router(document.router, prefix="/api/v1", tags=["documents"])
+app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
+app.include_router(bim.router, prefix="/api/v1", tags=["BIM Models"])
 app.include_router(node_areas.router, prefix="/api/v1/node-areas", tags=["Node Areas"])
 app.include_router(main_areas.router, prefix="/api/v1/main-areas", tags=["Main Areas"])
 app.include_router(area_reports.router, prefix="/api/v1/area-reports", tags=["Area Reports"])

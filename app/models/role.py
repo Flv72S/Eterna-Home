@@ -32,9 +32,13 @@ class Role(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    permissions: list["Permission"] = Relationship(
+    permissions: List["Permission"] = Relationship(
         back_populates="roles",
         link_model=RolePermission
+    )
+    users: List["User"] = Relationship(
+        back_populates="roles",
+        link_model=UserRole
     )
     
     model_config = ConfigDict(

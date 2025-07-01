@@ -108,19 +108,19 @@ class User(SQLModel, table=True):
         description="Numero di telefono dell'utente"
     )
 
-    # Relazioni (temporaneamente commentate per compatibilità SQLAlchemy 2.0+)
-    # roles: Any = Relationship(
-    #     back_populates="users",
-    #     link_model=UserRole
-    # )
-    # tenant_roles: Any = Relationship(
-    #     back_populates="user",
-    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    # )
-    # permissions: Any = Relationship(
-    #     back_populates="users",
-    #     link_model=UserPermission
-    # )
+    # Relazioni con sintassi corretta per SQLModel
+    roles: List["Role"] = Relationship(
+        back_populates="users",
+        link_model=UserRole
+    )
+    tenant_roles: List["UserTenantRole"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    permissions: List["Permission"] = Relationship(
+        back_populates="users",
+        link_model=UserPermission
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
