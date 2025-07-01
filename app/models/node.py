@@ -35,7 +35,7 @@ class NodeArea(SQLModel, table=True):
     )
 
     # Relazioni
-    house: Optional["House"] = Relationship(back_populates="node_areas")
+    # house: Optional["House"] = Relationship(back_populates="node_areas")
     nodes: List["Node"] = Relationship(back_populates="node_area")
 
 class MainArea(SQLModel, table=True):
@@ -60,7 +60,7 @@ class MainArea(SQLModel, table=True):
     )
 
     # Relazioni
-    house: Optional["House"] = Relationship(back_populates="main_areas")
+    # house: Optional["House"] = Relationship(back_populates="main_areas")
     nodes: List["Node"] = Relationship(back_populates="main_area")
 
 class NodeCreate(SQLModel):
@@ -109,17 +109,16 @@ class Node(SQLModel, table=True):
     )
 
     # Relazioni
-    house: Optional["House"] = Relationship(back_populates="nodes")
+    # house: Optional["House"] = Relationship(back_populates="nodes")
     room: Optional["Room"] = Relationship(back_populates="nodes")
     node_area: Optional["NodeArea"] = Relationship(back_populates="nodes")
     main_area: Optional["MainArea"] = Relationship(back_populates="nodes")
-    documents: List["Document"] = Relationship(back_populates="node")
     maintenance_records: List["MaintenanceRecord"] = Relationship(back_populates="node")
-    bim_models: List["BIMModel"] = Relationship(
-        back_populates="node",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    audio_logs: List["AudioLog"] = Relationship(back_populates="node")
+    # bim_models: List["BIMModel"] = Relationship(
+    #     back_populates="node",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
+    # audio_logs: List["AudioLog"] = Relationship(back_populates="node")
     physical_activators: List["PhysicalActivator"] = Relationship(back_populates="linked_node")
 
     # TODO: Aggiungere migrazione Alembic per il campo tenant_id

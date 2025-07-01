@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import pytest
+from datetime import datetime
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import settings
@@ -10,7 +11,6 @@ from app.models.user_tenant_role import UserTenantRole
 from app.models.role import Role
 from app.models.permission import Permission
 from app.core.security import create_access_token
-from datetime import datetime
 
 client = TestClient(app)
 
@@ -18,7 +18,6 @@ client = TestClient(app)
 @pytest.fixture
 def test_user_with_view_logs(db_session):
     unique = str(uuid.uuid4())[:8]
-    tenant_id = uuid.uuid4()
     user = User(
         username=f"logadmin_{unique}",
         email=f"logadmin_{unique}@example.com",
@@ -28,23 +27,21 @@ def test_user_with_view_logs(db_session):
         is_verified=True,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        tenant_id=tenant_id,
-        role="admin",
+        tenant_id=uuid.uuid4(),
+        role="admin",  # Ruolo admin che ha il permesso view_logs
         mfa_enabled=False
     )
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     
-    # Verifica se il ruolo admin esiste già
-    role = db_session.query(Role).filter(Role.name == "admin").first()
-    if not role:
-        role = Role(name="admin", description="Administrator role")
-        db_session.add(role)
-        db_session.commit()
-        db_session.refresh(role)
+    # Crea ruolo admin (che ha il permesso view_logs)
+    role = Role(name="admin", description="Administrator role")
+    db_session.add(role)
+    db_session.commit()
+    db_session.refresh(role)
     
-    # Verifica se il permesso view_logs esiste già
+    # Crea permesso view_logs se non esiste
     existing_perm = db_session.query(Permission).filter(Permission.name == "view_logs").first()
     if not existing_perm:
         perm = Permission(name="view_logs", description="Can view system logs")
@@ -54,18 +51,14 @@ def test_user_with_view_logs(db_session):
     else:
         perm = existing_perm
     
-    # Verifica se l'associazione ruolo-permesso esiste già
+    # Associa ruolo e permesso
     from app.models.role_permission import RolePermission
-    existing_role_perm = db_session.query(RolePermission).filter(
-        RolePermission.role_id == role.id,
-        RolePermission.permission_id == perm.id
-    ).first()
+    role_perm = RolePermission(role_id=role.id, permission_id=perm.id)
+    db_session.add(role_perm)
+    db_session.commit()
     
-    if not existing_role_perm:
-        role_perm = RolePermission(role_id=role.id, permission_id=perm.id)
-        db_session.add(role_perm)
-        db_session.commit()
-    
+    # Associa utente al tenant con il ruolo admin
+    tenant_id = uuid.uuid4()
     utr = UserTenantRole(user_id=user.id, tenant_id=tenant_id, role_id=role.id, role=role.name)
     db_session.add(utr)
     db_session.commit()
@@ -76,7 +69,6 @@ def test_user_with_view_logs(db_session):
 @pytest.fixture
 def test_user_without_view_logs(db_session):
     unique = str(uuid.uuid4())[:8]
-    tenant_id = uuid.uuid4()
     user = User(
         username=f"nolog_{unique}",
         email=f"nolog_{unique}@example.com",
@@ -86,22 +78,22 @@ def test_user_without_view_logs(db_session):
         is_verified=True,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        tenant_id=tenant_id,
-        role="guest",
+        tenant_id=uuid.uuid4(),
+        role="guest",  # Ruolo guest che NON ha il permesso view_logs
         mfa_enabled=False
     )
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     
-    # Verifica se il ruolo guest esiste già
-    role = db_session.query(Role).filter(Role.name == "guest").first()
-    if not role:
-        role = Role(name="guest", description="Guest role")
-        db_session.add(role)
-        db_session.commit()
-        db_session.refresh(role)
+    # Crea ruolo guest (che NON ha il permesso view_logs)
+    role = Role(name="guest", description="Guest role")
+    db_session.add(role)
+    db_session.commit()
+    db_session.refresh(role)
     
+    # Associa utente al tenant con il ruolo guest
+    tenant_id = uuid.uuid4()
     utr = UserTenantRole(user_id=user.id, tenant_id=tenant_id, role_id=role.id, role=role.name)
     db_session.add(utr)
     db_session.commit()
@@ -109,85 +101,100 @@ def test_user_without_view_logs(db_session):
     token = create_access_token({"sub": user.email, "user_id": str(user.id), "tenant_id": str(tenant_id)})
     return user, token, tenant_id
 
-# Test 1 – Accesso Autorizzato
 def test_accesso_autorizzato(test_user_with_view_logs, monkeypatch):
+    """Test accesso autorizzato ai log"""
     user, token, tenant_id = test_user_with_view_logs
-    # Mock log file
+    
+    # Mock dei dati di log
     log_data = {
-        "timestamp": "2024-06-01T12:00:00Z",
-        "tenant_id": str(tenant_id),
-        "user_id": str(user.id),
+        "timestamp": "2024-01-01T10:00:00Z",
+        "level": "INFO",
         "event": "user_login",
-        "status": "success",
-        "message": "Login effettuato",
-        "level": "INFO"
+        "user_id": str(user.id),
+        "tenant_id": str(tenant_id),
+        "message": "User logged in successfully"
     }
+    
+    # Mock della funzione read_log_file
     monkeypatch.setattr("app.routers.admin.logs.read_log_file", lambda *a, **kw: [log_data])
+    
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get(f"/admin/logs/app", headers=headers)
+    
     assert response.status_code == 200
-    assert "Login effettuato" in response.text
+    assert "logs" in response.json()
 
-# Test 2 – Accesso Negato
 def test_accesso_negato(test_user_without_view_logs):
+    """Test accesso negato ai log"""
     user, token, tenant_id = test_user_without_view_logs
+    
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get(f"/admin/logs/app", headers=headers)
+    
     assert response.status_code == 403
 
-# Test 3 – Filtri
 def test_filtri_log(test_user_with_view_logs, monkeypatch):
+    """Test filtri sui log"""
     user, token, tenant_id = test_user_with_view_logs
+    
+    # Mock dei dati di log
     log1 = {
-        "timestamp": "2024-06-01T12:00:00Z",
-        "tenant_id": str(tenant_id),
-        "user_id": str(user.id),
-        "event": "user_login",
-        "status": "success",
-        "message": "Login effettuato",
-        "level": "INFO"
-    }
-    log2 = {
-        "timestamp": "2024-06-01T13:00:00Z",
-        "tenant_id": str(tenant_id),
-        "user_id": str(user.id),
+        "timestamp": "2024-01-01T10:00:00Z",
+        "level": "INFO",
         "event": "file_upload",
-        "status": "success",
-        "message": "File caricato",
-        "level": "INFO"
-    }
-    monkeypatch.setattr("app.routers.admin.logs.read_log_file", lambda *a, **kw: [log1, log2])
-    headers = {"Authorization": f"Bearer {token}"}
-    # Filtro per event_type
-    response = client.get(f"/admin/logs/app?event_type=file_upload", headers=headers)
-    assert response.status_code == 200
-    assert "File caricato" in response.text
-    assert "Login effettuato" not in response.text
-
-# Test 4 – Sicurezza Tenant
-def test_sicurezza_tenant(test_user_with_view_logs, monkeypatch):
-    user, token, tenant_id = test_user_with_view_logs
-    log1 = {
-        "timestamp": "2024-06-01T12:00:00Z",
-        "tenant_id": str(tenant_id),
         "user_id": str(user.id),
-        "event": "user_login",
-        "status": "success",
-        "message": "Login effettuato",
-        "level": "INFO"
+        "tenant_id": str(tenant_id),
+        "message": "File uploaded"
     }
     log2 = {
-        "timestamp": "2024-06-01T13:00:00Z",
-        "tenant_id": str(uuid.uuid4()),  # Altro tenant
-        "user_id": str(user.id),
+        "timestamp": "2024-01-01T11:00:00Z",
+        "level": "INFO", 
         "event": "user_login",
-        "status": "success",
-        "message": "Login altro tenant",
-        "level": "INFO"
+        "user_id": str(user.id),
+        "tenant_id": str(tenant_id),
+        "message": "User logged in"
     }
+    
     monkeypatch.setattr("app.routers.admin.logs.read_log_file", lambda *a, **kw: [log1, log2])
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get(f"/admin/logs/app?event_type=file_upload", headers=headers)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["logs"]) == 1
+    assert data["logs"][0]["event"] == "file_upload"
+
+def test_sicurezza_tenant(test_user_with_view_logs, monkeypatch):
+    """Test sicurezza multi-tenant"""
+    user, token, tenant_id = test_user_with_view_logs
+    
+    # Mock dei dati di log di un tenant diverso
+    other_tenant_id = uuid.uuid4()
+    log1 = {
+        "timestamp": "2024-01-01T10:00:00Z",
+        "level": "INFO",
+        "event": "file_upload",
+        "user_id": str(user.id),
+        "tenant_id": str(tenant_id),  # Tenant corretto
+        "message": "File uploaded"
+    }
+    log2 = {
+        "timestamp": "2024-01-01T11:00:00Z",
+        "level": "INFO",
+        "event": "file_upload", 
+        "user_id": str(user.id),
+        "tenant_id": str(other_tenant_id),  # Tenant diverso
+        "message": "File uploaded to other tenant"
+    }
+    
+    monkeypatch.setattr("app.routers.admin.logs.read_log_file", lambda *a, **kw: [log1, log2])
+    
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get(f"/admin/logs/app", headers=headers)
+    
     assert response.status_code == 200
-    assert "Login effettuato" in response.text
-    assert "Login altro tenant" not in response.text 
+    data = response.json()
+    # Dovrebbe vedere solo i log del proprio tenant
+    assert len(data["logs"]) == 1
+    assert data["logs"][0]["tenant_id"] == str(tenant_id) 

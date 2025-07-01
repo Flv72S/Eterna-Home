@@ -58,9 +58,9 @@ class UserHouse(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    # Relazioni
-    user: "User" = Relationship(back_populates="user_houses")
-    house: "House" = Relationship(back_populates="user_houses")
+    # Relazioni (temporaneamente commentate per compatibilità SQLAlchemy 2.0+)
+    # user: "User" = Relationship(back_populates="user_houses")
+    # house: "House" = Relationship(back_populates="user_houses")
     
     def __repr__(self) -> str:
         return f"<UserHouse user_id={self.user_id} house_id={self.house_id} tenant_id={self.tenant_id}>" 

@@ -18,7 +18,7 @@ from app.models.user_tenant_role import UserTenantRole
 from app.core.logging_config import get_logger
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-templates = Jinja2Templates(directory="app/templates/admin")
+templates = Jinja2Templates(directory="app/templates")
 logger = get_logger(__name__)
 
 # Configurazione log files
@@ -306,7 +306,7 @@ def admin_logs_view(
         'info_count': len([log for log in formatted_logs if log['level'] == 'INFO'])
     }
     
-    return templates.TemplateResponse("logs/viewer.html", {
+    return templates.TemplateResponse("admin/logs/viewer.html", {
         "request": request,
         "log_type": log_type,
         "logs": formatted_logs,
@@ -357,7 +357,7 @@ def admin_logs_overview(
             'recent_logs': recent_logs
         }
     
-    return templates.TemplateResponse("logs/overview.html", {
+    return templates.TemplateResponse("admin/logs/overview.html", {
         "request": request,
         "log_stats": log_stats,
         "tenant_id": tenant_id

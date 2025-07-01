@@ -40,7 +40,7 @@ class Room(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    house: "House" = Relationship(back_populates="rooms")
+    # house: "House" = Relationship(back_populates="rooms")
     nodes: List["Node"] = Relationship(back_populates="room")
     bookings: List["Booking"] = Relationship(
         back_populates="room",

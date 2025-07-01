@@ -12,7 +12,7 @@ from app.models.permission import Permission
 import uuid
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-templates = Jinja2Templates(directory="app/templates/admin")
+templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=None)
 def admin_dashboard(

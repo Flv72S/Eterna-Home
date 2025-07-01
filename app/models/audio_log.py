@@ -64,9 +64,9 @@ class AudioLog(SQLModel, table=True):
     )
     
     # Relazioni
-    user: Optional["User"] = Relationship(back_populates="audio_logs")
-    node: Optional["Node"] = Relationship(back_populates="audio_logs")
-    house: Optional["House"] = Relationship(back_populates="audio_logs")
+    # user: Optional["User"] = Relationship(back_populates="audio_logs")
+    # node: Optional["Node"] = Relationship(back_populates="audio_logs")
+    # house: Optional["House"] = Relationship(back_populates="audio_logs")
 
     @property
     def status_display(self) -> str:

@@ -43,7 +43,7 @@ class Booking(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    user: "User" = Relationship(back_populates="bookings")
+    # user: "User" = Relationship(back_populates="bookings")
     room: "Room" = Relationship(back_populates="bookings")
 
     # TODO: Aggiungere migrazione Alembic per il campo tenant_id

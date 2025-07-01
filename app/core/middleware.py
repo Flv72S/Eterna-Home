@@ -127,13 +127,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 log_operation(
                     operation="user_login",
                     status="success" if status_code == 200 else "failed",
-                    endpoint=url
+                    metadata={"endpoint": url}
                 )
             elif "refresh" in url:
                 log_operation(
                     operation="token_refresh",
                     status="success" if status_code == 200 else "failed",
-                    endpoint=url
+                    metadata={"endpoint": url}
                 )
         
         # Operazioni sui documenti
@@ -142,19 +142,19 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 log_operation(
                     operation="document_upload",
                     status="success" if status_code == 200 else "failed",
-                    endpoint=url
+                    metadata={"endpoint": url}
                 )
             elif method == "GET" and "download" in url:
                 log_operation(
                     operation="document_download",
                     status="success" if status_code == 200 else "failed",
-                    endpoint=url
+                    metadata={"endpoint": url}
                 )
             elif method == "DELETE":
                 log_operation(
                     operation="document_delete",
                     status="success" if status_code == 200 else "failed",
-                    endpoint=url
+                    metadata={"endpoint": url}
                 )
         
         # Operazioni BIM
@@ -162,7 +162,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             log_operation(
                 operation="bim_operation",
                 status="success" if status_code == 200 else "failed",
-                endpoint=url
+                metadata={"endpoint": url}
             )
         
         # Operazioni AI
@@ -170,7 +170,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             log_operation(
                 operation="ai_interaction",
                 status="success" if status_code == 200 else "failed",
-                endpoint=url
+                metadata={"endpoint": url}
             )
         
         # Operazioni attivatori
@@ -178,7 +178,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             log_operation(
                 operation="activator_control",
                 status="success" if status_code == 200 else "failed",
-                endpoint=url
+                metadata={"endpoint": url}
             )
         
         # Operazioni voice
@@ -186,7 +186,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             log_operation(
                 operation="voice_command",
                 status="success" if status_code == 200 else "failed",
-                endpoint=url
+                metadata={"endpoint": url}
             )
         
         # Log eventi di sicurezza per errori 4xx

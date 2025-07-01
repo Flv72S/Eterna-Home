@@ -42,8 +42,8 @@ class House(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    # Proprietario della casa (relazione one-to-many)
-    owner: "User" = Relationship(back_populates="owned_houses", sa_relationship_kwargs={"lazy": "select"})
+    # Proprietario della casa (relazione one-to-many) - temporaneamente commentata
+    # owner: "User" = Relationship(back_populates="owned_houses", sa_relationship_kwargs={"lazy": "select"})
     
     # Utenti associati alla casa (relazione many-to-many tramite UserHouse) - temporaneamente commentata
     # users: List["User"] = Relationship(
@@ -55,25 +55,26 @@ class House(SQLModel, table=True):
     #     }
     # )
     
-    # Relazione con UserHouse per accesso diretto alle associazioni
-    user_houses: List["UserHouse"] = Relationship(
-        back_populates="house",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    # Relazione con UserHouse per accesso diretto alle associazioni - temporaneamente commentata
+    # user_houses: List["UserHouse"] = Relationship(
+    #     back_populates="house",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
     
-    nodes: List["Node"] = Relationship(back_populates="house")
-    node_areas: List["NodeArea"] = Relationship(back_populates="house")
-    main_areas: List["MainArea"] = Relationship(back_populates="house")
-    documents: List["Document"] = Relationship(
-        back_populates="house",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    rooms: List["Room"] = Relationship(back_populates="house")
-    bim_models: List["BIMModel"] = Relationship(
-        back_populates="house",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    audio_logs: List["AudioLog"] = Relationship(back_populates="house")
+    # Documenti associati alla casa - temporaneamente commentata
+    # documents: List["Document"] = Relationship(back_populates="house")
+    
+    # Relazioni con Node - temporaneamente commentate
+    # nodes: List["Node"] = Relationship(back_populates="house")
+    # node_areas: List["NodeArea"] = Relationship(back_populates="house")
+    # main_areas: List["MainArea"] = Relationship(back_populates="house")
+    
+    # Relazioni con BIMModel e AudioLog - temporaneamente commentate
+    # bim_models: List["BIMModel"] = Relationship(
+    #     back_populates="house",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
+    # audio_logs: List["AudioLog"] = Relationship(back_populates="house")
 
     # TODO: Aggiungere migrazione Alembic per il campo tenant_id
     # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione

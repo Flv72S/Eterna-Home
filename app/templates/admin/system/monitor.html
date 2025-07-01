@@ -1,0 +1,299 @@
+{% extends "layout.html" %}
+
+{% block title %}Monitoraggio Sistema - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-server me-2"></i>
+                    Monitoraggio Sistema
+                </h1>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-{{ 'success' if overall_status == 'healthy' else 'danger' }} me-3">
+                        <i class="fas fa-{{ 'check-circle' if overall_status == 'healthy' else 'exclamation-triangle' }} me-1"></i>
+                        {{ 'Sistema Operativo' if overall_status == 'healthy' else 'Problemi Rilevati' }}
+                    </span>
+                    <button class="btn btn-primary btn-sm" onclick="refreshStatus()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Aggiorna
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stato Generale -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Stato Generale Sistema
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <div class="h4 mb-1">{{ uptime_formatted }}</div>
+                                        <small class="text-muted">Uptime</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <div class="h4 mb-1">{{ metrics_data.requests_total or 0 }}</div>
+                                        <small class="text-muted">Richieste Totali</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <div class="h4 mb-1">{{ metrics_data.active_users or 0 }}</div>
+                                        <small class="text-muted">Utenti Attivi</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <div class="h4 mb-1">{{ last_check }}</div>
+                                        <small class="text-muted">Ultimo Check</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Servizi Core -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-cogs me-2"></i>
+                                Servizi Core
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Backend/API -->
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <div class="service-status-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="status-indicator bg-{{ 'success' if health_data.status == 'healthy' else 'danger' }} me-3"></div>
+                                            <div>
+                                                <h6 class="mb-1">Backend/API</h6>
+                                                <small class="text-muted">
+                                                    {{ 'Operativo' if health_data.status == 'healthy' else 'Errore' }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Database PostgreSQL -->
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <div class="service-status-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="status-indicator bg-{{ 'success' if health_data.get('database', {}).get('status') == 'healthy' else 'danger' }} me-3"></div>
+                                            <div>
+                                                <h6 class="mb-1">Database PostgreSQL</h6>
+                                                <small class="text-muted">
+                                                    {{ 'Operativo' if health_data.get('database', {}).get('status') == 'healthy' else 'Errore' }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MinIO Storage -->
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <div class="service-status-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="status-indicator bg-{{ 'success' if health_data.get('minio', {}).get('status') == 'healthy' else 'danger' }} me-3"></div>
+                                            <div>
+                                                <h6 class="h6 mb-1">MinIO Storage</h6>
+                                                <small class="text-muted">
+                                                    {{ 'Operativo' if health_data.get('minio', {}).get('status') == 'healthy' else 'Errore' }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Redis Cache -->
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <div class="service-status-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="status-indicator bg-{{ 'success' if health_data.get('redis', {}).get('status') == 'healthy' else 'danger' }} me-3"></div>
+                                            <div>
+                                                <h6 class="mb-1">Redis Cache</h6>
+                                                <small class="text-muted">
+                                                    {{ 'Operativo' if health_data.get('redis', {}).get('status') == 'healthy' else 'Errore' }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metriche Performance -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Metriche Richieste
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-success mb-1">{{ metrics_data.requests_total or 0 }}</div>
+                                        <small class="text-muted">Richieste Totali</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-warning mb-1">{{ metrics_data.requests_4xx_total or 0 }}</div>
+                                        <small class="text-muted">Errori 4xx</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-danger mb-1">{{ metrics_data.requests_5xx_total or 0 }}</div>
+                                        <small class="text-muted">Errori 5xx</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-info mb-1">{{ metrics_data.upload_operations_total or 0 }}</div>
+                                        <small class="text-muted">Upload Operazioni</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-database me-2"></i>
+                                Connessioni Attive
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-primary mb-1">{{ metrics_data.database_connections or 0 }}</div>
+                                        <small class="text-muted">DB Connessioni</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-info mb-1">{{ metrics_data.redis_connections or 0 }}</div>
+                                        <small class="text-muted">Redis Connessioni</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-success mb-1">{{ metrics_data.minio_operations or 0 }}</div>
+                                        <small class="text-muted">MinIO Operazioni</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="metric-item">
+                                        <div class="h5 text-warning mb-1">{{ metrics_data.active_users or 0 }}</div>
+                                        <small class="text-muted">Utenti Attivi</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dettagli Errori -->
+            {% if health_data.status == 'error' or ready_data.status == 'error' or metrics_data.status == 'error' %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Dettagli Errori
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if health_data.status == 'error' %}
+                            <div class="alert alert-danger">
+                                <strong>Health Check:</strong> {{ health_data.message }}
+                            </div>
+                            {% endif %}
+                            
+                            {% if ready_data.status == 'error' %}
+                            <div class="alert alert-danger">
+                                <strong>Ready Check:</strong> {{ ready_data.message }}
+                            </div>
+                            {% endif %}
+                            
+                            {% if metrics_data.status == 'error' %}
+                            <div class="alert alert-danger">
+                                <strong>Metrics Check:</strong> {{ metrics_data.message }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.service-status-card {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.metric-item {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.metric-item .h5 {
+    font-weight: 600;
+}
+</style>
+
+<script>
+function refreshStatus() {
+    location.reload();
+}
+
+// Auto-refresh ogni 30 secondi
+setInterval(function() {
+    refreshStatus();
+}, 30000);
+</script>
+{% endblock %} 

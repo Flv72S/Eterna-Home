@@ -139,6 +139,8 @@ def require_permission_in_tenant(permission: str):
             "manage_house_access": ["admin", "super_admin"],
             "read_house_access": ["viewer", "editor", "admin", "super_admin"],
             "write_house_access": ["editor", "admin", "super_admin"],
+            "view_monitoring": ["admin", "super_admin"],
+            "view_logs": ["admin", "super_admin"],
         }
         
         # Ottieni i ruoli richiesti per il permesso
@@ -212,6 +214,8 @@ def require_any_permission_in_tenant(permissions: List[str]):
             "manage_house_access": ["admin", "super_admin"],
             "read_house_access": ["viewer", "editor", "admin", "super_admin"],
             "write_house_access": ["editor", "admin", "super_admin"],
+            "view_monitoring": ["admin", "super_admin"],
+            "view_logs": ["admin", "super_admin"],
         }
         
         # Ottieni tutti i ruoli richiesti per i permessi

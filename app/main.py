@@ -24,7 +24,7 @@ from app.routers import (
     voice, local_interface, secure_area, ai_assistant, activator,
     user_house, system
 )
-from app.routers.admin import dashboard as admin_dashboard, roles as admin_roles, logs as admin_logs
+from app.routers.admin import dashboard as admin_dashboard, roles as admin_roles, logs as admin_logs, system_monitor
 from app.core.redis import redis_client
 from app.security.limiter import security_limiter, rate_limit_middleware
 
@@ -155,7 +155,7 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(roles.router, prefix="/api/v1", tags=["roles"])
 app.include_router(house_router.router, prefix="/api/v1", tags=["houses"])
 app.include_router(node_router.router, prefix="/api/v1", tags=["nodes"])
-app.include_router(document_router.router, prefix="/api/v1", tags=["documents"])
+# app.include_router(document_router.router, prefix="/api/v1", tags=["documents"])
 app.include_router(documents_router.router, prefix="/api/v1", tags=["documents"])
 app.include_router(bim_router.router, prefix="/api/v1", tags=["BIM Models"])
 app.include_router(node_areas.router, prefix="/api/v1/node-areas", tags=["Node Areas"])
@@ -172,6 +172,7 @@ app.include_router(user_house.router, tags=["User House Management"])
 app.include_router(admin_dashboard.router, tags=["admin"])
 app.include_router(admin_roles.router, tags=["admin"])
 app.include_router(admin_logs.router, tags=["admin"])
+app.include_router(system_monitor.router, tags=["admin"])
 
 # Include system monitoring router
 app.include_router(system.router, tags=["system"])

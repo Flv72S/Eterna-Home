@@ -42,7 +42,7 @@ class UserTenantRole(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    user: Optional["User"] = Relationship(back_populates="tenant_roles")
+    # user: Optional["User"] = Relationship(back_populates="tenant_roles")
     
     # Metodi helper
     def __repr__(self) -> str:

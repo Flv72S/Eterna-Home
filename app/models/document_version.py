@@ -35,4 +35,4 @@ class DocumentVersion(SQLModel, table=True):
     # Relationships
     document: Optional["Document"] = Relationship(back_populates="versions")
     bim_model: Optional["BIMModel"] = Relationship(back_populates="versions")
-    created_by: Optional["User"] = Relationship(back_populates="document_versions") 
+    # created_by: Optional["User"] = Relationship(back_populates="document_versions") 

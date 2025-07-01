@@ -2,16 +2,16 @@
 Modello Role per la gestione dei ruoli utente
 """
 from datetime import datetime
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, Any
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy.orm import Mapped
 from pydantic import ConfigDict
-from app.models.user_role import UserRole
-from app.models.permission import RolePermission
+from sqlalchemy.orm import Mapped
+
+from .user_role import UserRole
+from .role_permission import RolePermission
 
 if TYPE_CHECKING:
-    from app.models.user import User
-    from app.models.permission import Permission
+    from .user import User
 
 
 class RoleBase(SQLModel):
@@ -28,29 +28,20 @@ class Role(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     description: Optional[str] = None
+    is_active: bool = Field(default=True, description="Ruolo attivo o disabilitato")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    # Relazioni many-to-many
-    users: Mapped[List["User"]] = Relationship(
+    permissions: list["Permission"] = Relationship(
         back_populates="roles",
-        link_model=UserRole,
-        sa_relationship_kwargs={
-            "foreign_keys": [UserRole.role_id, UserRole.user_id]
-        }
-    )
-    permissions: Mapped[List["Permission"]] = Relationship(
-        back_populates="roles",
-        link_model=RolePermission,
-        sa_relationship_kwargs={
-            "foreign_keys": [RolePermission.role_id, RolePermission.permission_id]
-        }
+        link_model=RolePermission
     )
     
     model_config = ConfigDict(
         from_attributes=True,
         validate_by_name=True,
-        str_strip_whitespace=True
+        str_strip_whitespace=True,
+        protected_namespaces=()
     )
 
 

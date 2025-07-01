@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Any, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy.orm import Mapped
 from pydantic import ConfigDict
+from sqlalchemy.orm import Mapped
 
 from .user_permission import UserPermission
 from .role_permission import RolePermission
+if TYPE_CHECKING:
+    from .role import Role
 
 class PermissionBase(SQLModel):
     name: str = Field(unique=True, index=True, description="Nome del permesso")
@@ -21,27 +23,21 @@ class Permission(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     description: Optional[str] = None
     
-    # Relazioni many-to-many
-    users: Mapped[List["User"]] = Relationship(
+    roles: list["Role"] = Relationship(
         back_populates="permissions",
-        link_model=UserPermission,
-        sa_relationship_kwargs={
-            "foreign_keys": [UserPermission.permission_id, UserPermission.user_id]
-        }
+        link_model=RolePermission
     )
-    roles: Mapped[List["Role"]] = Relationship(
-        back_populates="permissions",
-        link_model=RolePermission,
-        sa_relationship_kwargs={
-            "foreign_keys": [RolePermission.permission_id, RolePermission.role_id]
-        }
-    )
+    # users: Any = Relationship(
+    #     back_populates="permissions",
+    #     link_model=UserPermission
+    # )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     model_config = ConfigDict(
         from_attributes=True,
         validate_by_name=True,
-        str_strip_whitespace=True
+        str_strip_whitespace=True,
+        protected_namespaces=()
     )
 
 class PermissionCreate(PermissionBase):

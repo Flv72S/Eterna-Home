@@ -20,7 +20,7 @@ from app.models.user_house import UserHouse
 from app.services.mfa_service import MFAService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-templates = Jinja2Templates(directory="app/templates/admin")
+templates = Jinja2Templates(directory="app/templates")
 mfa_service = MFAService()
 
 @router.get("/roles", response_class=None)
@@ -108,6 +108,7 @@ def admin_roles_new_form(
         {"name": "manage_roles", "description": "Gestione ruoli"},
         {"name": "read_logs", "description": "Lettura log sistema"},
         {"name": "write_logs", "description": "Scrittura log sistema"},
+        {"name": "view_monitoring", "description": "Visualizza monitoraggio sistema"},
         {"name": "admin_access", "description": "Accesso amministrativo"}
     ]
     
@@ -241,6 +242,7 @@ def admin_roles_edit_form(
         {"name": "manage_roles", "description": "Gestione ruoli"},
         {"name": "read_logs", "description": "Lettura log sistema"},
         {"name": "write_logs", "description": "Scrittura log sistema"},
+        {"name": "view_monitoring", "description": "Visualizza monitoraggio sistema"},
         {"name": "admin_access", "description": "Accesso amministrativo"}
     ]
     

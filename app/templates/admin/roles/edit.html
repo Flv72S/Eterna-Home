@@ -112,7 +112,7 @@
                     <h4>👥 Amministrazione</h4>
                     <div class="permission-group">
                         {% for permission in available_permissions %}
-                        {% if permission.name.startswith('manage_users') or permission.name.startswith('manage_roles') or permission.name.startswith('read_logs') or permission.name.startswith('write_logs') or permission.name.startswith('admin_access') %}
+                        {% if permission.name.startswith('manage_users') or permission.name.startswith('manage_roles') or permission.name.startswith('read_logs') or permission.name.startswith('write_logs') or permission.name.startswith('view_monitoring') or permission.name.startswith('admin_access') %}
                         <div class="permission-item">
                             <input type="checkbox" id="{{ permission.name }}" name="permissions" 
                                    value="{{ permission.name }}" class="permission-checkbox"

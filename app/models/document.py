@@ -35,11 +35,14 @@ class Document(SQLModel, table=True):
         description="ID del tenant per isolamento logico multi-tenant"
     )
     
+    # Campo per tracciare il proprietario del documento
+    owner_id: int = Field(foreign_key="users.id", description="ID del proprietario del documento")
+    
     # Campo per tracciare file cifrati
     is_encrypted: bool = Field(default=False, description="Indica se il file è cifrato")
     
     # Relazioni
-    owner_id: int = Field(foreign_key="users.id")
+    # owner: "User" = Relationship(back_populates="documents")
     house_id: Optional[int] = Field(default=None, foreign_key="houses.id")
     node_id: Optional[int] = Field(default=None, foreign_key="nodes.id")
     
@@ -48,9 +51,7 @@ class Document(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    owner: "User" = Relationship(back_populates="documents")
-    house: Optional["House"] = Relationship(back_populates="documents")
-    node: Optional["Node"] = Relationship(back_populates="documents")
+    # node: Optional["Node"] = Relationship(back_populates="documents")
     versions: List["DocumentVersion"] = Relationship(
         back_populates="document",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}

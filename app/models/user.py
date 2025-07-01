@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING, Any
 import uuid
 
 from pydantic import ConfigDict, EmailStr
@@ -55,7 +55,8 @@ class User(SQLModel, table=True):
                 "created_at": "2024-01-01T00:00:00",
                 "updated_at": "2024-01-01T00:00:00"
             }
-        }
+        },
+        protected_namespaces=()
     )
 
     # Campi primari e indici
@@ -107,77 +108,19 @@ class User(SQLModel, table=True):
         description="Numero di telefono dell'utente"
     )
 
-    # Relazioni
-    # Relazione one-to-many con House (case di cui è proprietario)
-    owned_houses: List["House"] = Relationship(
-        back_populates="owner",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    
-    # Relazione many-to-many con House tramite UserHouse (temporaneamente commentata)
-    # houses: List["House"] = Relationship(
+    # Relazioni (temporaneamente commentate per compatibilità SQLAlchemy 2.0+)
+    # roles: Any = Relationship(
     #     back_populates="users",
-    #     link_model="UserHouse",
-    #     sa_relationship_kwargs={
-    #         "primaryjoin": "User.id == UserHouse.user_id",
-    #         "secondaryjoin": "UserHouse.house_id == House.id"
-    #     }
+    #     link_model=UserRole
     # )
-    
-    # Relazione con UserHouse per accesso diretto alle associazioni
-    user_houses: List["UserHouse"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    
-    documents: List["Document"] = Relationship(
-        back_populates="owner",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    document_versions: List["DocumentVersion"] = Relationship(
-        back_populates="created_by",
-        sa_relationship_kwargs={"foreign_keys": "DocumentVersion.created_by_id", "cascade": "all, delete-orphan"}
-    )
-    bookings: List["Booking"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    bim_models: List["BIMModel"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    bim_model_versions: List["BIMModelVersion"] = Relationship(
-        back_populates="created_by",
-        sa_relationship_kwargs={"foreign_keys": "BIMModelVersion.created_by_id", "cascade": "all, delete-orphan"}
-    )
-    audio_logs: List["AudioLog"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    
-    # Relazione many-to-many con Role
-    roles: Mapped[List["Role"]] = Relationship(
-        back_populates="users",
-        link_model=UserRole,
-        sa_relationship_kwargs={
-            "foreign_keys": [UserRole.user_id, UserRole.role_id]
-        }
-    )
-    
-    # Relazione con UserTenantRole per ruoli multi-tenant
-    tenant_roles: List["UserTenantRole"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-
-    # Relazione many-to-many con Permission
-    permissions: Mapped[List["Permission"]] = Relationship(
-        back_populates="users",
-        link_model=UserPermission,
-        sa_relationship_kwargs={
-            "foreign_keys": [UserPermission.user_id, UserPermission.permission_id]
-        }
-    )
+    # tenant_roles: Any = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
+    # permissions: Any = Relationship(
+    #     back_populates="users",
+    #     link_model=UserPermission
+    # )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
@@ -234,46 +177,44 @@ class User(SQLModel, table=True):
     
     def has_role_in_tenant(self, role_name: str, tenant_id: uuid.UUID) -> bool:
         """Verifica se l'utente ha un ruolo specifico in un tenant."""
-        if hasattr(self, 'tenant_roles') and self.tenant_roles:
-            return any(
-                tr.role == role_name and 
-                tr.tenant_id == tenant_id and 
-                tr.is_active 
-                for tr in self.tenant_roles
-            )
-        return False
+        # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
+        from app.models.user_tenant_role import UserTenantRole
+        from app.db.session import get_session
+        
+        with next(get_session()) as session:
+            return UserTenantRole.has_role_in_tenant(session, self.id, tenant_id, role_name)
     
     def has_any_role_in_tenant(self, role_names: List[str], tenant_id: uuid.UUID) -> bool:
         """Verifica se l'utente ha almeno uno dei ruoli specificati in un tenant."""
-        if hasattr(self, 'tenant_roles') and self.tenant_roles:
-            return any(
-                tr.role in role_names and 
-                tr.tenant_id == tenant_id and 
-                tr.is_active 
-                for tr in self.tenant_roles
-            )
-        return False
+        # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
+        from app.models.user_tenant_role import UserTenantRole
+        from app.db.session import get_session
+        
+        with next(get_session()) as session:
+            return UserTenantRole.has_any_role_in_tenant(session, self.id, tenant_id, role_names)
     
     def get_roles_in_tenant(self, tenant_id: uuid.UUID) -> List[str]:
         """Restituisce la lista dei ruoli dell'utente in un tenant specifico."""
-        if hasattr(self, 'tenant_roles') and self.tenant_roles:
-            return [
-                tr.role for tr in self.tenant_roles 
-                if tr.tenant_id == tenant_id and tr.is_active
-            ]
-        return []
+        # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
+        from app.models.user_tenant_role import UserTenantRole
+        from app.db.session import get_session
+        
+        with next(get_session()) as session:
+            roles = UserTenantRole.get_user_roles_in_tenant(session, self.id, tenant_id)
+            return [role.role for role in roles]
     
     def get_tenant_ids(self) -> List[uuid.UUID]:
         """Restituisce la lista degli ID dei tenant a cui l'utente appartiene."""
-        tenant_ids = [self.tenant_id]  # Tenant principale
+        # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
+        from app.models.user_tenant_role import UserTenantRole
+        from app.db.session import get_session
         
-        # Aggiungi tenant dai ruoli multi-tenant
-        if hasattr(self, 'tenant_roles') and self.tenant_roles:
-            for tenant_role in self.tenant_roles:
-                if tenant_role.tenant_id not in tenant_ids:
-                    tenant_ids.append(tenant_role.tenant_id)
-        
-        return list(set(tenant_ids))
+        with next(get_session()) as session:
+            tenant_ids = UserTenantRole.get_user_tenants(session, self.id)
+            # Aggiungi il tenant principale se non è già presente
+            if self.tenant_id not in tenant_ids:
+                tenant_ids.append(self.tenant_id)
+            return list(set(tenant_ids))
     
     def get_house_ids(self, tenant_id: Optional[uuid.UUID] = None) -> List[int]:
         """

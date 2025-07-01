@@ -91,7 +91,6 @@ class BIMModelVersion(SQLModel, table=True):
     
     # Relazioni
     bim_model: "BIMModel" = Relationship(back_populates="model_versions")
-    created_by: "User" = Relationship(back_populates="bim_model_versions")
     
     @property
     def version_display(self) -> str:
@@ -164,18 +163,9 @@ class BIMModel(SQLModel, table=True):
     conversion_completed_at: Optional[datetime] = Field(default=None, description="Data completamento conversione")
     
     # Relazioni
-    user_id: int = Field(foreign_key="users.id")
-    house_id: int = Field(foreign_key="houses.id")
-    node_id: Optional[int] = Field(default=None, foreign_key="nodes.id")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relazioni
-    user: "User" = Relationship(back_populates="bim_models")
-    house: "House" = Relationship(back_populates="bim_models")
-    node: Optional["Node"] = Relationship(back_populates="bim_models")
+    # user: "User" = Relationship(back_populates="bim_models")
+    # house: "House" = Relationship(back_populates="bim_models")
+    # node: Optional["Node"] = Relationship(back_populates="bim_models")
     versions: List["DocumentVersion"] = Relationship(
         back_populates="bim_model",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
