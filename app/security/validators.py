@@ -302,7 +302,7 @@ class FileValidator:
         logger.warning(
             f"Invalid file upload rejected: {file.filename}",
             extra={
-                "filename": file.filename,
+                "uploaded_filename": file.filename,
                 "content_type": file.content_type,
                 "reason": reason,
                 "event_type": "invalid_file_upload"
