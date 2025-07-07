@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, select, Field, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:

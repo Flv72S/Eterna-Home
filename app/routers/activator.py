@@ -456,7 +456,7 @@ async def activate_physical_activator(
                 "activator_id": activator_id,
                 "node_id": node.id,
                 "triggered_by": activation_request.triggered_by,
-                "metadata": activation_request.metadata
+                "meta_data": activation_request.meta_data
             }
         )
         

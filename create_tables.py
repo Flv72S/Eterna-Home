@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath('.'))
 
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 from app.database import get_engine
 from app.models.user import User
 from app.models.house import House

@@ -6,7 +6,7 @@ Usa SQLModel/SQLAlchemy per una gestione pulita delle tabelle.
 
 import asyncio
 from sqlalchemy import text
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, select, create_engine
 from app.core.config import settings
 from app.models import *  # Importa tutti i modelli per assicurarsi che siano registrati
 

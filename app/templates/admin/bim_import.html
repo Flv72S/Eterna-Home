@@ -1,0 +1,475 @@
+{% extends "layout.html" %}
+
+{% block title %}Import BIM da Repository Pubbliche - Eterna Home{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-download"></i>
+                        Import BIM da Repository Pubbliche
+                    </h3>
+                    <p class="card-subtitle text-muted">
+                        Scarica modelli BIM da geoportali regionali, catasto e repository comunali
+                    </p>
+                </div>
+                <div class="card-body">
+                    <!-- Form di ricerca e import -->
+                    <form id="bimImportForm" enctype="multipart/form-data">
+                        <div class="row">
+                            <!-- Selezione fonte -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="sourceRepository">
+                                        <i class="fas fa-database"></i>
+                                        Fonte Pubblica *
+                                    </label>
+                                    <select class="form-control" id="sourceRepository" name="source_repository" required>
+                                        <option value="">Seleziona fonte...</option>
+                                        <option value="geoportale_regionale">Geoportale Regionale</option>
+                                        <option value="catasto">Catasto Nazionale</option>
+                                        <option value="comune">Repository Comunale</option>
+                                        <option value="custom">URL Personalizzato</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        Seleziona la fonte pubblica da cui importare il modello BIM
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Casa associata -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="houseId">
+                                        <i class="fas fa-home"></i>
+                                        Casa Associata
+                                    </label>
+                                    <select class="form-control" id="houseId" name="house_id">
+                                        <option value="">Seleziona casa (opzionale)...</option>
+                                        {% for house in houses %}
+                                        <option value="{{ house.id }}">{{ house.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        Associa il modello BIM a una casa specifica
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- URL del file -->
+                        <div class="form-group">
+                            <label for="fileUrl">
+                                <i class="fas fa-link"></i>
+                                URL del File BIM *
+                            </label>
+                            <input type="url" class="form-control" id="fileUrl" name="url" 
+                                   placeholder="https://geoportale.regione.example.it/bim/modelo.ifc" required>
+                            <small class="form-text text-muted">
+                                Inserisci l'URL diretto del file BIM da scaricare
+                            </small>
+                        </div>
+                        
+                        <!-- Metadati del modello -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="modelName">
+                                        <i class="fas fa-tag"></i>
+                                        Nome Modello
+                                    </label>
+                                    <input type="text" class="form-control" id="modelName" name="name" 
+                                           placeholder="Nome personalizzato (opzionale)">
+                                    <small class="form-text text-muted">
+                                        Nome personalizzato per il modello (se non specificato, usa il nome del file)
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="modelDescription">
+                                        <i class="fas fa-align-left"></i>
+                                        Descrizione
+                                    </label>
+                                    <textarea class="form-control" id="modelDescription" name="description" 
+                                              rows="2" placeholder="Descrizione del modello (opzionale)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Informazioni sulla fonte -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Informazioni sulla Fonte</h6>
+                            <div id="sourceInfo">
+                                <p class="mb-1"><strong>Formati supportati:</strong> IFC, DXF, PDF</p>
+                                <p class="mb-1"><strong>Dimensione massima:</strong> 500 MB</p>
+                                <p class="mb-0"><strong>Domini autorizzati:</strong> geoportali regionali, catasto, comuni, .gov.it</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Pulsanti di azione -->
+                        <div class="form-group">
+                            <button type="button" class="btn btn-primary" id="downloadBtn">
+                                <i class="fas fa-download"></i>
+                                Scarica e Importa
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="validateBtn">
+                                <i class="fas fa-check"></i>
+                                Valida URL
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo"></i>
+                                Reset
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Progress bar -->
+                    <div id="progressContainer" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="progressText" class="text-center text-muted">
+                            Preparazione download...
+                        </div>
+                    </div>
+                    
+                    <!-- Risultati -->
+                    <div id="resultsContainer" style="display: none;">
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle"></i> Import Completato</h6>
+                            <div id="importResults">
+                                <!-- Risultati dell'import -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Errori -->
+                    <div id="errorContainer" style="display: none;">
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Errore durante l'Import</h6>
+                            <div id="errorMessage">
+                                <!-- Messaggio di errore -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista delle fonti disponibili -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <i class="fas fa-list"></i>
+                        Fonti Pubbliche Disponibili
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="sourcesList">
+                        <!-- Lista delle fonti caricate dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per dettagli fonte -->
+<div class="modal fade" id="sourceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-database"></i>
+                    Dettagli Fonte
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="sourceModalBody">
+                <!-- Contenuto del modal -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary" id="useSourceBtn">
+                    <i class="fas fa-download"></i>
+                    Usa questa Fonte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Carica le fonti disponibili
+    loadPublicSources();
+    
+    // Gestione cambio fonte
+    $('#sourceRepository').change(function() {
+        updateSourceInfo();
+    });
+    
+    // Validazione URL
+    $('#validateBtn').click(function() {
+        validateUrl();
+    });
+    
+    // Download e import
+    $('#downloadBtn').click(function() {
+        downloadAndImport();
+    });
+    
+    // Gestione modal fonte
+    $('#useSourceBtn').click(function() {
+        useSelectedSource();
+    });
+});
+
+function loadPublicSources() {
+    $.get('/api/v1/bim/public/sources')
+        .done(function(data) {
+            displaySources(data.sources);
+        })
+        .fail(function(xhr) {
+            console.error('Errore caricamento fonti:', xhr);
+        });
+}
+
+function displaySources(sources) {
+    const container = $('#sourcesList');
+    container.empty();
+    
+    sources.forEach(function(source) {
+        const sourceCard = `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-database"></i>
+                            ${source.name}
+                        </h6>
+                        <p class="card-text text-muted">${source.description}</p>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <strong>Formati:</strong> ${source.supported_formats.join(', ')}
+                            </small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="showSourceDetails('${source.id}')">
+                            <i class="fas fa-info-circle"></i>
+                            Dettagli
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(sourceCard);
+    });
+}
+
+function showSourceDetails(sourceId) {
+    // Mostra dettagli della fonte nel modal
+    $('#sourceModalBody').html(`
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Caricamento dettagli...</p>
+        </div>
+    `);
+    $('#sourceModal').modal('show');
+    
+    // Simula caricamento dettagli
+    setTimeout(function() {
+        $('#sourceModalBody').html(`
+            <h6>Fonte: ${sourceId}</h6>
+            <p>Questa fonte contiene modelli BIM pubblici disponibili per l'importazione.</p>
+            <div class="alert alert-info">
+                <small>
+                    <strong>Nota:</strong> Assicurati di avere i permessi necessari per accedere ai dati pubblici.
+                </small>
+            </div>
+        `);
+    }, 1000);
+}
+
+function useSelectedSource() {
+    // Usa la fonte selezionata nel form
+    $('#sourceRepository').val('custom');
+    $('#sourceModal').modal('hide');
+}
+
+function updateSourceInfo() {
+    const source = $('#sourceRepository').val();
+    let info = '';
+    
+    switch(source) {
+        case 'geoportale_regionale':
+            info = 'Geoportali regionali italiani con modelli BIM territoriali';
+            break;
+        case 'catasto':
+            info = 'Catasto nazionale con modelli BIM degli edifici';
+            break;
+        case 'comune':
+            info = 'Repository BIM comunali e locali';
+            break;
+        case 'custom':
+            info = 'URL personalizzato per importazione diretta';
+            break;
+        default:
+            info = 'Seleziona una fonte per vedere le informazioni specifiche';
+    }
+    
+    $('#sourceInfo').html(`
+        <p class="mb-1"><strong>Fonte selezionata:</strong> ${info}</p>
+        <p class="mb-1"><strong>Formati supportati:</strong> IFC, DXF, PDF</p>
+        <p class="mb-0"><strong>Dimensione massima:</strong> 500 MB</p>
+    `);
+}
+
+function validateUrl() {
+    const url = $('#fileUrl').val();
+    if (!url) {
+        showError('Inserisci un URL da validare');
+        return;
+    }
+    
+    $('#validateBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Validazione...');
+    
+    // Simula validazione
+    setTimeout(function() {
+        if (url.includes('http') && (url.includes('.ifc') || url.includes('.dxf') || url.includes('.pdf'))) {
+            showSuccess('URL valido! Il file può essere scaricato.');
+        } else {
+            showError('URL non valido. Verifica che sia un link diretto a un file BIM supportato.');
+        }
+        $('#validateBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Valida URL');
+    }, 2000);
+}
+
+function downloadAndImport() {
+    const formData = new FormData($('#bimImportForm')[0]);
+    
+    // Validazione base
+    if (!formData.get('url') || !formData.get('source_repository')) {
+        showError('Compila tutti i campi obbligatori');
+        return;
+    }
+    
+    // Mostra progress bar
+    $('#progressContainer').show();
+    $('#resultsContainer').hide();
+    $('#errorContainer').hide();
+    $('#downloadBtn').prop('disabled', true);
+    
+    updateProgress(10, 'Validazione URL...');
+    
+    $.ajax({
+        url: '/api/v1/bim/public/download',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function() {
+            const xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function(evt) {
+                if (evt.lengthComputable) {
+                    const percentComplete = evt.loaded / evt.total * 100;
+                    updateProgress(percentComplete, 'Upload in corso...');
+                }
+            }, false);
+            return xhr;
+        }
+    })
+    .done(function(data) {
+        updateProgress(100, 'Import completato!');
+        setTimeout(function() {
+            showImportResults(data);
+        }, 1000);
+    })
+    .fail(function(xhr) {
+        let errorMsg = 'Errore durante l\'import';
+        if (xhr.responseJSON && xhr.responseJSON.detail) {
+            errorMsg = xhr.responseJSON.detail;
+        }
+        showError(errorMsg);
+    })
+    .always(function() {
+        $('#downloadBtn').prop('disabled', false);
+    });
+}
+
+function updateProgress(percent, text) {
+    $('#progressBar').css('width', percent + '%');
+    $('#progressText').text(text);
+}
+
+function showImportResults(data) {
+    $('#progressContainer').hide();
+    $('#resultsContainer').show();
+    
+    $('#importResults').html(`
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Modello:</strong> ${data.name}</p>
+                <p><strong>Formato:</strong> ${data.format}</p>
+                <p><strong>Dimensione:</strong> ${formatFileSize(data.file_size)}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>ID Modello:</strong> ${data.id}</p>
+                <p><strong>Stato:</strong> <span class="badge badge-success">Importato</span></p>
+                <p><strong>Data:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+        </div>
+        <div class="mt-3">
+            <a href="/admin/bim" class="btn btn-primary">
+                <i class="fas fa-eye"></i>
+                Visualizza Modelli BIM
+            </a>
+        </div>
+    `);
+}
+
+function showSuccess(message) {
+    $('#errorContainer').hide();
+    $('#resultsContainer').show();
+    $('#importResults').html(`
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            ${message}
+        </div>
+    `);
+}
+
+function showError(message) {
+    $('#progressContainer').hide();
+    $('#resultsContainer').hide();
+    $('#errorContainer').show();
+    $('#errorMessage').html(`
+        <p>${message}</p>
+        <button class="btn btn-sm btn-outline-secondary" onclick="$('#errorContainer').hide()">
+            Chiudi
+        </button>
+    `);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+</script>
+{% endblock %} 

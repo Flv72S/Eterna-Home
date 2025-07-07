@@ -20,11 +20,13 @@ from app.database import get_db, engine
 from app.routers import (
     auth, users, roles, house, node, 
     document, documents, 
-    bim, node_areas, main_areas, area_reports, 
+    bim, bim_public, manuals, node_areas, main_areas, area_reports, 
     voice, local_interface, secure_area, ai_assistant, activator,
     user_house, system
 )
-from app.routers.admin import dashboard as admin_dashboard, roles as admin_roles, logs as admin_logs, system_monitor
+from app.routers.admin import (
+    dashboard, logs, roles, system_monitor
+)
 from app.core.redis import redis_client
 from app.security.limiter import security_limiter, rate_limit_middleware
 
@@ -136,7 +138,7 @@ app.add_middleware(
 # Rate limiting setup - nuovo sistema avanzato
 if settings.ENABLE_RATE_LIMITING:
     app.state.limiter = security_limiter.limiter
-    app.add_exception_handler(Exception, rate_limit_middleware)
+    app.middleware("http")(rate_limit_middleware)
     logger.info(
         "Rate limiting enabled",
         event_name="rate_limiting_setup",
@@ -155,9 +157,11 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(roles.router, prefix="/api/v1", tags=["roles"])
 app.include_router(house.router, prefix="/api/v1", tags=["houses"])
 app.include_router(node.router, prefix="/api/v1", tags=["nodes"])
-app.include_router(document.router, prefix="/api/v1", tags=["documents"])
-app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
-app.include_router(bim.router, prefix="/api/v1", tags=["BIM Models"])
+app.include_router(document.router, tags=["documents"])
+app.include_router(documents.router, tags=["documents"])
+app.include_router(bim.router, tags=["BIM Models"])
+app.include_router(bim_public.router, tags=["BIM Public Import"])
+app.include_router(manuals.router, tags=["Manuals"])
 app.include_router(node_areas.router, prefix="/api/v1/node-areas", tags=["Node Areas"])
 app.include_router(main_areas.router, prefix="/api/v1/main-areas", tags=["Main Areas"])
 app.include_router(area_reports.router, prefix="/api/v1/area-reports", tags=["Area Reports"])
@@ -168,14 +172,15 @@ app.include_router(ai_assistant.router, prefix="/api/v1", tags=["AI Assistant"])
 app.include_router(activator.router, prefix="/api/v1", tags=["Physical Activators"])
 app.include_router(user_house.router, tags=["User House Management"])
 
-# Include admin dashboard router
-app.include_router(admin_dashboard.router, tags=["admin"])
-app.include_router(admin_roles.router, tags=["admin"])
-app.include_router(admin_logs.router, tags=["admin"])
-app.include_router(system_monitor.router, tags=["admin"])
+# Include admin routers
+app.include_router(dashboard.router, prefix="/admin", tags=["admin"])
+app.include_router(logs.router, prefix="/admin", tags=["admin"])
+app.include_router(roles.router, prefix="/admin", tags=["admin"])
+app.include_router(system_monitor.router, prefix="/admin", tags=["admin"])
 
-# Include system monitoring router
-app.include_router(system.router, tags=["system"])
+# Include admin manuals router
+from app.routers.admin import manuals as admin_manuals
+app.include_router(admin_manuals.router, prefix="/admin", tags=["admin"])
 
 @app.get("/")
 async def root():

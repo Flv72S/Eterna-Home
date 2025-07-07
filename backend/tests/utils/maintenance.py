@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -17,9 +17,9 @@ def create_random_maintenance_record(
     maintenance_date: Optional[datetime] = None,
 ) -> MaintenanceRecord:
     if description is None:
-        description = f"Test maintenance {datetime.utcnow()}"
+        description = f"Test maintenance {datetime.now(timezone.utc)}"
     if maintenance_date is None:
-        maintenance_date = datetime.utcnow()
+        maintenance_date = datetime.now(timezone.utc)
     
     maintenance = MaintenanceRecord(
         node_id=node.id if node else None,

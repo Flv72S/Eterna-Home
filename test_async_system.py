@@ -16,7 +16,7 @@ from app.models.audio_log import AudioLog
 from app.schemas.audio_log import AudioLogCreate
 from app.services.audio_log import AudioLogService
 from app.core.deps import get_db
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, select, create_engine
 from app.core.config import settings
 
 # Configurazione logging

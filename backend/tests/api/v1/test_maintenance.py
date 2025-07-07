@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -70,8 +70,8 @@ def test_export_maintenance_records_with_filters(
     # Test with various filters
     filters = {
         "format": "json",
-        "start_date": (datetime.utcnow() - timedelta(days=1)).isoformat(),
-        "end_date": (datetime.utcnow() + timedelta(days=1)).isoformat(),
+        "start_date": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+        "end_date": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
         "type": record1.type,
         "status": "completed",
         "search": record1.description[:5]  # Search by partial description

@@ -4,9 +4,8 @@ from typing import Optional, List, TYPE_CHECKING, Any
 import uuid
 
 from pydantic import ConfigDict, EmailStr
-from sqlmodel import Field, SQLModel, Relationship, Column, DateTime
+from sqlmodel import Field, select, SQLModel, Relationship, Column, DateTime
 from app.models.enums import UserRole as UserRoleEnum
-from app.models.permission import UserPermission
 from typing_extensions import Annotated
 from sqlalchemy.orm import Mapped
 
@@ -23,11 +22,14 @@ if TYPE_CHECKING:
     from app.models.bim_model import BIMModelVersion
     from app.models.audio_log import AudioLog
     from app.models.permission import Permission
+    from app.models.user_permission import UserPermission
 else:
     from app.models.role import Role
     from app.models.user_role import UserRole
     from app.models.user_tenant_role import UserTenantRole
     from app.models.user_house import UserHouse
+    from app.models.permission import Permission
+    from app.models.user_permission import UserPermission
 
 class User(SQLModel, table=True):
     """
@@ -109,18 +111,18 @@ class User(SQLModel, table=True):
     )
 
     # Relazioni con sintassi corretta per SQLModel
-    roles: List["Role"] = Relationship(
-        back_populates="users",
-        link_model=UserRole
-    )
-    tenant_roles: List["UserTenantRole"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-    permissions: List["Permission"] = Relationship(
-        back_populates="users",
-        link_model=UserPermission
-    )
+    # roles: Optional[List["Role"]] = Relationship(
+    #     back_populates="users",
+    #     link_model=UserRole
+    # )
+    # tenant_roles: Optional[List["UserTenantRole"]] = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    # )
+    # permissions: Optional[List["Permission"]] = Relationship(
+    #     back_populates="users",
+    #     link_model=UserPermission
+    # )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"
@@ -221,43 +223,72 @@ class User(SQLModel, table=True):
         Restituisce la lista degli ID delle case a cui l'utente ha accesso.
         Se tenant_id è specificato, filtra solo per quel tenant.
         """
-        house_ids = []
+        from app.models.house import House
+        from app.models.user_house import UserHouse
+        from app.db.session import get_session
+        from sqlmodel import select
         
-        # Case di cui è proprietario
-        if hasattr(self, 'owned_houses') and self.owned_houses:
-            for house in self.owned_houses:
-                if tenant_id is None or house.tenant_id == tenant_id:
-                    house_ids.append(house.id)
-        
-        # Case associate tramite UserHouse
-        if hasattr(self, 'user_houses') and self.user_houses:
-            for user_house in self.user_houses:
-                if user_house.is_active and (tenant_id is None or user_house.tenant_id == tenant_id):
-                    house_ids.append(user_house.house_id)
-        
-        return list(set(house_ids))
+        with next(get_session()) as session:
+            house_ids = []
+            
+            # Case di cui è proprietario
+            owned_houses_query = select(House.id).where(House.owner_id == self.id)
+            if tenant_id:
+                owned_houses_query = owned_houses_query.where(House.tenant_id == tenant_id)
+            
+            owned_houses = session.exec(owned_houses_query).all()
+            house_ids.extend(owned_houses)
+            
+            # Case associate tramite UserHouse
+            user_houses_query = select(UserHouse.house_id).where(
+                UserHouse.user_id == self.id,
+                UserHouse.is_active == True
+            )
+            if tenant_id:
+                user_houses_query = user_houses_query.where(UserHouse.tenant_id == tenant_id)
+            
+            user_houses = session.exec(user_houses_query).all()
+            house_ids.extend(user_houses)
+            
+            return list(set(house_ids))
     
     def has_house_access(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> bool:
         """
         Verifica se l'utente ha accesso a una casa specifica.
         Se tenant_id è specificato, verifica anche l'appartenenza al tenant.
         """
-        # Verifica se è proprietario della casa
-        if hasattr(self, 'owned_houses') and self.owned_houses:
-            for house in self.owned_houses:
-                if house.id == house_id:
-                    if tenant_id is None or house.tenant_id == tenant_id:
-                        return True
+        from app.models.house import House
+        from app.models.user_house import UserHouse
+        from app.db.session import get_session
+        from sqlmodel import select
         
-        # Verifica se è associato tramite UserHouse
-        if hasattr(self, 'user_houses') and self.user_houses:
-            for user_house in self.user_houses:
-                if (user_house.house_id == house_id and 
-                    user_house.is_active and 
-                    (tenant_id is None or user_house.tenant_id == tenant_id)):
-                    return True
-        
-        return False
+        with next(get_session()) as session:
+            # Verifica se è proprietario della casa
+            owned_house_query = select(House.id).where(
+                House.id == house_id,
+                House.owner_id == self.id
+            )
+            if tenant_id:
+                owned_house_query = owned_house_query.where(House.tenant_id == tenant_id)
+            
+            owned_house = session.exec(owned_house_query).first()
+            if owned_house:
+                return True
+            
+            # Verifica se è associato tramite UserHouse
+            user_house_query = select(UserHouse.user_id).where(
+                UserHouse.house_id == house_id,
+                UserHouse.user_id == self.id,
+                UserHouse.is_active == True
+            )
+            if tenant_id:
+                user_house_query = user_house_query.where(UserHouse.tenant_id == tenant_id)
+            
+            user_house = session.exec(user_house_query).first()
+            if user_house:
+                return True
+            
+            return False
     
     def get_role_in_house(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> Optional[str]:
         """

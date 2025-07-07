@@ -7,7 +7,7 @@ import os
 sys.path.insert(0, os.path.abspath('.'))
 
 from app.database import get_engine
-from sqlmodel import Session, text
+from sqlmodel import Session, select, text
 
 def check_roles():
     """Verifica i ruoli esistenti nel database"""

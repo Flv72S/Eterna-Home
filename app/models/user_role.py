@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, select, Field
 
 class UserRole(SQLModel, table=True):
     """Tabella intermedia per relazione many-to-many User-Role"""

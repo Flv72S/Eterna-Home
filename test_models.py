@@ -4,7 +4,7 @@ from app.models.house import House
 from app.models.node import Node
 from app.models.document import Document
 from app.models.maintenance import MaintenanceRecord
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 import traceback
 
 def test_create_tables():

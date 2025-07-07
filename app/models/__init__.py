@@ -7,8 +7,11 @@ from .node import Node, NodeArea, MainArea
 from .room import Room
 from .booking import Booking
 from .maintenance import MaintenanceRecord
-from .role import Role, UserRole
-from .permission import Permission, RolePermission, UserPermission
+from .role import Role
+from .user_role import UserRole
+from .permission import Permission
+from .role_permission import RolePermission
+from .user_permission import UserPermission
 from .user_tenant_role import UserTenantRole
 from .bim_model import BIMModel, BIMFormat, BIMSoftware, BIMLevelOfDetail
 from .audio_log import AudioLog, AudioLogCreate, AudioLogUpdate

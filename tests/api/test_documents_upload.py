@@ -67,6 +67,11 @@ def test_upload_document_success(sample_file, mock_minio_service, document_table
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": file},
+        data={
+            "title": "Test Document",
+            "house_id": 1,
+            "document_type": "general"
+        },
         headers={"Authorization": f"Bearer {settings.TEST_TOKEN}"}
     )
     
@@ -82,14 +87,13 @@ def test_upload_document_success(sample_file, mock_minio_service, document_table
     data = response.json()
     
     # Verifica struttura risposta
-    assert "filename" in data
-    assert "content_type" in data
-    assert "document_id" in data
+    assert "id" in data
+    assert "file_type" in data
+    assert "file_url" in data
     
     # Verifica valori
-    assert data["filename"] == file_name
-    assert data["content_type"] == "application/pdf"
-    assert isinstance(data["document_id"], int)
+    assert data["file_type"] == "application/pdf"
+    assert isinstance(data["id"], int)
     
     # Verifica chiamate MinIO
     mock_minio_service.upload_file.assert_called_once()
@@ -125,6 +129,11 @@ def test_upload_document_large_file(sample_file, mock_minio_service, document_ta
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": file},
+        data={
+            "title": "Large Test Document",
+            "house_id": 1,
+            "document_type": "general"
+        },
         headers={"Authorization": f"Bearer {settings.TEST_TOKEN}"}
     )
     
@@ -140,16 +149,13 @@ def test_upload_document_large_file(sample_file, mock_minio_service, document_ta
     data = response.json()
     
     # Verifica struttura risposta
-    assert "upload_url" in data
-    assert "filename" in data
-    assert "content_type" in data
-    assert "document_id" in data
+    assert "id" in data
+    assert "file_type" in data
+    assert "file_url" in data
     
     # Verifica valori
-    assert data["upload_url"] == presigned_url
-    assert data["filename"].endswith(".pdf")
-    assert data["content_type"] == "application/pdf"
-    assert data["document_id"] is None  # Per file grandi non abbiamo ancora un document_id
+    assert data["file_type"] == "application/pdf"
+    assert isinstance(data["id"], int)
     
     # Verifica che non sia stato fatto l'upload diretto
     mock_minio_service.upload_file.assert_not_called()
@@ -171,6 +177,11 @@ def test_upload_document_invalid_file_type(sample_file, mock_minio_service, over
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": file},
+        data={
+            "title": "Invalid Test Document",
+            "house_id": 1,
+            "document_type": "general"
+        },
         headers={"Authorization": f"Bearer {settings.TEST_TOKEN}"}
     )
     
@@ -201,6 +212,11 @@ def test_upload_document_minio_error(sample_file, mock_minio_service, document_t
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": file},
+        data={
+            "title": "Error Test Document",
+            "house_id": 1,
+            "document_type": "general"
+        },
         headers={"Authorization": f"Bearer {settings.TEST_TOKEN}"}
     )
     

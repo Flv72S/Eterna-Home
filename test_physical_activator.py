@@ -320,7 +320,7 @@ class TestActivatorActivation:
             "activator_id": activator.id,
             "node_id": activator.linked_node_id,
             "triggered_by": "manual",
-            "metadata": {"source": "test"}
+            "meta_data": {"source": "test"}
         }
         
         # Verifica che tutti i campi necessari siano presenti
@@ -450,14 +450,14 @@ class TestActivatorSchemas:
         
         data = {
             "triggered_by": "manual",
-            "metadata": {"source": "mobile_app", "location": "indoor"}
+            "meta_data": {"source": "mobile_app", "location": "indoor"}
         }
         
         schema = ActivatorActivationRequest(**data)
         
         assert schema.triggered_by == "manual"
-        assert schema.metadata["source"] == "mobile_app"
-        assert schema.metadata["location"] == "indoor"
+        assert schema.meta_data["source"] == "mobile_app"
+        assert schema.meta_data["location"] == "indoor"
         
         print("✅ Test schema ActivatorActivationRequest PASSED")
 

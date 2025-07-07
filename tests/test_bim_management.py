@@ -9,7 +9,7 @@ import io
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from unittest.mock import patch, MagicMock
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.main import app
 from app.models.user import User
@@ -328,8 +328,8 @@ class TestBIMManagement:
                 user_id=user.id,
                 house_id=test_house.id,
                 tenant_id=tenant_id,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             session.add(model)
             models.append(model)
@@ -369,7 +369,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -404,7 +406,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -450,7 +454,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -502,7 +508,9 @@ class TestBIMManagement:
             checksum="other_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=other_tenant_id
+            tenant_id=other_tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(other_model)
         session.commit()
@@ -534,7 +542,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -573,7 +583,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -590,7 +602,9 @@ class TestBIMManagement:
                 checksum=f"checksum_v{i + 1}",
                 bim_model_id=model.id,
                 created_by_id=user.id,
-                tenant_id=tenant_id
+                tenant_id=tenant_id,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             session.add(version)
         
@@ -627,7 +641,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -680,7 +696,9 @@ class TestBIMManagement:
             conversion_message="Conversione completata con successo",
             conversion_progress=100,
             converted_file_url="http://localhost:9000/converted/model.gltf",
-            validation_report_url="http://localhost:9000/validation/report.pdf"
+            validation_report_url="http://localhost:9000/validation/report.pdf",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -751,7 +769,9 @@ class TestBIMManagement:
             checksum="test_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(model)
         session.commit()
@@ -780,7 +800,9 @@ class TestBIMManagement:
             checksum="other_checksum",
             user_id=user.id,
             house_id=test_house.id,
-            tenant_id=other_tenant_id
+            tenant_id=other_tenant_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(other_model)
         session.commit()

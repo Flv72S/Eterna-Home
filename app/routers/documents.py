@@ -59,7 +59,7 @@ async def upload_document_file(
         )
     
     # Verifica che non ci sia già un file caricato
-    if document.file_path:
+    if document.file_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Il documento ha già un file associato"
@@ -73,7 +73,7 @@ async def upload_document_file(
     )
     
     # Aggiorna il documento nel database
-    document.file_path = file_path
+    document.file_url = file_path
     document.checksum = checksum
     db.add(document)
     db.commit()

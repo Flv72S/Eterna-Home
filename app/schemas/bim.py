@@ -10,8 +10,8 @@ class BIMModelBase(BaseModel):
     name: str = Field(..., description="Nome del modello BIM")
     description: Optional[str] = Field(None, description="Descrizione del modello")
     format: BIMFormat = Field(..., description="Formato del file BIM")
-    software_origin: BIMSoftware = Field(..., description="Software di origine")
-    level_of_detail: BIMLevelOfDetail = Field(..., description="Livello di dettaglio")
+    software_origin: Optional[BIMSoftware] = Field(None, description="Software di origine")
+    level_of_detail: Optional[BIMLevelOfDetail] = Field(None, description="Livello di dettaglio")
     revision_date: Optional[datetime] = Field(None, description="Data di revisione")
     file_url: str = Field(..., description="URL del file in storage")
     file_size: int = Field(..., description="Dimensione del file in bytes")
@@ -20,7 +20,7 @@ class BIMModelBase(BaseModel):
 class BIMModelCreate(BIMModelBase):
     """Schema per la creazione di un BIMModel."""
     user_id: int = Field(..., description="ID dell'utente proprietario")
-    house_id: int = Field(..., description="ID della casa associata")
+    house_id: Optional[int] = Field(None, description="ID della casa associata")
     node_id: Optional[int] = Field(None, description="ID del nodo associato")
 
 class BIMModelUpdate(BaseModel):

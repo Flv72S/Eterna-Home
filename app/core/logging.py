@@ -5,7 +5,7 @@ Utilizza structlog per produrre log in formato JSON compatibili con ELK/Grafana 
 import sys
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from contextvars import ContextVar
 
@@ -42,7 +42,7 @@ def add_trace_id(logger: Any, method_name: str, event_dict: Dict[str, Any]) -> D
 
 def add_timestamp(logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
     """Aggiunge timestamp ISO al log."""
-    event_dict["timestamp"] = datetime.utcnow().isoformat()
+    event_dict["timestamp"] = datetime.now(timezone.utc).isoformat()
     return event_dict
 
 

@@ -7,7 +7,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Dict, Any
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, select, create_engine
 from app.core.queue import RabbitMQManager
 from app.core.config import settings
 from app.core.logging import get_logger

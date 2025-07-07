@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.models.maintenance import MaintenanceRecord, MaintenanceStatus
 from app.models.node import Node
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 import json
 import io
@@ -28,7 +28,7 @@ def test_create_maintenance_record_api(client: TestClient, db):
     # Dati per il nuovo record
     data = {
         "node_id": node_id,
-        "date": datetime.utcnow().isoformat(),
+        "date": datetime.now(timezone.utc).isoformat(),
         "type": "Routine",
         "description": "Test maintenance",
         "status": MaintenanceStatus.PENDING,
@@ -56,7 +56,7 @@ def test_read_maintenance_record_api(client: TestClient, db):
     # Crea un record di manutenzione
     record = MaintenanceRecord(
         node_id=node_id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -88,7 +88,7 @@ def test_update_maintenance_record_api(client: TestClient, db):
     # Crea un record di manutenzione
     record = MaintenanceRecord(
         node_id=node_id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -123,7 +123,7 @@ def test_delete_maintenance_record_api(client: TestClient, db):
     # Crea un record di manutenzione
     record = MaintenanceRecord(
         node_id=node_id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -154,7 +154,7 @@ def test_import_csv_valid(client: TestClient, db):
     # Crea un file CSV di test
     csv_data = pd.DataFrame({
         'node_id': [node_id],
-        'date': [datetime.utcnow().isoformat()],
+        'date': [datetime.now(timezone.utc).isoformat()],
         'type': ['Routine'],
         'description': ['Test maintenance'],
         'status': [MaintenanceStatus.PENDING.value],
@@ -194,7 +194,7 @@ def test_import_json_valid(client: TestClient, db):
     # Crea un file JSON di test
     json_data = [{
         'node_id': node_id,
-        'date': datetime.utcnow().isoformat(),
+        'date': datetime.now(timezone.utc).isoformat(),
         'type': 'Routine',
         'description': 'Test maintenance',
         'status': MaintenanceStatus.PENDING.value,
@@ -234,7 +234,7 @@ def test_search_by_node_id(client: TestClient, db):
     # Crea record di manutenzione per entrambi i nodi
     record1 = MaintenanceRecord(
         node_id=node1.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -242,7 +242,7 @@ def test_search_by_node_id(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node2.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.PENDING,
@@ -269,7 +269,7 @@ def test_search_by_status(client: TestClient, db):
     # Crea record di manutenzione con status diversi
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -277,7 +277,7 @@ def test_search_by_status(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.COMPLETED,
@@ -304,7 +304,7 @@ def test_search_by_created_at_range(client: TestClient, db):
     # Crea record di manutenzione con date diverse
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow() - timedelta(days=2),
+        date=datetime.now(timezone.utc) - timedelta(days=2),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -312,7 +312,7 @@ def test_search_by_created_at_range(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.PENDING,
@@ -322,8 +322,8 @@ def test_search_by_created_at_range(client: TestClient, db):
     db.commit()
 
     # Chiamata API
-    start_date = (datetime.utcnow() - timedelta(days=1)).isoformat()
-    end_date = (datetime.utcnow() + timedelta(days=1)).isoformat()
+    start_date = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    end_date = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     response = client.get(f"{API_PREFIX}/search?start_date={start_date}&end_date={end_date}")
     assert response.status_code == 200
     result = response.json()
@@ -340,7 +340,7 @@ def test_search_by_notes_keyword(client: TestClient, db):
     # Crea record di manutenzione con note diverse
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -348,7 +348,7 @@ def test_search_by_notes_keyword(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.PENDING,
@@ -376,7 +376,7 @@ def test_search_pagination_limit_and_skip(client: TestClient, db):
     for i in range(5):
         record = MaintenanceRecord(
             node_id=node.id,
-            date=datetime.utcnow(),
+            date=datetime.now(timezone.utc),
             type="Routine",
             description=f"Test maintenance {i}",
             status=MaintenanceStatus.PENDING,
@@ -404,7 +404,7 @@ def test_search_combined_filters(client: TestClient, db):
     # Crea record di manutenzione
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -412,7 +412,7 @@ def test_search_combined_filters(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.COMPLETED,
@@ -440,7 +440,7 @@ def test_search_empty_result(client: TestClient, db):
     # Crea record di manutenzione
     record = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -465,7 +465,7 @@ def test_export_csv(client: TestClient, db):
     # Crea record di manutenzione
     record = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -490,7 +490,7 @@ def test_export_json(client: TestClient, db):
     # Crea record di manutenzione
     record = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -515,7 +515,7 @@ def test_export_filters(client: TestClient, db):
     # Crea record di manutenzione
     record1 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 1",
         status=MaintenanceStatus.PENDING,
@@ -523,7 +523,7 @@ def test_export_filters(client: TestClient, db):
     )
     record2 = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance 2",
         status=MaintenanceStatus.COMPLETED,

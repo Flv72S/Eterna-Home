@@ -12,6 +12,12 @@ class Settings(BaseModel):
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
     
+    # Environment
+    ENVIRONMENT: str = Field(
+        default="test" if "pytest" in os.getenv("PYTEST_CURRENT_TEST", "") else "development",
+        description="Environment (development, test, production)"
+    )
+    
     # Database - Credenziali da environment variables
     DATABASE_URL: str = Field(
         default="postgresql+psycopg2://postgres:N0nn0c4rl0!!@localhost:5432/eterna_home_test",
@@ -87,11 +93,11 @@ class Settings(BaseModel):
         description="MinIO endpoint"
     )
     MINIO_ACCESS_KEY: str = Field(
-        default="minioadmin",
+        default="Flavio",
         description="MinIO access key - change in production"
     )
     MINIO_SECRET_KEY: str = Field(
-        default="minioadmin",
+        default="N0nn0c4rl0!!",
         description="MinIO secret key - change in production"
     )
     MINIO_BUCKET_NAME: str = Field(

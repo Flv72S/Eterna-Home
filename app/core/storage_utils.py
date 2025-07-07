@@ -205,7 +205,10 @@ def validate_file_type(filename: str, allowed_extensions: List[str]) -> bool:
         bool: True se il file è valido, False altrimenti
     """
     file_extension = get_file_extension(filename)
-    is_valid = file_extension.lower() in [ext.lower() for ext in allowed_extensions]
+    
+    # Normalizza le estensioni per il confronto (rimuove il punto se presente)
+    normalized_allowed = [ext.lower().lstrip('.') for ext in allowed_extensions]
+    is_valid = file_extension.lower() in normalized_allowed
     
     if not is_valid:
         multi_tenant_logger.log_security_event(

@@ -9,8 +9,37 @@ from app.db.utils import safe_exec
 from app.schemas.node import NodeResponse
 from app.core.logging import get_logger
 
-router = APIRouter()
+router = APIRouter(prefix="/nodes")
 logger = get_logger(__name__)
+
+@router.get("/", response_model=List[NodeResponse])
+async def read_nodes(
+    skip: int = 0,
+    limit: int = 100,
+    house_id: Optional[int] = Query(None, description="Filtra per casa"),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Ottiene la lista dei nodi."""
+    logger.info("Nodes list request",
+                user_id=current_user.id,
+                skip=skip,
+                limit=limit,
+                house_id=house_id)
+    
+    query = select(Node)
+    if house_id:
+        query = query.where(Node.house_id == house_id)
+    query = query.offset(skip).limit(limit)
+    result = safe_exec(session, query)
+    nodes = result.all()
+    
+    logger.info("Nodes list retrieved",
+                user_id=current_user.id,
+                count=len(nodes),
+                house_id=house_id)
+    
+    return nodes
 
 @router.post("/", response_model=NodeResponse)
 async def create_node(
@@ -22,8 +51,7 @@ async def create_node(
     logger.info("Node creation attempt",
                 user_id=current_user.id,
                 nfc_id=node.nfc_id,
-                house_id=node.house_id,
-                node_type=node.node_type)
+                house_id=node.house_id)
     
     # Verifica se il nodo esiste già
     query = select(Node).where(Node.nfc_id == node.nfc_id)
@@ -76,35 +104,6 @@ def read_node(
                 nfc_id=node.nfc_id)
     
     return node
-
-@router.get("/", response_model=List[NodeResponse])
-async def read_nodes(
-    skip: int = 0,
-    limit: int = 100,
-    house_id: Optional[int] = Query(None, description="Filtra per casa"),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    """Ottiene la lista dei nodi."""
-    logger.info("Nodes list request",
-                user_id=current_user.id,
-                skip=skip,
-                limit=limit,
-                house_id=house_id)
-    
-    query = select(Node)
-    if house_id:
-        query = query.where(Node.house_id == house_id)
-    query = query.offset(skip).limit(limit)
-    result = safe_exec(session, query)
-    nodes = result.all()
-    
-    logger.info("Nodes list retrieved",
-                user_id=current_user.id,
-                count=len(nodes),
-                house_id=house_id)
-    
-    return nodes
 
 @router.put("/{node_id}", response_model=NodeResponse)
 def update_node(

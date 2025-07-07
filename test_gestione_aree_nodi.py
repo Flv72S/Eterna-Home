@@ -190,11 +190,11 @@ def test_area_models():
             print("\n🧹 Cleanup...")
             try:
                 # Rimuovi i dati di test
-                session.query(Node).filter(Node.house_id == house.id).delete()
-                session.query(NodeArea).filter(NodeArea.house_id == house.id).delete()
-                session.query(MainArea).filter(MainArea.house_id == house.id).delete()
-                session.query(House).filter(House.id == house.id).delete()
-                session.query(User).filter(User.id == user.id).delete()
+                session.exec(select(Node).where(Node.house_id == house.id)).delete()
+                session.exec(select(NodeArea).where(NodeArea.house_id == house.id)).delete()
+                session.exec(select(MainArea).where(MainArea.house_id == house.id)).delete()
+                session.exec(select(House).where(House.id == house.id)).delete()
+                session.exec(select(User).where(User.id == user.id)).delete()
                 session.commit()
                 print("   ✅ Dati di test rimossi")
             except Exception as e:

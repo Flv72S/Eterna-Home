@@ -1,7 +1,7 @@
 from typing import List, Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.deps import get_current_user, get_current_tenant, get_db
 from app.core.auth.rbac import require_role_in_tenant, require_permission_in_tenant

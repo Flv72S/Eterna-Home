@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, select, create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 import os

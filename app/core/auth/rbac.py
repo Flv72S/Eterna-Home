@@ -15,6 +15,9 @@ from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.db.session import get_session
 from app.db.utils import safe_exec
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 def require_role_in_tenant(required_role: str):
     """
@@ -128,8 +131,9 @@ def require_permission_in_tenant(permission: str):
             "manage_roles": ["super_admin"],
             "read_bim_models": ["viewer", "editor", "admin", "super_admin"],
             "write_bim_models": ["editor", "admin", "super_admin"],
-            "delete_bim_models": ["admin", "super_admin"],
+            "delete_bim_models": ["editor", "admin", "super_admin"],
             "upload_bim": ["editor", "admin", "super_admin"],
+            "manage_bim_sources": ["admin", "super_admin"],
             "read_audio_logs": ["viewer", "editor", "admin", "super_admin"],
             "write_audio_logs": ["editor", "admin", "super_admin"],
             "delete_audio_logs": ["admin", "super_admin"],
@@ -205,6 +209,7 @@ def require_any_permission_in_tenant(permissions: List[str]):
             "write_bim_models": ["editor", "admin", "super_admin"],
             "delete_bim_models": ["admin", "super_admin"],
             "upload_bim": ["editor", "admin", "super_admin"],
+            "manage_bim_sources": ["admin", "super_admin"],
             "read_audio_logs": ["viewer", "editor", "admin", "super_admin"],
             "write_audio_logs": ["editor", "admin", "super_admin"],
             "delete_audio_logs": ["admin", "super_admin"],

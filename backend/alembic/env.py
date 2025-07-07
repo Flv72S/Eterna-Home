@@ -1,4 +1,7 @@
 from logging.config import fileConfig
+import sys
+import os
+from pathlib import Path
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -8,6 +11,9 @@ from alembic import context
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Add the parent directory to sys.path to allow imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -20,7 +26,8 @@ from app.models.user import User
 from app.models.house import House
 from app.models.room import Room
 from app.models.booking import Booking
-from sqlmodel import SQLModel
+from app.models.bim_model import BIMModel
+from sqlmodel import SQLModel, select
 
 target_metadata = SQLModel.metadata
 

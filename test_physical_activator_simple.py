@@ -171,13 +171,13 @@ def test_activator_schemas():
     # Test ActivatorActivationRequest
     activation_data = {
         "triggered_by": "manual",
-        "metadata": {"source": "mobile_app", "location": "indoor"}
+        "meta_data": {"source": "mobile_app", "location": "indoor"}
     }
     
     activation_schema = ActivatorActivationRequest(**activation_data)
     assert activation_schema.triggered_by == "manual"
-    assert activation_schema.metadata["source"] == "mobile_app"
-    assert activation_schema.metadata["location"] == "indoor"
+    assert activation_schema.meta_data["source"] == "mobile_app"
+    assert activation_schema.meta_data["location"] == "indoor"
     
     print("✅ Test schemi Pydantic PASSED")
 

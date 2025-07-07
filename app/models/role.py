@@ -3,7 +3,7 @@ Modello Role per la gestione dei ruoli utente
 """
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING, Any
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, select, Field, Relationship
 from pydantic import ConfigDict
 from sqlalchemy.orm import Mapped
 
@@ -12,6 +12,7 @@ from .role_permission import RolePermission
 
 if TYPE_CHECKING:
     from .user import User
+    from .permission import Permission
 
 
 class RoleBase(SQLModel):
@@ -32,14 +33,14 @@ class Role(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    permissions: List["Permission"] = Relationship(
-        back_populates="roles",
-        link_model=RolePermission
-    )
-    users: List["User"] = Relationship(
-        back_populates="roles",
-        link_model=UserRole
-    )
+    # permissions: Optional[List["Permission"]] = Relationship(
+    #     back_populates="roles",
+    #     link_model=RolePermission
+    # )
+    # users: Optional[List["User"]] = Relationship(
+    #     back_populates="roles",
+    #     link_model=UserRole
+    # )
     
     model_config = ConfigDict(
         from_attributes=True,

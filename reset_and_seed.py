@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, select, create_engine, Session
 from app.core.config import settings
 from app.models.user import User
 from app.models.house import House

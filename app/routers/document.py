@@ -28,7 +28,7 @@ from app.schemas.document import (
 )
 from app.services.minio_service import get_minio_service
 from app.db.utils import safe_exec
-from app.core.logging_multi_tenant import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -61,8 +61,24 @@ async def upload_document(
         
         # Carica il file su MinIO con path multi-tenant e multi-house
         minio_service = get_minio_service()
+        
+        # Leggi il contenuto del file una sola volta
+        file_content = await file.read()
+        
+        # Calcola il checksum del file
+        checksum = hashlib.sha256(file_content).hexdigest()
+        
+        # Crea un oggetto file compatibile con il servizio MinIO
+        from io import BytesIO
+        class FileLike:
+            def __init__(self, filename, content, content_type):
+                self.filename = filename
+                self.file = BytesIO(content)
+                self.content_type = content_type
+        file_copy = FileLike(file.filename, file_content, file.content_type)
+        
         upload_result = minio_service.upload_file(
-            file=file,
+            file=file_copy,
             folder=f"houses/{house_id}/documents",
             tenant_id=tenant_id,
             house_id=house_id
@@ -73,43 +89,43 @@ async def upload_document(
             title=title,
             description=description,
             document_type=document_type,
-            file_path=upload_result["storage_path"],
+            file_url=upload_result["storage_path"],
             file_size=upload_result["file_size"],
             file_type=upload_result["content_type"],
-            tenant_id=tenant_id,
+            checksum=checksum,
             house_id=house_id,
             owner_id=current_user.id
         )
         
-        document = Document.from_orm(document_data)
+        document = Document(
+            **document_data.model_dump(),
+            owner_id=current_user.id,
+            tenant_id=tenant_id
+        )
         session.add(document)
         session.commit()
         session.refresh(document)
         
         logger.info(
             "Documento caricato con successo",
-            extra={
-                "user_id": current_user.id,
-                "house_id": house_id,
-                "tenant_id": tenant_id,
-                "document_id": document.id,
-                "file_size": upload_result["file_size"]
-            }
+            user_id=current_user.id,
+            house_id=house_id,
+            tenant_id=tenant_id,
+            document_id=document.id,
+            file_size=upload_result["file_size"]
         )
         
-        return DocumentRead.from_orm(document)
+        return DocumentRead.model_validate(document)
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
             "Errore durante upload documento",
-            extra={
-                "user_id": current_user.id,
-                "house_id": house_id,
-                "tenant_id": tenant_id,
-                "error": str(e)
-            }
+            user_id=current_user.id,
+            house_id=house_id,
+            tenant_id=tenant_id,
+            error=str(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -165,27 +181,23 @@ async def list_documents(
         
         logger.info(
             "Lista documenti recuperata",
-            extra={
-                "user_id": current_user.id,
-                "house_id": house_id,
-                "tenant_id": tenant_id,
-                "total_documents": len(documents)
-            }
+            user_id=current_user.id,
+            house_id=house_id,
+            tenant_id=tenant_id,
+            total_documents=len(documents)
         )
         
-        return [DocumentRead.from_orm(doc) for doc in documents]
+        return [DocumentRead.model_validate(doc) for doc in documents]
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
             "Errore durante listaggio documenti",
-            extra={
-                "user_id": current_user.id,
-                "house_id": house_id,
-                "tenant_id": tenant_id,
-                "error": str(e)
-            }
+            user_id=current_user.id,
+            house_id=house_id,
+            tenant_id=tenant_id,
+            error=str(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -228,27 +240,23 @@ async def get_document(
         
         logger.info(
             "Documento recuperato",
-            extra={
-                "user_id": current_user.id,
-                "document_id": document_id,
-                "house_id": document.house_id,
-                "tenant_id": tenant_id
-            }
+            user_id=current_user.id,
+            document_id=document_id,
+            house_id=document.house_id,
+            tenant_id=tenant_id
         )
         
-        return DocumentRead.from_orm(document)
+        return DocumentRead.model_validate(document)
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(
             "Errore durante recupero documento",
-            extra={
-                "user_id": current_user.id,
-                "document_id": document_id,
-                "tenant_id": tenant_id,
-                "error": str(e)
-            }
+            user_id=current_user.id,
+            document_id=document_id,
+            tenant_id=tenant_id,
+            error=str(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -292,7 +300,7 @@ async def download_document(
         # Scarica il file da MinIO
         minio_service = get_minio_service()
         file_data = minio_service.download_file(
-            storage_path=document.file_path,
+            storage_path=document.file_url,
             tenant_id=tenant_id,
             house_id=document.house_id
         )
@@ -305,13 +313,11 @@ async def download_document(
         
         logger.info(
             "Documento scaricato",
-            extra={
-                "user_id": current_user.id,
-                "document_id": document_id,
-                "house_id": document.house_id,
-                "tenant_id": tenant_id,
-                "file_size": file_data["file_size"]
-            }
+            user_id=current_user.id,
+            document_id=document_id,
+            house_id=document.house_id,
+            tenant_id=tenant_id,
+            file_size=file_data["file_size"]
         )
         
         # Crea response di streaming
@@ -329,12 +335,10 @@ async def download_document(
     except Exception as e:
         logger.error(
             "Errore durante download documento",
-            extra={
-                "user_id": current_user.id,
-                "document_id": document_id,
-                "tenant_id": tenant_id,
-                "error": str(e)
-            }
+            user_id=current_user.id,
+            document_id=document_id,
+            tenant_id=tenant_id,
+            error=str(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -369,7 +373,7 @@ async def update_document(
             )
         
         # Aggiorna i campi del documento
-        update_data = document_update.dict(exclude_unset=True)
+        update_data = document_update.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(document, field, value)
         
@@ -377,7 +381,7 @@ async def update_document(
         session.commit()
         session.refresh(document)
         
-        return DocumentRead.from_orm(document)
+        return DocumentRead.model_validate(document)
         
     except HTTPException:
         raise
@@ -415,8 +419,9 @@ async def delete_document(
             )
         
         # Elimina il file da MinIO
+        minio_service = get_minio_service()
         minio_service.delete_file(
-            storage_path=document.file_path,
+            storage_path=document.file_url,
             tenant_id=tenant_id
         )
         
@@ -464,7 +469,7 @@ async def get_document_presigned_url(
         
         # Crea URL pre-firmato
         presigned_url = minio_service.create_presigned_url(
-            storage_path=document.file_path,
+            storage_path=document.file_url,
             tenant_id=tenant_id,
             method="GET",
             expires=expires

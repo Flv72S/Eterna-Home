@@ -1,6 +1,6 @@
 from typing import Optional, List, TYPE_CHECKING
 import uuid
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, select, SQLModel, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:

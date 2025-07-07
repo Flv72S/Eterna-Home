@@ -10,7 +10,7 @@ import os
 # Aggiungi il path del progetto
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 from app.database import get_engine
 from app.models import NodeArea, MainArea, Node, House, User
 

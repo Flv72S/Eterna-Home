@@ -1,0 +1,667 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestione Manuali PDF - Eterna Home{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-book"></i>
+                        Gestione Manuali PDF
+                    </h3>
+                    <p class="card-subtitle text-muted">
+                        Gestisci i manuali PDF degli oggetti domestici per stanza e nodo
+                    </p>
+                </div>
+                <div class="card-body">
+                    <!-- Statistiche -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info"><i class="fas fa-book"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Totali</span>
+                                    <span class="info-box-number" id="totalManuals">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success"><i class="fas fa-upload"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Caricati</span>
+                                    <span class="info-box-number" id="uploadedManuals">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-warning"><i class="fas fa-link"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Link Esterni</span>
+                                    <span class="info-box-number" id="linkedManuals">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-primary"><i class="fas fa-home"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Case</span>
+                                    <span class="info-box-number" id="housesWithManuals">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pulsanti di azione -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#uploadManualModal">
+                                <i class="fas fa-upload"></i>
+                                Carica Manuale PDF
+                            </button>
+                            <button class="btn btn-secondary" data-toggle="modal" data-target="#addLinkModal">
+                                <i class="fas fa-link"></i>
+                                Aggiungi Link Manuale
+                            </button>
+                            <button class="btn btn-info" onclick="refreshStats()">
+                                <i class="fas fa-sync"></i>
+                                Aggiorna Statistiche
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filtri -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label for="houseFilter">Casa:</label>
+                            <select class="form-control" id="houseFilter" onchange="filterManuals()">
+                                <option value="">Tutte le case</option>
+                                {% for house in houses %}
+                                <option value="{{ house.id }}">{{ house.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="brandFilter">Marca:</label>
+                            <input type="text" class="form-control" id="brandFilter" placeholder="Filtra per marca" onkeyup="filterManuals()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="deviceFilter">Tipo Dispositivo:</label>
+                            <input type="text" class="form-control" id="deviceFilter" placeholder="Filtra per tipo" onkeyup="filterManuals()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="typeFilter">Tipo:</label>
+                            <select class="form-control" id="typeFilter" onchange="filterManuals()">
+                                <option value="">Tutti i tipi</option>
+                                <option value="upload">Caricati</option>
+                                <option value="link">Link Esterni</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tabella manuali -->
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="manualsTable">
+                            <thead>
+                                <tr>
+                                    <th>Dispositivo</th>
+                                    <th>Marca</th>
+                                    <th>Modello</th>
+                                    <th>Casa</th>
+                                    <th>Stanza/Nodo</th>
+                                    <th>Tipo</th>
+                                    <th>Data</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manualsTableBody">
+                                <!-- Contenuto caricato dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginazione -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="dataTables_info" id="manualsInfo">
+                                Mostrando 0 a 0 di 0 manuali
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dataTables_paginate paging_simple_numbers" id="manualsPagination">
+                                <!-- Paginazione caricata dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload Manuale -->
+<div class="modal fade" id="uploadManualModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-upload"></i>
+                    Carica Manuale PDF
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="uploadManualForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="deviceName">Nome Dispositivo *</label>
+                                <input type="text" class="form-control" id="deviceName" name="device_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="brand">Marca *</label>
+                                <input type="text" class="form-control" id="brand" name="brand" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="model">Modello *</label>
+                                <input type="text" class="form-control" id="model" name="model" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="houseId">Casa *</label>
+                                <select class="form-control" id="houseId" name="house_id" required>
+                                    <option value="">Seleziona casa...</option>
+                                    {% for house in houses %}
+                                    <option value="{{ house.id }}">{{ house.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="roomId">Stanza (opzionale)</label>
+                                <select class="form-control" id="roomId" name="room_id">
+                                    <option value="">Seleziona stanza...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="nodeId">Nodo (opzionale)</label>
+                                <select class="form-control" id="nodeId" name="node_id">
+                                    <option value="">Seleziona nodo...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Descrizione</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="manualFile">File PDF *</label>
+                        <input type="file" class="form-control-file" id="manualFile" name="file" accept=".pdf" required>
+                        <small class="form-text text-muted">Dimensione massima: 50MB</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i>
+                        Carica Manuale
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Link -->
+<div class="modal fade" id="addLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-link"></i>
+                    Aggiungi Link Manuale
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="addLinkForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkDeviceName">Nome Dispositivo *</label>
+                                <input type="text" class="form-control" id="linkDeviceName" name="device_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkBrand">Marca *</label>
+                                <input type="text" class="form-control" id="linkBrand" name="brand" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkModel">Modello *</label>
+                                <input type="text" class="form-control" id="linkModel" name="model" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkHouseId">Casa *</label>
+                                <select class="form-control" id="linkHouseId" name="house_id" required>
+                                    <option value="">Seleziona casa...</option>
+                                    {% for house in houses %}
+                                    <option value="{{ house.id }}">{{ house.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkRoomId">Stanza (opzionale)</label>
+                                <select class="form-control" id="linkRoomId" name="room_id">
+                                    <option value="">Seleziona stanza...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="linkNodeId">Nodo (opzionale)</label>
+                                <select class="form-control" id="linkNodeId" name="node_id">
+                                    <option value="">Seleziona nodo...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="externalLink">Link Esterno *</label>
+                        <input type="url" class="form-control" id="externalLink" name="external_link" placeholder="https://example.com/manual.pdf" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="linkDescription">Descrizione</label>
+                        <textarea class="form-control" id="linkDescription" name="description" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-link"></i>
+                        Aggiungi Link
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Visualizza Manuale -->
+<div class="modal fade" id="viewManualModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-book"></i>
+                    Dettagli Manuale
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="viewManualContent">
+                <!-- Contenuto caricato dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary" id="downloadManualBtn">
+                    <i class="fas fa-download"></i>
+                    Scarica
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+let pageSize = 10;
+let totalManuals = 0;
+
+$(document).ready(function() {
+    loadManuals();
+    loadStats();
+    
+    // Gestione cambio casa per caricare stanze e nodi
+    $('#houseId, #linkHouseId').change(function() {
+        loadRoomsAndNodes($(this).val(), $(this).attr('id') === 'houseId' ? '#roomId' : '#linkRoomId', $(this).attr('id') === 'houseId' ? '#nodeId' : '#linkNodeId');
+    });
+    
+    // Gestione form upload
+    $('#uploadManualForm').submit(function(e) {
+        e.preventDefault();
+        uploadManual();
+    });
+    
+    // Gestione form link
+    $('#addLinkForm').submit(function(e) {
+        e.preventDefault();
+        addManualLink();
+    });
+});
+
+function loadManuals(page = 1) {
+    const houseId = $('#houseFilter').val();
+    const brand = $('#brandFilter').val();
+    const deviceType = $('#deviceFilter').val();
+    const type = $('#typeFilter').val();
+    
+    let url = `/api/v1/manuals/?skip=${(page - 1) * pageSize}&limit=${pageSize}`;
+    if (houseId) url += `&house_id=${houseId}`;
+    if (brand) url += `&brand=${brand}`;
+    if (deviceType) url += `&device_type=${deviceType}`;
+    
+    $.get(url)
+        .done(function(data) {
+            displayManuals(data);
+            currentPage = page;
+        })
+        .fail(function(xhr) {
+            console.error('Errore caricamento manuali:', xhr);
+            showAlert('Errore durante il caricamento dei manuali', 'danger');
+        });
+}
+
+function displayManuals(manuals) {
+    const tbody = $('#manualsTableBody');
+    tbody.empty();
+    
+    if (manuals.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    <i class="fas fa-book-open"></i>
+                    Nessun manuale trovato
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
+    manuals.forEach(function(manual) {
+        const type = manual.external_link ? 'Link' : 'PDF';
+        const typeIcon = manual.external_link ? 'fas fa-link' : 'fas fa-file-pdf';
+        const typeClass = manual.external_link ? 'badge-warning' : 'badge-success';
+        
+        const location = manual.room_id ? `Stanza ${manual.room_id}` : 
+                        manual.node_id ? `Nodo ${manual.node_id}` : 'Non specificato';
+        
+        tbody.append(`
+            <tr>
+                <td>${manual.device_name || 'N/A'}</td>
+                <td>${manual.brand || 'N/A'}</td>
+                <td>${manual.model || 'N/A'}</td>
+                <td>${manual.house_id || 'N/A'}</td>
+                <td>${location}</td>
+                <td><span class="badge ${typeClass}"><i class="${typeIcon}"></i> ${type}</span></td>
+                <td>${new Date(manual.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="viewManual(${manual.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="downloadManual(${manual.id})">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteManual(${manual.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+    
+    updatePagination();
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(totalManuals / pageSize);
+    const pagination = $('#manualsPagination');
+    pagination.empty();
+    
+    if (totalPages <= 1) return;
+    
+    let paginationHtml = '<ul class="pagination">';
+    
+    // Pulsante precedente
+    if (currentPage > 1) {
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadManuals(${currentPage - 1})">Precedente</a></li>`;
+    }
+    
+    // Pagine
+    for (let i = 1; i <= totalPages; i++) {
+        const active = i === currentPage ? 'active' : '';
+        paginationHtml += `<li class="page-item ${active}"><a class="page-link" href="#" onclick="loadManuals(${i})">${i}</a></li>`;
+    }
+    
+    // Pulsante successivo
+    if (currentPage < totalPages) {
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadManuals(${currentPage + 1})">Successivo</a></li>`;
+    }
+    
+    paginationHtml += '</ul>';
+    pagination.html(paginationHtml);
+    
+    // Aggiorna info
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalManuals);
+    $('#manualsInfo').text(`Mostrando ${start} a ${end} di ${totalManuals} manuali`);
+}
+
+function loadStats() {
+    $.get('/api/v1/manuals/stats')
+        .done(function(data) {
+            $('#totalManuals').text(data.total_manuals);
+            $('#uploadedManuals').text(data.uploaded_manuals);
+            $('#linkedManuals').text(data.linked_manuals);
+            totalManuals = data.total_manuals;
+        })
+        .fail(function(xhr) {
+            console.error('Errore caricamento statistiche:', xhr);
+        });
+}
+
+function refreshStats() {
+    loadStats();
+    loadManuals(currentPage);
+}
+
+function filterManuals() {
+    loadManuals(1);
+}
+
+function loadRoomsAndNodes(houseId, roomSelectId, nodeSelectId) {
+    if (!houseId) {
+        $(roomSelectId).html('<option value="">Seleziona stanza...</option>');
+        $(nodeSelectId).html('<option value="">Seleziona nodo...</option>');
+        return;
+    }
+    
+    // Carica stanze
+    $.get(`/api/v1/houses/${houseId}/rooms`)
+        .done(function(rooms) {
+            let roomOptions = '<option value="">Seleziona stanza...</option>';
+            rooms.forEach(function(room) {
+                roomOptions += `<option value="${room.id}">${room.name}</option>`;
+            });
+            $(roomSelectId).html(roomOptions);
+        });
+    
+    // Carica nodi
+    $.get(`/api/v1/houses/${houseId}/nodes`)
+        .done(function(nodes) {
+            let nodeOptions = '<option value="">Seleziona nodo...</option>';
+            nodes.forEach(function(node) {
+                nodeOptions += `<option value="${node.id}">${node.name}</option>`;
+            });
+            $(nodeSelectId).html(nodeOptions);
+        });
+}
+
+function uploadManual() {
+    const formData = new FormData($('#uploadManualForm')[0]);
+    
+    $.ajax({
+        url: '/api/v1/manuals/upload',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false
+    })
+    .done(function(data) {
+        $('#uploadManualModal').modal('hide');
+        $('#uploadManualForm')[0].reset();
+        showAlert('Manuale caricato con successo!', 'success');
+        refreshStats();
+    })
+    .fail(function(xhr) {
+        let errorMsg = 'Errore durante il caricamento del manuale';
+        if (xhr.responseJSON && xhr.responseJSON.detail) {
+            errorMsg = xhr.responseJSON.detail;
+        }
+        showAlert(errorMsg, 'danger');
+    });
+}
+
+function addManualLink() {
+    const formData = new FormData($('#addLinkForm')[0]);
+    
+    $.ajax({
+        url: '/api/v1/manuals/link',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false
+    })
+    .done(function(data) {
+        $('#addLinkModal').modal('hide');
+        $('#addLinkForm')[0].reset();
+        showAlert('Link manuale aggiunto con successo!', 'success');
+        refreshStats();
+    })
+    .fail(function(xhr) {
+        let errorMsg = 'Errore durante l\'aggiunta del link';
+        if (xhr.responseJSON && xhr.responseJSON.detail) {
+            errorMsg = xhr.responseJSON.detail;
+        }
+        showAlert(errorMsg, 'danger');
+    });
+}
+
+function viewManual(manualId) {
+    $.get(`/api/v1/manuals/${manualId}`)
+        .done(function(manual) {
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informazioni Dispositivo</h6>
+                        <p><strong>Nome:</strong> ${manual.device_name || 'N/A'}</p>
+                        <p><strong>Marca:</strong> ${manual.brand || 'N/A'}</p>
+                        <p><strong>Modello:</strong> ${manual.model || 'N/A'}</p>
+                        <p><strong>Descrizione:</strong> ${manual.description || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Informazioni File</h6>
+                        <p><strong>Tipo:</strong> ${manual.external_link ? 'Link Esterno' : 'PDF Caricato'}</p>
+                        <p><strong>Dimensione:</strong> ${formatFileSize(manual.file_size)}</p>
+                        <p><strong>Data Caricamento:</strong> ${new Date(manual.created_at).toLocaleString()}</p>
+                        ${manual.external_link ? `<p><strong>Link:</strong> <a href="${manual.external_link}" target="_blank">${manual.external_link}</a></p>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            $('#viewManualContent').html(content);
+            $('#viewManualModal').modal('show');
+        })
+        .fail(function(xhr) {
+            showAlert('Errore durante il caricamento del manuale', 'danger');
+        });
+}
+
+function downloadManual(manualId) {
+    if (confirm('Vuoi scaricare questo manuale?')) {
+        window.open(`/api/v1/manuals/${manualId}/download`, '_blank');
+    }
+}
+
+function deleteManual(manualId) {
+    if (confirm('Sei sicuro di voler eliminare questo manuale?')) {
+        $.ajax({
+            url: `/api/v1/manuals/${manualId}`,
+            type: 'DELETE'
+        })
+        .done(function() {
+            showAlert('Manuale eliminato con successo!', 'success');
+            refreshStats();
+        })
+        .fail(function(xhr) {
+            let errorMsg = 'Errore durante l\'eliminazione del manuale';
+            if (xhr.responseJSON && xhr.responseJSON.detail) {
+                errorMsg = xhr.responseJSON.detail;
+            }
+            showAlert(errorMsg, 'danger');
+        });
+    }
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    `;
+    
+    $('.card-body').prepend(alertHtml);
+    
+    // Auto-remove dopo 5 secondi
+    setTimeout(function() {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+</script>
+{% endblock %} 

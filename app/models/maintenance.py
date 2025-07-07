@@ -1,11 +1,20 @@
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 import uuid
-from sqlmodel import Field, SQLModel, Relationship
+from enum import Enum
+from sqlmodel import Field, select, SQLModel, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from app.models.node import Node
+
+class MaintenanceStatus(str, Enum):
+    """Enum per gli stati di manutenzione."""
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    SCHEDULED = "SCHEDULED"
 
 class MaintenanceRecord(SQLModel, table=True):
     """Modello per la gestione dei record di manutenzione."""

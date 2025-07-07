@@ -3,13 +3,17 @@ Router per la gestione dei modelli BIM con supporto multi-tenant.
 Integra path dinamici basati su tenant_id e RBAC per isolamento completo.
 """
 
+import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks, Form
 from sqlmodel import Session, select
 import uuid
 import hashlib
 import os
 from datetime import datetime, timezone
+
+# Configurazione del logger
+logger = logging.getLogger(__name__)
 
 from app.core.deps import (
     get_current_user, 
@@ -28,7 +32,7 @@ from app.schemas.bim import (
 )
 from app.services.minio_service import get_minio_service
 from app.services.bim_parser import bim_parser
-from app.workers.conversion_worker import process_bim_model, batch_convert_models, get_conversion_status
+from app.workers.conversion_worker import process_bim_model, batch_convert_models
 from app.db.utils import safe_exec
 from app.security.validators import validate_file_upload, sanitize_filename, TextValidator
 
@@ -37,10 +41,10 @@ router = APIRouter(prefix="/api/v1/bim", tags=["BIM Models"])
 @router.post("/upload", response_model=BIMUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_bim_model(
     file: UploadFile = File(...),
-    name: str = None,
-    description: str = None,
-    house_id: int = None,
-    node_id: int = None,
+    name: str = Form(None),
+    description: str = Form(None),
+    house_id: int = Form(None),
+    node_id: int = Form(None),
     background_tasks: BackgroundTasks = None,
     current_user: User = Depends(require_permission_in_tenant("upload_bim")),
     tenant_id: uuid.UUID = Depends(get_current_tenant),
@@ -75,7 +79,7 @@ async def upload_bim_model(
         
         # Carica su MinIO con path multi-tenant
         minio_service = get_minio_service()
-        upload_result = minio_service.upload_file(
+        upload_result = await minio_service.upload_file(
             file=file,
             folder="bim",
             tenant_id=tenant_id
@@ -90,11 +94,11 @@ async def upload_bim_model(
             file_size=len(content),
             checksum=checksum,
             user_id=current_user.id,
-            house_id=house_id or 1,  # Default house_id se non specificato
+            house_id=house_id,  # house_id può essere None
             node_id=node_id
         )
         
-        bim_model = BIMModel(**bim_model_data.dict())
+        bim_model = BIMModel(**bim_model_data.model_dump())
         bim_model.tenant_id = tenant_id
         session.add(bim_model)
         session.commit()
@@ -213,7 +217,7 @@ async def get_bim_models(
         # Query per lista con paginazione
         query = (
             base_query
-            .order_by(BIMModel.created_at.desc())
+            .order_by(BIMModel.id.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -666,18 +670,17 @@ async def get_bim_conversion_status(
                 detail="Modello BIM non trovato"
             )
         
-        # Ottieni stato conversione
-        status_info = get_conversion_status(model_id)
+        # Ottieni stato conversione dal database (non chiamare task Celery)
+        # status_info = get_conversion_status(model_id)
         
         return BIMConversionStatusResponse(
             model_id=model_id,
-            conversion_status=model.conversion_status,
-            conversion_message=model.conversion_message,
-            conversion_progress=model.conversion_progress or 0,
-            conversion_started_at=model.conversion_started_at,
-            conversion_completed_at=model.conversion_completed_at,
+            status=model.conversion_status,
+            message=model.conversion_message,
+            progress=model.conversion_progress or 0,
             converted_file_url=model.converted_file_url,
-            validation_report_url=model.validation_report_url
+            validation_report_url=model.validation_report_url,
+            updated_at=model.updated_at
         )
         
     except HTTPException:
@@ -766,13 +769,12 @@ async def get_all_conversion_status(
         for model in models:
             status_list.append(BIMConversionStatusResponse(
                 model_id=model.id,
-                conversion_status=model.conversion_status,
-                conversion_message=model.conversion_message,
-                conversion_progress=model.conversion_progress or 0,
-                conversion_started_at=model.conversion_started_at,
-                conversion_completed_at=model.conversion_completed_at,
+                status=model.conversion_status,
+                message=model.conversion_message,
+                progress=model.conversion_progress or 0,
                 converted_file_url=model.converted_file_url,
-                validation_report_url=model.validation_report_url
+                validation_report_url=model.validation_report_url,
+                updated_at=model.updated_at
             ))
         
         return status_list

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 import uuid
 from enum import Enum
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, select, SQLModel, Relationship
 from pydantic import ConfigDict
 
 if TYPE_CHECKING:
@@ -147,7 +147,7 @@ class PhysicalActivatorResponse(SQLModel):
 class ActivatorActivationRequest(SQLModel):
     """Schema per la richiesta di attivazione di un attivatore."""
     triggered_by: str = Field(default="manual", description="Chi ha attivato l'attivatore")
-    metadata: Optional[dict] = Field(default=None, description="Metadati aggiuntivi dell'attivazione")
+    meta_data: Optional[dict] = Field(default=None, description="Metadati aggiuntivi dell'attivazione")
 
 class ActivatorActivationResponse(SQLModel):
     """Schema per la risposta all'attivazione di un attivatore."""

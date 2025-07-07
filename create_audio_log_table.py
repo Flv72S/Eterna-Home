@@ -7,7 +7,7 @@ Da eseguire manualmente per aggiungere la nuova tabella al database.
 import sys
 import os
 from sqlalchemy import text
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 
 # Aggiungi il path del progetto
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import inspect
 from app.models.maintenance import MaintenanceRecord, MaintenanceStatus
 from app.models.node import Node
@@ -58,7 +58,7 @@ def test_maintenance_record_node_relationship(db):
     # Create a maintenance record
     maintenance = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING
@@ -86,7 +86,7 @@ def test_create_maintenance_record(db):
     # Create a maintenance record
     maintenance = MaintenanceRecord(
         node_id=node.id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         type="Routine",
         description="Test maintenance",
         status=MaintenanceStatus.PENDING,
@@ -121,7 +121,7 @@ def test_maintenance_record_node_integration(db):
     maintenance_records = [
         MaintenanceRecord(
             node_id=node.id,
-            date=datetime.utcnow(),
+            date=datetime.now(timezone.utc),
             type="Routine",
             description=f"Test maintenance {i}",
             status=MaintenanceStatus.PENDING

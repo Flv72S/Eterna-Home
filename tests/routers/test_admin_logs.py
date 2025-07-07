@@ -10,7 +10,8 @@ from app.models.user_tenant_role import UserTenantRole
 from app.models.role import Role
 from app.models.permission import Permission
 from app.core.security import create_access_token
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlmodel import Session, select
 
 client = TestClient(app)
 
@@ -26,8 +27,8 @@ def test_user_with_view_logs(db_session):
         is_active=True,
         is_superuser=False,
         is_verified=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         tenant_id=tenant_id,
         role="admin",
         mfa_enabled=False
@@ -37,32 +38,30 @@ def test_user_with_view_logs(db_session):
     db_session.refresh(user)
     
     # Verifica se il ruolo admin esiste già
-    role = db_session.query(Role).filter(Role.name == "admin").first()
+    role = next(db_session.exec(select(Role).where(Role.name == "admin")), None)
     if not role:
-        role = Role(name="admin", description="Administrator role")
+        role = Role(name="admin", description="Admin role")
         db_session.add(role)
         db_session.commit()
         db_session.refresh(role)
     
     # Verifica se il permesso view_logs esiste già
-    existing_perm = db_session.query(Permission).filter(Permission.name == "view_logs").first()
+    existing_perm = next(db_session.exec(select(Permission).where(Permission.name == "view_logs")), None)
     if not existing_perm:
-        perm = Permission(name="view_logs", description="Can view system logs")
-        db_session.add(perm)
+        existing_perm = Permission(name="view_logs", description="View logs permission")
+        db_session.add(existing_perm)
         db_session.commit()
-        db_session.refresh(perm)
-    else:
-        perm = existing_perm
+        db_session.refresh(existing_perm)
     
     # Verifica se l'associazione ruolo-permesso esiste già
     from app.models.role_permission import RolePermission
-    existing_role_perm = db_session.query(RolePermission).filter(
+    existing_role_perm = next(db_session.exec(select(RolePermission).where(
         RolePermission.role_id == role.id,
-        RolePermission.permission_id == perm.id
-    ).first()
+        RolePermission.permission_id == existing_perm.id
+    )), None)
     
     if not existing_role_perm:
-        role_perm = RolePermission(role_id=role.id, permission_id=perm.id)
+        role_perm = RolePermission(role_id=role.id, permission_id=existing_perm.id)
         db_session.add(role_perm)
         db_session.commit()
     
@@ -84,8 +83,8 @@ def test_user_without_view_logs(db_session):
         is_active=True,
         is_superuser=False,
         is_verified=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         tenant_id=tenant_id,
         role="guest",
         mfa_enabled=False
@@ -95,7 +94,7 @@ def test_user_without_view_logs(db_session):
     db_session.refresh(user)
     
     # Verifica se il ruolo guest esiste già
-    role = db_session.query(Role).filter(Role.name == "guest").first()
+    role = next(db_session.exec(select(Role).where(Role.name == "guest")), None)
     if not role:
         role = Role(name="guest", description="Guest role")
         db_session.add(role)

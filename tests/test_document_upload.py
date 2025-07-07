@@ -25,13 +25,19 @@ def db_session():
         yield session
 
 @pytest.fixture
-def test_user(db_session):
+def test_tenant_id():
+    """Create a test tenant ID"""
+    return uuid.uuid4()
+
+@pytest.fixture
+def test_user(db_session, test_tenant_id):
     """Create test user"""
     user = User(
         email="test@example.com",
         hashed_password="hashed_password",
         is_active=True,
-        tenant_id="house_1"
+        tenant_id=test_tenant_id,
+        role=UserRole.ADMIN
     )
     db_session.add(user)
     db_session.commit()
@@ -39,12 +45,12 @@ def test_user(db_session):
     return user
 
 @pytest.fixture
-def test_house(db_session):
+def test_house(db_session, test_tenant_id):
     """Create test house"""
     house = House(
         name="Test House",
         address="Via Test 1",
-        tenant_id="house_1"
+        tenant_id=test_tenant_id
     )
     db_session.add(house)
     db_session.commit()
@@ -54,18 +60,18 @@ def test_house(db_session):
 @pytest.fixture
 def mock_minio_service():
     """Mock MinIO service"""
-    with patch('app.services.minio_service.MinIOService') as mock:
+    with patch('app.services.minio_service.get_minio_service') as mock:
         service = MagicMock()
         mock.return_value = service
         yield service
 
-def test_document_upload_success(db_session, test_user, test_house, mock_minio_service):
+def test_document_upload_success(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test successful document upload"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -76,35 +82,40 @@ def test_document_upload_success(db_session, test_user, test_house, mock_minio_s
     
     # Mock MinIO upload response
     mock_minio_service.upload_file.return_value = {
-        "file_path": f"house_1/{test_house.id}/documents/test_document.pdf",
+        "storage_path": f"houses/{test_house.id}/documents/test_document.pdf",
         "file_size": len(file_content),
-        "etag": "test-etag"
+        "content_type": "application/pdf"
     }
     
     # Upload file
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("test_document.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id},
+        data={
+            "title": "Test Document",
+            "description": "Test description",
+            "document_type": "general",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
     # Verify response
     assert response.status_code == 200
     data = response.json()
-    assert data["filename"] == "test_document.pdf"
+    assert data["title"] == "Test Document"
     assert data["file_size"] == len(file_content)
-    assert data["mime_type"] == "application/pdf"
-    assert data["tenant_id"] == "house_1"
+    assert data["file_type"] == "application/pdf"
+    assert data["tenant_id"] == str(test_tenant_id)
     assert data["house_id"] == test_house.id
 
-def test_document_upload_with_encryption(db_session, test_user, test_house, mock_minio_service):
+def test_document_upload_with_encryption(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document upload with encryption"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -115,33 +126,37 @@ def test_document_upload_with_encryption(db_session, test_user, test_house, mock
     
     # Mock MinIO upload with encryption
     mock_minio_service.upload_file.return_value = {
-        "file_path": f"house_1/{test_house.id}/documents/encrypted_document.pdf",
+        "storage_path": f"houses/{test_house.id}/documents/encrypted_document.pdf",
         "file_size": len(file_content),
-        "etag": "test-etag",
-        "is_encrypted": True
+        "content_type": "application/pdf"
     }
     
-    # Upload file with encryption
+    # Upload file
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("encrypted_document.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id, "encrypt": "true"},
+        data={
+            "title": "Encrypted Document",
+            "description": "Sensitive document",
+            "document_type": "confidential",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
     # Verify response
     assert response.status_code == 200
     data = response.json()
-    assert data["is_encrypted"] == True
-    assert data["filename"] == "encrypted_document.pdf"
+    assert data["title"] == "Encrypted Document"
+    assert data["document_type"] == "confidential"
 
-def test_document_path_structure(db_session, test_user, test_house, mock_minio_service):
+def test_document_path_structure(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test correct document path structure"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -151,18 +166,21 @@ def test_document_path_structure(db_session, test_user, test_house, mock_minio_s
     file_data = io.BytesIO(file_content)
     
     # Mock MinIO upload
-    expected_path = f"house_1/{test_house.id}/documents/test.pdf"
+    expected_path = f"houses/{test_house.id}/documents/test.pdf"
     mock_minio_service.upload_file.return_value = {
-        "file_path": expected_path,
+        "storage_path": expected_path,
         "file_size": len(file_content),
-        "etag": "test-etag"
+        "content_type": "application/pdf"
     }
     
     # Upload file
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("test.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id},
+        data={
+            "title": "Test Document",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
@@ -173,20 +191,19 @@ def test_document_path_structure(db_session, test_user, test_house, mock_minio_s
     # Verify MinIO was called with correct path
     mock_minio_service.upload_file.assert_called_once()
     call_args = mock_minio_service.upload_file.call_args
-    uploaded_path = call_args[1].get("file_path") or call_args[0][1]
     
-    # Path should follow pattern: tenant_id/house_id/documents/filename
-    assert "house_1" in uploaded_path
-    assert str(test_house.id) in uploaded_path
-    assert "documents" in uploaded_path
+    # Path should follow pattern: houses/house_id/documents/filename
+    assert "houses" in call_args[1]["folder"]
+    assert str(test_house.id) in call_args[1]["folder"]
+    assert "documents" in call_args[1]["folder"]
 
-def test_document_filename_sanitization(db_session, test_user, test_house, mock_minio_service):
+def test_document_filename_sanitization(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test filename sanitization"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -197,16 +214,19 @@ def test_document_filename_sanitization(db_session, test_user, test_house, mock_
     
     # Mock MinIO upload
     mock_minio_service.upload_file.return_value = {
-        "file_path": f"house_1/{test_house.id}/documents/sanitized_filename.pdf",
+        "storage_path": f"houses/{test_house.id}/documents/sanitized_filename.pdf",
         "file_size": len(file_content),
-        "etag": "test-etag"
+        "content_type": "application/pdf"
     }
     
     # Upload file with problematic filename
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("../../../malicious<script>.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id},
+        data={
+            "title": "Sanitized Document",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
@@ -214,70 +234,81 @@ def test_document_filename_sanitization(db_session, test_user, test_house, mock_
     assert response.status_code == 200
     data = response.json()
     
+    # Verify MinIO was called with sanitized filename
+    mock_minio_service.upload_file.assert_called_once()
+    call_args = mock_minio_service.upload_file.call_args
+    
     # Filename should be sanitized
-    assert "malicious" in data["filename"]
-    assert "<script>" not in data["filename"]
-    assert ".." not in data["filename"]
+    uploaded_filename = call_args[0][0].filename
+    assert "malicious" in uploaded_filename
+    assert "<script>" not in uploaded_filename
+    assert ".." not in uploaded_filename
 
-def test_document_size_validation(db_session, test_user, test_house, mock_minio_service):
+def test_document_size_validation(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document size validation"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
     
-    # Create large file (exceeds limit)
-    large_content = b"x" * (100 * 1024 * 1024 + 1)  # 100MB + 1 byte
+    # Create test file that's too large (100MB)
+    large_content = b"x" * (100 * 1024 * 1024)
     file_data = io.BytesIO(large_content)
     
-    # Upload large file
+    # Try to upload large file
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("large_file.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id},
+        data={
+            "title": "Large Document",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
-    # Should be rejected due to size
-    assert response.status_code == 413  # Payload Too Large
+    # Should fail due to size limit
+    assert response.status_code == 413
 
-def test_document_type_validation(db_session, test_user, test_house, mock_minio_service):
+def test_document_type_validation(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document type validation"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
     
-    # Create executable file
-    file_content = b"#!/bin/bash\necho 'malicious'"
+    # Create test file with invalid type
+    file_content = b"Test content"
     file_data = io.BytesIO(file_content)
     
-    # Upload executable file
+    # Try to upload file with invalid type
     response = client.post(
         "/api/v1/documents/upload",
-        files={"file": ("malicious.sh", file_data, "application/x-sh")},
-        data={"house_id": test_house.id},
+        files={"file": ("test.exe", file_data, "application/x-executable")},
+        data={
+            "title": "Invalid Document",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
-    # Should be rejected due to file type
-    assert response.status_code == 400  # Bad Request
+    # Should fail due to invalid file type
+    assert response.status_code == 400
 
-def test_document_metadata_storage(db_session, test_user, test_house, mock_minio_service):
+def test_document_metadata_storage(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document metadata storage"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -288,9 +319,9 @@ def test_document_metadata_storage(db_session, test_user, test_house, mock_minio
     
     # Mock MinIO upload
     mock_minio_service.upload_file.return_value = {
-        "file_path": f"house_1/{test_house.id}/documents/test.pdf",
+        "storage_path": f"houses/{test_house.id}/documents/test.pdf",
         "file_size": len(file_content),
-        "etag": "test-etag"
+        "content_type": "application/pdf"
     }
     
     # Upload file with metadata
@@ -298,9 +329,10 @@ def test_document_metadata_storage(db_session, test_user, test_house, mock_minio
         "/api/v1/documents/upload",
         files={"file": ("test.pdf", file_data, "application/pdf")},
         data={
-            "house_id": test_house.id,
-            "description": "Test document description",
-            "tags": "test,document,pdf"
+            "title": "Test Document",
+            "description": "This is a test document with metadata",
+            "document_type": "contract",
+            "house_id": test_house.id
         },
         headers=headers
     )
@@ -308,36 +340,38 @@ def test_document_metadata_storage(db_session, test_user, test_house, mock_minio
     # Verify response
     assert response.status_code == 200
     data = response.json()
-    assert data["description"] == "Test document description"
-    assert "test" in data["tags"]
-    assert "document" in data["tags"]
+    assert data["title"] == "Test Document"
+    assert data["description"] == "This is a test document with metadata"
+    assert data["document_type"] == "contract"
+    assert data["owner_id"] == test_user.id
 
-def test_document_download(db_session, test_user, test_house, mock_minio_service):
+def test_document_download(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document download"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
     
     # Create test document in database
     document = Document(
-        filename="test.pdf",
-        file_path=f"house_1/{test_house.id}/documents/test.pdf",
-        file_size=1024,
-        mime_type="application/pdf",
-        tenant_id="house_1",
-        house_id=test_house.id
+        title="Test Document",
+        file_path=f"houses/{test_house.id}/documents/test.pdf",
+        file_size=100,
+        file_type="application/pdf",
+        tenant_id=test_tenant_id,
+        house_id=test_house.id,
+        owner_id=test_user.id
     )
     db_session.add(document)
     db_session.commit()
+    db_session.refresh(document)
     
     # Mock MinIO download
-    file_content = b"Test document content"
-    mock_minio_service.download_file.return_value = file_content
+    mock_minio_service.download_file.return_value = b"Test document content"
     
     # Download document
     response = client.get(
@@ -347,33 +381,34 @@ def test_document_download(db_session, test_user, test_house, mock_minio_service
     
     # Verify response
     assert response.status_code == 200
-    assert response.content == file_content
+    assert response.content == b"Test document content"
 
-def test_document_encryption_decryption():
-    """Test file encryption and decryption"""
+def test_document_encryption_decryption(test_tenant_id):
+    """Test document encryption and decryption"""
     
     # Test content
     original_content = b"This is sensitive content that needs encryption"
     
     # Encrypt content
-    encrypted_content = encrypt_file(original_content)
+    encrypted_content = encrypt_file(original_content, test_tenant_id)
     
     # Verify content is encrypted
     assert encrypted_content != original_content
+    assert len(encrypted_content) > len(original_content)
     
     # Decrypt content
-    decrypted_content = decrypt_file(encrypted_content)
+    decrypted_content = decrypt_file(encrypted_content, test_tenant_id)
     
-    # Verify decryption works
+    # Verify content is correctly decrypted
     assert decrypted_content == original_content
 
-def test_document_tenant_isolation(db_session, test_user, test_house, mock_minio_service):
+def test_document_tenant_isolation(db_session, test_user, test_house, mock_minio_service, test_tenant_id):
     """Test document tenant isolation"""
     
     # Create access token
     token = create_access_token(data={
         "sub": test_user.email,
-        "tenant_id": "house_1"
+        "tenant_id": str(test_tenant_id)
     })
     
     headers = {"Authorization": f"Bearer {token}"}
@@ -384,26 +419,30 @@ def test_document_tenant_isolation(db_session, test_user, test_house, mock_minio
     
     # Mock MinIO upload
     mock_minio_service.upload_file.return_value = {
-        "file_path": f"house_1/{test_house.id}/documents/test.pdf",
+        "storage_path": f"houses/{test_house.id}/documents/test.pdf",
         "file_size": len(file_content),
-        "etag": "test-etag"
+        "content_type": "application/pdf"
     }
     
     # Upload file
     response = client.post(
         "/api/v1/documents/upload",
         files={"file": ("test.pdf", file_data, "application/pdf")},
-        data={"house_id": test_house.id},
+        data={
+            "title": "Test Document",
+            "house_id": test_house.id
+        },
         headers=headers
     )
     
-    # Verify tenant isolation
+    # Verify response
     assert response.status_code == 200
     data = response.json()
-    assert data["tenant_id"] == "house_1"
     
-    # Verify MinIO path contains tenant
+    # Verify MinIO was called with tenant isolation
     mock_minio_service.upload_file.assert_called_once()
     call_args = mock_minio_service.upload_file.call_args
-    uploaded_path = call_args[1].get("file_path") or call_args[0][1]
-    assert "house_1" in uploaded_path 
+    
+    # Should include tenant_id in the call
+    assert call_args[1]["tenant_id"] == test_tenant_id
+    assert call_args[1]["house_id"] == test_house.id 

@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, select, create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 

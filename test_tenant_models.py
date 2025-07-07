@@ -10,7 +10,7 @@ Questo test verifica che:
 
 import uuid
 import pytest
-from sqlmodel import Session, create_engine, SQLModel
+from sqlmodel import Session, select, create_engine, SQLModel
 from datetime import datetime, timezone
 
 # Import dei modelli

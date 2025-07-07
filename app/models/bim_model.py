@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING, Dict, Any
 import uuid
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, select, SQLModel, Relationship
 from pydantic import ConfigDict
 from enum import Enum
 
@@ -122,8 +122,8 @@ class BIMModel(SQLModel, table=True):
     name: str = Field(index=True)
     description: Optional[str] = None
     format: BIMFormat = Field(description="Formato del file BIM")
-    software_origin: BIMSoftware = Field(description="Software di origine")
-    level_of_detail: BIMLevelOfDetail = Field(description="Livello di dettaglio")
+    software_origin: Optional[BIMSoftware] = Field(default=None, description="Software di origine")
+    level_of_detail: Optional[BIMLevelOfDetail] = Field(default=None, description="Livello di dettaglio")
     revision_date: Optional[datetime] = Field(default=None, description="Data di revisione")
     
     # File info
@@ -242,3 +242,8 @@ class BIMModel(SQLModel, table=True):
     # TODO: Aggiungere migrazione Alembic per i nuovi campi metadati
     # TODO: Implementare logica per assegnazione automatica tenant_id durante la creazione
     # TODO: Aggiungere filtri multi-tenant nelle query CRUD 
+
+    user_id: int = Field(foreign_key="users.id", description="ID dell'utente proprietario")
+    house_id: Optional[int] = Field(default=None, foreign_key="houses.id", description="ID della casa associata")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Data creazione")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Data ultimo aggiornamento") 

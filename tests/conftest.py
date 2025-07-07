@@ -2,14 +2,15 @@
 import os
 import pytest
 import logging
-from sqlmodel import Session, SQLModel, create_engine
+import sys
+from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy.pool import StaticPool
 from app.core.redis import get_redis_client
 import redis
@@ -17,6 +18,17 @@ from fakeredis import FakeRedis
 # [DISABILITATO TEMPORANEAMENTE: Alembic]
 # from alembic.config import Config
 # from alembic import command
+
+# Aggiungi il path del progetto
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Disabilita il rate limiting per i test
+os.environ["ENABLE_RATE_LIMITING"] = "false"
+os.environ["RATE_LIMIT_REQUESTS"] = "1000"
+os.environ["RATE_LIMIT_WINDOW"] = "60"
+
+# Imposta l'ambiente di test per disabilitare la cache degli utenti
+os.environ["ENVIRONMENT"] = "test"
 
 from app.database import get_session
 from app.main import app
@@ -30,6 +42,14 @@ from app.models.user_role import UserRole
 from app.core.config import settings
 from app.core.security import get_password_hash, create_access_token
 from app.services.minio_service import get_minio_service
+from app.models.bim_model import BIMModel
+from app.models.room import Room
+from app.models.booking import Booking
+from app.models.document_version import DocumentVersion
+from app.models.user_tenant_role import UserTenantRole
+from app.models.permission import Permission
+from app.models.role_permission import RolePermission
+from app.models.user_house import UserHouse
 
 # Configurazione del logging
 logging.basicConfig(level=logging.DEBUG)
@@ -84,6 +104,8 @@ def clean_database(engine):
         with Session(engine) as cleanup_session:
             # Elimina tutti i dati dalle tabelle in ordine inverso per rispettare le foreign key
             cleanup_session.execute(text("DELETE FROM user_roles"))
+            cleanup_session.execute(text("DELETE FROM user_tenant_roles"))
+            cleanup_session.execute(text("DELETE FROM role_permissions"))
             cleanup_session.execute(text("DELETE FROM roles"))
             cleanup_session.execute(text("DELETE FROM maintenance_records"))
             cleanup_session.execute(text("DELETE FROM bookings"))
@@ -91,6 +113,8 @@ def clean_database(engine):
             cleanup_session.execute(text("DELETE FROM nodes"))
             cleanup_session.execute(text("DELETE FROM documents"))
             cleanup_session.execute(text("DELETE FROM document_versions"))
+            cleanup_session.execute(text("DELETE FROM user_houses"))
+            cleanup_session.execute(text("DELETE FROM user_tenant_roles"))
             cleanup_session.execute(text("DELETE FROM houses"))
             cleanup_session.execute(text("DELETE FROM users"))
             cleanup_session.commit()
@@ -335,16 +359,49 @@ def reset_rate_limiting():
             redis_client.delete(*keys_to_delete)
 
 @pytest.fixture(autouse=True, scope="session")
+def mock_rate_limiting():
+    """Mock globale per disabilitare il rate limiting in tutti i test."""
+    with patch("app.security.limiter.security_limiter.limiter") as mock_limiter:
+        # Mock per bypassare completamente il rate limiting
+        mock_limiter.hit.return_value = (True, 1000, 1000, 60)  # Sempre successo
+        mock_limiter.get_window_stats.return_value = (0, 1000, 60)  # Sempre sotto il limite
+        yield
+
+@pytest.fixture(autouse=True, scope="session")
 def mock_minio():
     """Mock globale per MinIO in tutti i test."""
     with patch("app.services.minio_service.Minio") as minio_mock:
         instance = MagicMock()
+        
         # Mock dei metodi principali
         instance.fput_object.return_value = None
         instance.get_object.return_value.read.return_value = b"mocked file content"
         instance.remove_object.return_value = None
         instance.bucket_exists.return_value = True
         instance.make_bucket.return_value = None
+        
+        # Mock per presigned URLs
+        instance.presigned_get_object.return_value = "https://mocked-minio.com/presigned-url"
+        instance.presigned_put_object.return_value = "https://mocked-minio.com/presigned-upload-url"
+        
+        # Mock per list objects
+        mock_object = MagicMock()
+        mock_object.object_name = "test_file.pdf"
+        mock_object.size = 12345
+        mock_object.last_modified = datetime.now()
+        instance.list_objects.return_value = [mock_object]
+        
+        # Mock per bucket policy
+        instance.set_bucket_policy.return_value = None
+        instance.delete_bucket_policy.return_value = None
+        
+        # Mock per stat object
+        mock_stat = MagicMock()
+        mock_stat.size = 12345
+        mock_stat.last_modified = datetime.now()
+        mock_stat.content_type = "application/pdf"
+        instance.stat_object.return_value = mock_stat
+        
         minio_mock.return_value = instance
         yield
 
@@ -423,3 +480,38 @@ def mock_db_session():
     """Mock per get_db"""
     with patch('app.routers.admin.dashboard.get_db') as mock:
         yield mock
+
+def create_test_user_with_permissions(session, permissions: list):
+    """
+    Crea un utente di test e gli assegna i permessi specificati (come stringhe).
+    """
+    from app.models.user import User
+    from app.models.permission import Permission
+    from app.models.user_permission import UserPermission
+    from app.utils.password import get_password_hash
+    import time
+    timestamp = int(time.time() * 1000)
+    user = User(
+        email=f"testuser_{timestamp}@example.com",
+        username=f"testuser_{timestamp}",
+        hashed_password=get_password_hash("TestPassword123!"),
+        full_name="Test User",
+        role="guest",
+        is_superuser=False,
+        is_active=True
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    # Assegna permessi
+    for perm_name in permissions:
+        perm = session.exec(select(Permission).where(Permission.name == perm_name)).first()
+        if not perm:
+            perm = Permission(name=perm_name, description=f"Permesso test: {perm_name}")
+            session.add(perm)
+            session.commit()
+            session.refresh(perm)
+        user_perm = UserPermission(user_id=user.id, permission_id=perm.id)
+        session.add(user_perm)
+    session.commit()
+    return user

@@ -4,7 +4,7 @@ import os
 import sys
 import traceback
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, select, SQLModel, create_engine
 from sqlalchemy import text
 
 # Aggiungi la directory corrente al path

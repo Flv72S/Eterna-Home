@@ -4,13 +4,13 @@ Include health checks, readiness probe e metrics Prometheus-compatible.
 """
 import time
 import psutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.logging_config import log_security_event, get_logger
@@ -61,7 +61,7 @@ async def check_database() -> Dict[str, Any]:
     try:
         db = next(get_db())
         # Esegue una query semplice per verificare la connessione
-        result = db.execute("SELECT 1").fetchone()
+        result = db.execute(text("SELECT 1")).fetchone()
         db.close()
         return {"status": "healthy", "response_time": 0.001}
     except Exception as e:
@@ -135,7 +135,7 @@ async def health_check(request: Request):
             status_code=200,
             content={
                 "status": "healthy",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time": response_time,
                 "cached": True,
                 **(_health_cache["status"] or {})
@@ -184,7 +184,7 @@ async def health_check(request: Request):
             status_code=status_code,
             content={
                 "status": overall_status,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time": response_time,
                 "cached": False,
                 "database": db_status,
@@ -212,7 +212,7 @@ async def health_check(request: Request):
             status_code=503,
             content={
                 "status": "error",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time": response_time,
                 "error": str(e)
             }
@@ -276,7 +276,7 @@ async def readiness_check(request: Request):
             status_code=status_code,
             content={
                 "ready": ready,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time": response_time,
                 "checks": {
                     "configuration": config_ready,
@@ -304,7 +304,7 @@ async def readiness_check(request: Request):
             status_code=503,
             content={
                 "ready": False,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time": response_time,
                 "error": str(e)
             }
@@ -313,7 +313,6 @@ async def readiness_check(request: Request):
 
 @router.get("/metrics", response_model=Dict[str, Any])
 async def get_metrics(
-    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -321,7 +320,7 @@ async def get_metrics(
     """
     try:
         # Get current timestamp
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Basic system metrics without complex calculations
         metrics = {
@@ -398,7 +397,7 @@ async def get_metrics(
         metrics["requests"]["avg_response_time_ms"] = 100.0
         metrics["requests"]["error_rate_percent"] = 0.0
         
-        logger.info(f"Metrics collected successfully for user: {current_user.id if current_user else 'anonymous'}")
+        logger.info("Metrics collected successfully for anonymous user")
         
         return metrics
         

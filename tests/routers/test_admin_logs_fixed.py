@@ -2,7 +2,7 @@ import os
 import uuid
 import json
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import settings
@@ -25,8 +25,8 @@ def test_user_with_view_logs(db_session):
         is_active=True,
         is_superuser=False,
         is_verified=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         tenant_id=uuid.uuid4(),
         role="admin",  # Ruolo admin che ha il permesso view_logs
         mfa_enabled=False
@@ -76,8 +76,8 @@ def test_user_without_view_logs(db_session):
         is_active=True,
         is_superuser=False,
         is_verified=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         tenant_id=uuid.uuid4(),
         role="guest",  # Ruolo guest che NON ha il permesso view_logs
         mfa_enabled=False

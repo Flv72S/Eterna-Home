@@ -42,17 +42,17 @@ class MinIOService:
         Inizializza il client MinIO.
         
         Args:
-            initialize_connection: Se True, tenta di connettersi a MinIO (solo in produzione)
+            initialize_connection: Se True, tenta di connettersi a MinIO
         """
         self.client = None
         self.bucket_name = settings.MINIO_BUCKET_NAME
         
-        # Inizializza la connessione solo se richiesto (produzione)
-        if initialize_connection and os.getenv('ENVIRONMENT', 'development') == 'production':
+        # Inizializza la connessione se richiesto
+        if initialize_connection:
             self._initialize_client()
             self._ensure_bucket_exists()
         else:
-            logger.info("MinIO client non inizializzato (modalità sviluppo/test)")
+            logger.info("MinIO client non inizializzato")
     
     def _initialize_client(self):
         """Inizializza il client MinIO."""

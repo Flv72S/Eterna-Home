@@ -5,7 +5,7 @@ Gestisce l'isolamento completo delle interazioni per tenant.
 
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, select, Field
 from pydantic import ConfigDict
 import uuid
 

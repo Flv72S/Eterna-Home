@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class UserHouseBase(BaseModel):
     """Schema base per UserHouse."""
@@ -45,14 +45,13 @@ class UserHouseUpdate(BaseModel):
 
 class UserHouseResponse(UserHouseBase):
     """Schema per la risposta di una associazione UserHouse."""
+    model_config = ConfigDict(from_attributes=True)
+    
     user_id: int
     house_id: int
     tenant_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class UserHouseList(BaseModel):
     """Schema per la lista di associazioni UserHouse."""
@@ -84,13 +83,12 @@ class HouseAccessResponse(BaseModel):
 
 class UserHouseSummary(BaseModel):
     """Schema per il riepilogo delle case di un utente."""
+    model_config = ConfigDict(from_attributes=True)
+    
     house_id: int
     house_name: str
     house_address: str
     role_in_house: Optional[str]
     is_owner: bool
     is_active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True 
+    created_at: datetime 

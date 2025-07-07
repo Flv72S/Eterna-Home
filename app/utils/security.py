@@ -4,7 +4,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlmodel import Session
+from sqlmodel import Session, select
+import logging
 
 from app.core.config import settings
 from app.db.session import get_session
@@ -103,4 +104,18 @@ async def get_current_user(
         is_superuser=user.is_superuser,
         created_at=user.created_at,
         updated_at=user.updated_at
-    ) 
+    )
+
+def log_security_event(event_type: str, user_id: int = None, tenant_id: str = None, details: dict = None):
+    """
+    Logga un evento di sicurezza rilevante (upload manuali, errori, ecc).
+    """
+    logger = logging.getLogger("security")
+    log_data = {
+        "event_type": event_type,
+        "user_id": user_id,
+        "tenant_id": str(tenant_id) if tenant_id else None,
+        "details": details or {},
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    logger.info(f"SECURITY_EVENT: {log_data}") 

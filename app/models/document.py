@@ -23,6 +23,7 @@ class Document(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(index=True)
     description: Optional[str] = None
+    document_type: Optional[str] = Field(default="general", description="Tipo di documento (general, contract, manual, etc.)")
     file_url: str = Field(description="URL del file in storage")
     file_size: int = Field(description="Dimensione del file in bytes")
     file_type: str = Field(description="Tipo MIME del file")
@@ -40,6 +41,13 @@ class Document(SQLModel, table=True):
     
     # Campo per tracciare file cifrati
     is_encrypted: bool = Field(default=False, description="Indica se il file è cifrato")
+    
+    # Campi specifici per manuali PDF
+    device_name: Optional[str] = Field(default=None, description="Nome dell'oggetto/elettrodomestico")
+    brand: Optional[str] = Field(default=None, description="Marca dell'oggetto")
+    model: Optional[str] = Field(default=None, description="Modello dell'oggetto")
+    external_link: Optional[str] = Field(default=None, description="Link esterno al manuale (se non caricato)")
+    room_id: Optional[int] = Field(default=None, foreign_key="rooms.id", description="ID della stanza associata")
     
     # Relazioni
     # owner: "User" = Relationship(back_populates="documents")

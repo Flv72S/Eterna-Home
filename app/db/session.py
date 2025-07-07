@@ -1,4 +1,4 @@
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, select, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import logging
@@ -8,6 +8,10 @@ from app.core.config import settings
 # Configurazione del logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Protezione per assicurarsi che logger sia sempre definito
+if logger is None:
+    logger = logging.getLogger(__name__)
 
 # Configurazione dell'engine con timeout e pool settings
 engine = create_engine(
@@ -43,5 +47,9 @@ def get_session():
             session.close()
             logger.debug(f"Sessione chiusa in {time.time() - start_time:.2f} secondi")
     except Exception as e:
-        logger.error(f"Errore durante la creazione della sessione dopo {time.time() - start_time:.2f} secondi: {str(e)}")
+        # Usa print come fallback se logger non è disponibile
+        try:
+            logger.error(f"Errore durante la creazione della sessione dopo {time.time() - start_time:.2f} secondi: {str(e)}")
+        except NameError:
+            print(f"Errore durante la creazione della sessione dopo {time.time() - start_time:.2f} secondi: {str(e)}")
         raise

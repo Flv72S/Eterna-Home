@@ -3,6 +3,32 @@ from typing import Optional, Dict, Any
 from jose import jwt
 from app.core.config import settings
 from passlib.context import CryptContext
+import uuid
+import json
+
+def serialize_data_for_jwt(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Serializza i dati per il token JWT, convertendo UUID in stringhe.
+    
+    Args:
+        data: Dati da serializzare
+    
+    Returns:
+        Dict[str, Any]: Dati serializzati
+    """
+    serialized = {}
+    for key, value in data.items():
+        if isinstance(value, uuid.UUID):
+            serialized[key] = str(value)
+        elif isinstance(value, list):
+            # Gestisce liste che potrebbero contenere UUID
+            serialized[key] = [
+                str(item) if isinstance(item, uuid.UUID) else item 
+                for item in value
+            ]
+        else:
+            serialized[key] = value
+    return serialized
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -15,7 +41,9 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     Returns:
         str: Token JWT codificato
     """
-    to_encode = data.copy()
+    # Serializza i dati per gestire UUID e altri tipi non JSON-serializable
+    to_encode = serialize_data_for_jwt(data.copy())
+    
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -39,7 +67,9 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     Returns:
         str: Token JWT di refresh codificato
     """
-    to_encode = data.copy()
+    # Serializza i dati per gestire UUID e altri tipi non JSON-serializable
+    to_encode = serialize_data_for_jwt(data.copy())
+    
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({"exp": expire, "type": "refresh"})

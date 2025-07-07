@@ -1,6 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.core.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.main_area import (

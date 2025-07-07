@@ -15,7 +15,6 @@ from app.core.logging_multi_tenant import (
     clear_tenant_context
 )
 from app.core.logging_config import (
-    get_logger,
     set_context,
     clear_context,
     log_security_event,
