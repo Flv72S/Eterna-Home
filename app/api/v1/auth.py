@@ -41,8 +41,7 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(email)
+    user = UserService.get_user_by_email(session, email)
     if user is None:
         raise credentials_exception
     return user
@@ -56,11 +55,8 @@ async def login_for_access_token(
 ):
     """Endpoint per il login e la generazione del token JWT."""
     print(f"DEBUG LOGIN: username={form_data.username}, password={form_data.password}")
-    user_service = UserService(session)
     print(f"DEBUG LOGIN: UserService created")
-    auth_result = user_service.authenticate_user(
-        form_data.username, form_data.password
-    )
+    auth_result = UserService.authenticate_user(session, form_data.username, form_data.password)
     print(f"DEBUG LOGIN: auth_result={auth_result}")
     
     if auth_result["error"] == "not_found" or auth_result["error"] == "wrong_password":

@@ -78,8 +78,7 @@ async def get_current_user(
         raise credentials_exception
     
     # Istanzia il service correttamente
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(email)
+    user = UserService.get_user_by_email(session, email)
     if user is None:
         raise credentials_exception
     if not user.is_active:

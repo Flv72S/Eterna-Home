@@ -159,4 +159,8 @@ logs/
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# MinIO executable
+minio.exe
+minio-data/ 

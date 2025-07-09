@@ -6,7 +6,6 @@ from app.models.user import User
 from app.core.config import settings
 from app.utils.password import get_password_hash, verify_password
 from app.models.enums import UserRole
-from app.database import get_db
 
 # Test 1: Validazione contenuto del JWT token
 def test_jwt_token_structure(client):
@@ -231,11 +230,9 @@ def test_login_with_invalid_credentials(client):
         "/api/v1/auth/token",
         data={"username": "nonexistent@example.com", "password": "wrongpassword"}
     )
+    
     assert response.status_code == 401
-    assert (
-        "Incorrect username or password" in response.json()["detail"]
-        or "Credenziali non valide" in response.json()["detail"]
-    )
+    assert "Incorrect username or password" in response.json()["detail"]
 
 # Test 8: Login senza username
 def test_login_without_username(client):
@@ -264,7 +261,8 @@ def test_login_with_empty_credentials(client):
         "/api/v1/auth/token",
         data={"username": "", "password": ""}
     )
-    assert response.status_code in (401, 422)  # Accetta sia 401 che 422
+    
+    assert response.status_code == 422  # Validation error
 
 # Test 11: Refresh token non valido
 def test_refresh_token_invalid(client):
@@ -286,13 +284,14 @@ def test_get_current_user(client, test_user):
     )
     assert login_response.status_code == 200
     token = login_response.json().get("access_token")
+    
     # Usa il token per ottenere l'utente corrente
     response = client.get(
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code in (200, 404)
-    if response.status_code == 200:
-        user_data = response.json()
-        assert user_data["email"] == test_user.email
-        assert user_data["username"] == test_user.username 
+    
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["email"] == test_user.email
+    assert user_data["username"] == test_user.username 

@@ -8,9 +8,11 @@ from faker import Faker
 import threading
 from contextlib import contextmanager
 from sqlalchemy import text
+import uuid
 
 from app.main import app
 from app.models.user import User
+from app.models.user_tenant_role import UserTenantRole
 from app.schemas.user import UserCreate
 from app.services.user import UserService
 from app.db.session import get_session
@@ -34,6 +36,7 @@ def timeout(seconds):
 
 @pytest.fixture(name="test_user")
 def test_user_fixture(session: Session):
+    """Crea un utente di test con ruolo admin nel tenant."""
     user_create = UserCreate(
         email="test@example.com",
         password="TestPassword123!",
@@ -43,7 +46,21 @@ def test_user_fixture(session: Session):
         is_superuser=True  # Superuser per massimi permessi
     )
     user_service = UserService(session)
-    return user_service.create_user(user_create)
+    user = user_service.create_user(user_create)
+    
+    # Crea l'associazione UserTenantRole per dare all'utente il ruolo admin nel tenant
+    tenant_id = user.tenant_id
+    user_tenant_role = UserTenantRole(
+        user_id=user.id,
+        tenant_id=tenant_id,
+        role="admin",
+        is_active=True
+    )
+    session.add(user_tenant_role)
+    session.commit()
+    session.refresh(user)
+    
+    return user
 
 @pytest.fixture
 def test_user_data():
@@ -345,7 +362,7 @@ def test_read_user_not_found(client: TestClient, auth_headers: dict):
     """Test lettura utente non esistente."""
     response = client.get("/api/v1/users/999", headers=auth_headers)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Utente non trovato"
+    assert response.json()["detail"] == "Utente non trovato nel tenant corrente"
 
 def test_update_user(client: TestClient, test_user: User, auth_headers: dict):
     """Test updating a user."""
@@ -377,15 +394,21 @@ def test_update_user_not_found(client: TestClient, auth_headers: dict):
     assert response.status_code == 404
 
 def test_delete_user(client: TestClient, test_user: User, auth_headers: dict):
-    """Test eliminazione utente."""
+    """Test rimozione utente dal tenant (non eliminazione completa)."""
     response = client.delete(f"/api/v1/users/{test_user.id}", headers=auth_headers)
     assert response.status_code == 204
+    
+    # Verifica che l'utente sia stato rimosso dal tenant corrente
+    # (ma non eliminato completamente dal sistema)
+    # Dopo la rimozione, l'utente non ha più i permessi per accedere agli endpoint protetti
+    response = client.get(f"/api/v1/users/{test_user.id}", headers=auth_headers)
+    assert response.status_code == 403  # Access denied perché l'utente non ha più i permessi
 
 def test_delete_user_not_found(client: TestClient, auth_headers: dict):
     """Test eliminazione utente non esistente."""
     response = client.delete("/api/v1/users/999", headers=auth_headers)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Utente non trovato"
+    assert response.json()["detail"] == "Utente non trovato nel tenant corrente"
 
 def test_pytest_works():
     print("DEBUG: pytest funziona")

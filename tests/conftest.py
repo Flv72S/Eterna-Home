@@ -113,6 +113,7 @@ def clean_database(engine):
             cleanup_session.execute(text("DELETE FROM nodes"))
             cleanup_session.execute(text("DELETE FROM documents"))
             cleanup_session.execute(text("DELETE FROM document_versions"))
+            cleanup_session.execute(text("DELETE FROM bim_models"))
             cleanup_session.execute(text("DELETE FROM user_houses"))
             cleanup_session.execute(text("DELETE FROM user_tenant_roles"))
             cleanup_session.execute(text("DELETE FROM houses"))
@@ -198,22 +199,24 @@ def test_client(override_get_session, override_get_db):
 
 @pytest.fixture(name="auth_client")
 def auth_client(engine):
-    from app.main import app
-    from sqlmodel import Session
-    session = Session(engine)
+    """Client di test per autenticazione con sessione persistente."""
     def _get_session():
-        yield session
+        with Session(engine) as session:
+            yield session
+            # NON fare rollback automatico - lascia i dati nel database per l'autenticazione
+    
     app.dependency_overrides[get_session] = _get_session
+    from app.main import app
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
-        yield client, session
-    session.close()
+        yield client
     app.dependency_overrides.clear()
 
 def create_test_user(session):
-    import time
+    """Crea un utente di test nel database."""
     from app.models.user import User
     from app.utils.password import get_password_hash
+    import time
     timestamp = int(time.time() * 1000)
     user = User(
         email=f"testuser_{timestamp}@example.com",
@@ -231,96 +234,95 @@ def create_test_user(session):
 
 @pytest.fixture(scope="function")
 def auth_test_session(engine):
-    """Sessione specifica per i test di autenticazione che non fa rollback automatico."""
-    with Session(engine) as session:
-        yield session
-        # NON fare rollback - lascia i dati nel database per l'autenticazione
+    """Sessione di test per autenticazione senza rollback automatico."""
+    session = Session(engine)
+    yield session
+    session.close()
 
 @pytest.fixture(scope="function")
 def test_user_auth(auth_test_session):
-    """Crea un utente di test usando la sessione di autenticazione."""
+    """Utente di test per autenticazione con sessione persistente."""
+    user = create_test_user(auth_test_session)
+    yield user
+    # Non fare rollback - lascia l'utente nel database per i test di autenticazione
+
+@pytest.fixture(scope="function")
+def test_user_shared_session(db_session):
+    """Utente di test con sessione condivisa per test generali."""
+    user = create_test_user(db_session)
+    yield user
+    # Il rollback viene gestito dalla fixture db_session
+
+@pytest.fixture(scope="function")
+def test_user(db_session):
+    """Utente di test standard."""
+    from app.models.user import User
+    from app.utils.password import get_password_hash
     import time
-    logger.debug("Creating test user for auth...")
-    try:
-        # Usa timestamp per username unico
-        timestamp = int(time.time() * 1000)
-        username = f"testuser_{timestamp}"
-        email = f"testuser_{timestamp}@example.com"
-        
-        user = User(
-            email=email,
-            username=username,
-            full_name="Test User",
-            hashed_password=get_password_hash("TestPassword123!"),
-            is_active=True,
-            is_superuser=False
-        )
-        
-        # Usa la stessa sessione che viene usata dall'app
-        auth_test_session.add(user)
-        auth_test_session.commit()
-        auth_test_session.refresh(user)
-        
-        logger.debug(f"Test user created with ID: {user.id}")
-        yield user
-        
-    except Exception as e:
-        logger.error(f"Error creating test user: {e}")
-        raise
-    finally:
-        # Cleanup: rimuovi l'utente dalla sessione
-        try:
-            if user and user.id:
-                auth_test_session.delete(user)
-                auth_test_session.commit()
-        except Exception as e:
-            logger.warning(f"Error cleaning up test user: {e}")
+    timestamp = int(time.time() * 1000)
+    user = User(
+        email=f"testuser_{timestamp}@example.com",
+        username=f"testuser_{timestamp}",
+        hashed_password=get_password_hash("TestPassword123!"),
+        full_name="Test User",
+        role="guest",
+        is_superuser=False,
+        is_active=True
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    yield user
+    # Il rollback viene gestito dalla fixture db_session
 
 @pytest.fixture(scope="function")
 def test_document(db_session, test_user):
-    """Crea un documento di test."""
-    logger.debug("Creating test document...")
-    try:
-        document = Document(
-            name="Test Document",
-            description="A test document",
-            owner_id=test_user.id,
-            type="application/pdf",
-            size=12345,
-            upload_date=datetime.now(timezone.utc),
-            path="/documents/manuali/manuale_test.pdf",
-            checksum="abc123",
-        )
-        db_session.add(document)
-        db_session.commit()
-        db_session.refresh(document)
-        logger.debug(f"Test document created with ID: {document.id}")
-        return document
-    except Exception as e:
-        logger.error(f"Error creating test document: {str(e)}")
-        raise
+    """Documento di test."""
+    from app.models.document import Document
+    from app.models.house import House
+    import time
+    timestamp = int(time.time() * 1000)
+    
+    # Crea una casa di test
+    house = House(
+        name=f"Test House {timestamp}",
+        address="Test Address",
+        description="Test Description"
+    )
+    db_session.add(house)
+    db_session.commit()
+    db_session.refresh(house)
+    
+    # Crea un documento di test
+    document = Document(
+        filename=f"test_document_{timestamp}.pdf",
+        original_filename=f"test_document_{timestamp}.pdf",
+        file_path=f"/test/path/test_document_{timestamp}.pdf",
+        file_size=1024,
+        mime_type="application/pdf",
+        uploaded_by=test_user.id,
+        house_id=house.id
+    )
+    db_session.add(document)
+    db_session.commit()
+    db_session.refresh(document)
+    yield document
+    # Il rollback viene gestito dalla fixture db_session
 
 @pytest.fixture
 def test_token():
-    """Fixture per ottenere un token di test fisso."""
-    from app.core.config import settings
-    return settings.TEST_TOKEN
+    """Token di test per autenticazione."""
+    return create_access_token(data={"sub": "test@example.com"})
 
 @pytest.fixture
 def auth_headers(test_token):
-    """Fixture per ottenere headers di autenticazione con token fisso."""
+    """Headers di autenticazione per i test."""
     return {"Authorization": f"Bearer {test_token}"}
 
 @pytest.fixture
 def reset_rate_limiting():
-    """Fixture per resettare il rate limiting tra i test."""
-    from app.core.redis import get_redis_client
-    
-    # Reset del rate limiting
-    redis_client = get_redis_client()
+    """Reset del rate limiting per i test."""
     if redis_client:
-        # Pulisce tutte le chiavi che potrebbero essere usate dal rate limiting
-        # slowapi usa pattern come "slowapi:ratelimit:endpoint:key"
         keys_to_delete = []
         
         # Cerca chiavi con pattern slowapi
@@ -358,14 +360,21 @@ def reset_rate_limiting():
         if keys_to_delete:
             redis_client.delete(*keys_to_delete)
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest.fixture(autouse=True, scope="function")
 def mock_rate_limiting():
     """Mock globale per disabilitare il rate limiting in tutti i test."""
-    with patch("app.security.limiter.security_limiter.limiter") as mock_limiter:
-        # Mock per bypassare completamente il rate limiting
-        mock_limiter.hit.return_value = (True, 1000, 1000, 60)  # Sempre successo
-        mock_limiter.get_window_stats.return_value = (0, 1000, 60)  # Sempre sotto il limite
-        yield
+    from unittest.mock import patch, MagicMock
+    from app.security.limiter import security_limiter
+    
+    # Crea un mock del limiter che non applica mai limiti
+    mock_limiter = MagicMock()
+    mock_limiter.hit.return_value = (True, 1000, 1000, 60)  # Sempre successo
+    mock_limiter.get_window_stats.return_value = (0, 1000, 60)  # Sempre sotto il limite
+    mock_limiter.limit.return_value = lambda func: func  # Decoratore che non fa nulla
+    
+    with patch("app.security.limiter.security_limiter.limiter", mock_limiter):
+        with patch("app.security.limiter.settings.ENABLE_RATE_LIMITING", False):
+            yield
 
 @pytest.fixture(autouse=True, scope="session")
 def mock_minio():
@@ -404,24 +413,6 @@ def mock_minio():
         
         minio_mock.return_value = instance
         yield
-
-@pytest.fixture
-def client():
-    """Client di test per FastAPI"""
-    return TestClient(app)
-
-@pytest.fixture
-def test_db():
-    """Database di test in memoria"""
-    engine = create_engine("sqlite:///:memory:")
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base.metadata.create_all(bind=engine)
-    
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
 
 @pytest.fixture
 def admin_user():

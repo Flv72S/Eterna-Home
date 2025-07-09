@@ -21,8 +21,7 @@ async def login_for_access_token(
     session: Session = Depends(get_session)
 ):
     """Login per ottenere il token JWT."""
-    user_service = UserService(session)
-    auth_result = user_service.authenticate_user(username, password)
+    auth_result = UserService.authenticate_user(session, username, password)
     if auth_result["error"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

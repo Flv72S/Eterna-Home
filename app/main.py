@@ -153,7 +153,7 @@ else:
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
-app.include_router(users.router, prefix="/api/v1", tags=["users"])
+app.include_router(users.router, tags=["users"])
 app.include_router(roles.router, prefix="/api/v1", tags=["roles"])
 app.include_router(house.router, prefix="/api/v1", tags=["houses"])
 app.include_router(node.router, prefix="/api/v1", tags=["nodes"])
@@ -171,6 +171,7 @@ app.include_router(secure_area.router)
 app.include_router(ai_assistant.router, prefix="/api/v1", tags=["AI Assistant"])
 app.include_router(activator.router, prefix="/api/v1", tags=["Physical Activators"])
 app.include_router(user_house.router, tags=["User House Management"])
+app.include_router(system.router, tags=["system"])
 
 # Include admin routers
 app.include_router(dashboard.router, prefix="/admin", tags=["admin"])

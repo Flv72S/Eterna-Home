@@ -12,16 +12,8 @@ from app.core.security import create_access_token as new_create_access_token
 from app.core.deps import get_current_user
 from app.models.enums import UserRole
 
-client = TestClient(app)
-
-@pytest.fixture(autouse=True)
-def mock_redis():
-    """Mock Redis for testing."""
-    with patch('app.core.redis.redis_client', fakeredis.FakeStrictRedis()):
-        yield
-
 @pytest.mark.asyncio
-async def test_get_current_user_authenticated(db_session):
+async def test_get_current_user_authenticated(client, db_session):
     """Test che get_current_user funzioni con token valido."""
     # Crea un utente di test
     user = User(
@@ -50,7 +42,8 @@ async def test_get_current_user_authenticated(db_session):
     assert current_user.id == user.id
     assert current_user.email == user.email
 
-def test_get_current_user_unauthenticated():
+def test_get_current_user_unauthenticated(client):
+    """Test per utente non autenticato."""
     # Test without auth header
     response = client.get("/api/v1/users/me")
     assert response.status_code == 401

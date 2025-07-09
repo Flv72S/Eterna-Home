@@ -117,6 +117,7 @@ class UserTenantRole(SQLModel, table=True):
     @classmethod
     def add_user_to_tenant(cls, session, user_id: int, tenant_id: uuid.UUID, role: str):
         """Aggiunge un utente a un tenant con un ruolo specifico."""
+        from sqlmodel import select
         # Verifica se l'associazione esiste già
         existing = session.exec(
             select(cls).where(
@@ -146,6 +147,7 @@ class UserTenantRole(SQLModel, table=True):
     @classmethod
     def remove_user_from_tenant(cls, session, user_id: int, tenant_id: uuid.UUID):
         """Rimuove un utente da un tenant (disattiva l'associazione)."""
+        from sqlmodel import select
         association = session.exec(
             select(cls).where(
                 cls.user_id == user_id,

@@ -15,6 +15,7 @@ from app.schemas.user import UserCreate, UserResponse
 from app.services.user import UserService
 from app.services.mfa_service import get_mfa_service
 from app.utils.security import get_current_user
+import pyotp
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -34,10 +35,8 @@ async def register_user(
                 username=user_data.username,
                 client_ip=request.client.host if request.client else None)
     
-    user_service = UserService(session)
-    
     # Check if user already exists by email
-    existing_user = user_service.get_user_by_email(user_data.email)
+    existing_user = UserService.get_user_by_email(session, user_data.email)
     if existing_user:
         logger.warning("User registration failed - email already exists",
                        email=user_data.email)
@@ -47,7 +46,7 @@ async def register_user(
         )
     
     # Check if username already exists
-    existing_username = user_service.get_user_by_username(user_data.username)
+    existing_username = UserService.get_user_by_username(session, user_data.username)
     if existing_username:
         logger.warning("User registration failed - username already taken",
                        username=user_data.username)
@@ -57,7 +56,7 @@ async def register_user(
         )
     
     # Create new user
-    user = user_service.create_user(user_data)
+    user = UserService.create_user(session, user_data)
     logger.info("User registered successfully",
                 user_id=user.id,
                 email=user.email,
@@ -78,10 +77,7 @@ async def login_for_access_token(
                 username=form_data.username,
                 client_ip=request.client.host if request.client else None)
     
-    user_service = UserService(session)
-    result = user_service.authenticate_user(
-        email_or_username=form_data.username, password=form_data.password
-    )
+    result = UserService.authenticate_user(session, email_or_username=form_data.username, password=form_data.password)
     
     if result["error"] == "not_found" or result["error"] == "wrong_password":
         logger.warning("Login failed - invalid credentials",
@@ -163,8 +159,7 @@ async def refresh_token(
         )
     
     # Ottieni l'utente dal database
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(payload.get("sub"))
+    user = UserService.get_user_by_email(session, payload.get("sub"))
     
     if not user:
         logger.warning("Token refresh failed - user not found",
@@ -266,13 +261,20 @@ async def setup_mfa(
         logger.warning("MFA setup failed - already enabled",
                        user_id=current_user.id)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="MFA già abilitato per questo utente"
         )
     
     try:
         mfa_service = get_mfa_service()
         setup_data = mfa_service.setup_mfa(current_user)
+        
+        # Salva il segreto nel database tramite query diretta per garantire visibilità tra sessioni
+        from app.models.user import User
+        session.query(User).filter(User.id == current_user.id).update({
+            "mfa_secret": setup_data["secret"]
+        })
+        session.commit()
         
         logger.info("MFA setup completed",
                     user_id=current_user.id)
@@ -304,55 +306,69 @@ async def enable_mfa(
     logger.info("MFA enable request",
                 user_id=current_user.id,
                 email=current_user.email)
+
+    # Forza un refresh esplicito della sessione SQLAlchemy
+    session.expire_all()
+    session.commit()
     
-    if current_user.mfa_enabled:
-        logger.warning("MFA enable failed - already enabled",
-                       user_id=current_user.id)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA già abilitato"
-        )
-    
-    try:
-        mfa_service = get_mfa_service()
-        
-        # Per abilitare l'MFA, l'utente deve prima fare setup
-        if not current_user.mfa_secret:
-            logger.warning("MFA enable failed - no secret found",
-                           user_id=current_user.id)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Esegui prima il setup dell'MFA"
-            )
-        
-        success = mfa_service.enable_mfa(current_user, current_user.mfa_secret, verification_code)
-        
-        if success:
-            session.commit()
-            logger.info("MFA enabled successfully",
-                        user_id=current_user.id)
-            return {"message": "MFA abilitato con successo"}
-        else:
-            logger.warning("MFA enable failed - invalid code",
-                           user_id=current_user.id)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Codice di verifica non valido"
-            )
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"MFA enable failed: {e}",
+    # Ricarica l'utente direttamente dal database per assicurarsi di avere i dati più recenti
+    user = session.exec(select(User).where(User.id == current_user.id)).first()
+    if not user:
+        logger.error("MFA enable failed - user not found",
                      user_id=current_user.id)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Errore durante l'abilitazione dell'MFA"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utente non trovato"
         )
+
+    if user.mfa_enabled:
+        logger.warning("MFA enable failed - already enabled",
+                       user_id=user.id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="MFA è già abilitato"
+        )
+
+    if not user.mfa_secret:
+        logger.warning("MFA enable failed - no secret found",
+                       user_id=user.id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Esegui prima il setup dell'MFA"
+        )
+
+    # Verify the TOTP code
+    try:
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(verification_code):
+            logger.warning("MFA enable failed - invalid code",
+                           user_id=user.id)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Codice di verifica non valido"
+            )
+    except Exception as e:
+        logger.error("MFA enable failed - TOTP error",
+                    user_id=user.id,
+                    error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Errore nella verifica del codice"
+        )
+
+    # Enable MFA tramite query diretta per garantire visibilità tra sessioni
+    session.query(User).filter(User.id == user.id).update({
+        "mfa_enabled": True
+    })
+    session.commit()
+
+    logger.info("MFA enabled successfully",
+                user_id=user.id)
+
+    return {"message": "MFA abilitato con successo"}
 
 @router.post("/mfa/disable")
 async def disable_mfa(
-    verification_code: str,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ) -> Any:
@@ -363,36 +379,39 @@ async def disable_mfa(
                 user_id=current_user.id,
                 email=current_user.email)
     
-    if not current_user.mfa_enabled:
-        logger.warning("MFA disable failed - not enabled",
-                       user_id=current_user.id)
+    # Ricarica l'utente dal database per vedere le modifiche più recenti
+    user = session.exec(select(User).where(User.id == current_user.id)).first()
+    if not user:
+        logger.error("MFA disable failed - user not found",
+                     user_id=current_user.id)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utente non trovato"
+        )
+    
+    if not user.mfa_enabled:
+        logger.warning("MFA disable failed - not enabled",
+                       user_id=user.id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="MFA non abilitato"
         )
     
     try:
-        mfa_service = get_mfa_service()
-        success = mfa_service.disable_mfa(current_user, verification_code)
+        # Disabilita l'MFA tramite query diretta per garantire visibilità tra sessioni
+        session.query(User).filter(User.id == user.id).update({
+            "mfa_enabled": False,
+            "mfa_secret": None
+        })
+        session.commit()
         
-        if success:
-            session.commit()
-            logger.info("MFA disabled successfully",
-                        user_id=current_user.id)
-            return {"message": "MFA disabilitato con successo"}
-        else:
-            logger.warning("MFA disable failed - invalid code",
-                           user_id=current_user.id)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Codice di verifica non valido"
-            )
+        logger.info("MFA disabled successfully",
+                    user_id=user.id)
+        return {"message": "MFA disabilitato con successo", "mfa_enabled": False}
             
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"MFA disable failed: {e}",
-                     user_id=current_user.id)
+                     user_id=user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante la disabilitazione dell'MFA"
@@ -401,7 +420,8 @@ async def disable_mfa(
 @router.post("/mfa/verify")
 async def verify_mfa(
     mfa_code: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ) -> Any:
     """
     Verifica un codice MFA (usato durante il login).
@@ -410,35 +430,40 @@ async def verify_mfa(
                 user_id=current_user.id,
                 email=current_user.email)
     
-    if not current_user.mfa_enabled:
-        logger.warning("MFA verification failed - not enabled",
-                       user_id=current_user.id)
+    # Ricarica l'utente dal database per vedere le modifiche più recenti
+    user = session.exec(select(User).where(User.id == current_user.id)).first()
+    if not user:
+        logger.error("MFA verification failed - user not found",
+                     user_id=current_user.id)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utente non trovato"
+        )
+    
+    if not user.mfa_enabled:
+        logger.warning("MFA verification failed - not enabled",
+                       user_id=user.id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="MFA non abilitato"
         )
     
     try:
         mfa_service = get_mfa_service()
-        is_valid = mfa_service.verify_login_mfa(current_user, mfa_code)
+        is_valid = mfa_service.verify_login_mfa(user, mfa_code)
         
         if is_valid:
             logger.info("MFA verification successful",
-                        user_id=current_user.id)
+                        user_id=user.id)
             return {"message": "Codice MFA valido", "valid": True}
         else:
             logger.warning("MFA verification failed - invalid code",
-                           user_id=current_user.id)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Codice MFA non valido"
-            )
+                           user_id=user.id)
+            return {"message": "Codice MFA non valido", "valid": False}
             
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"MFA verification failed: {e}",
-                     user_id=current_user.id)
+                     user_id=user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Errore durante la verifica dell'MFA"

@@ -54,8 +54,7 @@ async def get_users_by_role(
             detail=f"Ruolo '{role_name}' non valido"
         )
     
-    user_service = UserService(db)
-    users = user_service.get_users_by_role(user_role, skip=skip, limit=limit)
+    users = UserService.get_users_by_role(db, user_role, skip=skip, limit=limit)
     return users
 
 @router.put("/users/{user_id}/role")
@@ -77,8 +76,7 @@ async def update_user_role(
         )
     
     # Verifica che l'utente esista
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -93,7 +91,7 @@ async def update_user_role(
         )
     
     # Aggiorna il ruolo
-    updated_user = user_service.update_user_role(user_id, user_role)
+    updated_user = UserService.update_user_role(db, user_id, user_role)
     
     return {
         "message": f"Ruolo aggiornato con successo per {updated_user.email}",
@@ -112,9 +110,8 @@ async def get_role_statistics(
     role_distribution = {}
     total_users = 0
     
-    user_service = UserService(db)
     for role in UserRole:
-        count = user_service.count_users_by_role(role)
+        count = UserService.count_users_by_role(db, role)
         role_distribution[role.value] = {
             "count": count,
             "name": role.name,
@@ -172,8 +169,7 @@ async def add_user_role(
         )
     
     # Verifica che l'utente esista
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -207,8 +203,7 @@ async def remove_user_role(
         )
     
     # Verifica che l'utente esista
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -242,8 +237,7 @@ async def add_user_role_test_endpoint(
         )
     
     # Verifica che l'utente esista
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -277,8 +271,7 @@ async def remove_user_role_test_endpoint(
         )
     
     # Verifica che l'utente esista
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

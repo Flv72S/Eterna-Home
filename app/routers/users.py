@@ -223,12 +223,10 @@ async def create_user(
     Richiede permesso 'manage_users' nel tenant attivo.
     """
     try:
-        user_service = UserService(session)
-        
         # Crea l'utente con tenant_id
         user_data = user_create.dict()
         user_data["tenant_id"] = tenant_id
-        user = user_service.create_user(user_create)
+        user = UserService.create_user(session, user_create)
         
         # Assegna ruolo di default nel tenant
         default_role = "viewer"  # Ruolo di default per nuovi utenti

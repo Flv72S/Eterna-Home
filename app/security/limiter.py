@@ -56,8 +56,14 @@ class SecurityLimiter:
         # Statistiche per monitoring
         self.blocked_ips: Dict[str, Dict[str, Any]] = {}
     
+    def is_rate_limiting_enabled(self) -> bool:
+        """Controlla dinamicamente se il rate limiting è abilitato."""
+        return settings.ENABLE_RATE_LIMITING
+    
     def get_limit_for_endpoint(self, endpoint: str) -> Optional[str]:
         """Restituisce il limite specifico per un endpoint."""
+        if not self.is_rate_limiting_enabled():
+            return None
         return self.critical_endpoints.get(endpoint, {}).get("limit")
     
     def log_rate_limit_exceeded(self, request: Request, endpoint: str, ip: str):

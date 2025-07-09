@@ -347,7 +347,7 @@ class MFAService:
         """Genera codici di backup per l'MFA."""
         import secrets
         backup_codes = []
-        for _ in range(8):
+        for _ in range(10):
             code = secrets.token_hex(4).upper()[:8]
             backup_codes.append(code)
         return backup_codes

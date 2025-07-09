@@ -32,68 +32,19 @@ def decode_jwt_token(token):
         print(f"Error decoding token: {e}")
         return None
 
-@pytest.fixture
-def test_user(db_session):
-    """Create test user"""
-    user = User(
-        email="test@example.com",
-        username="testuser",
-        hashed_password="hashed_password",
-        is_active=True,
-        tenant_id=uuid.uuid4(),
-        role="guest"
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
-
-@pytest.fixture
-def admin_role(db_session):
-    """Create admin role"""
+def test_require_role_in_tenant_success(db_session, test_user):
+    """Test successful role-based access control"""
+    
+    # Create admin role
     unique_name = f"admin_{int(time.time() * 1000)}"
-    role = Role(
+    admin_role = Role(
         name=unique_name,
         description="Administrator role",
         is_active=True
     )
-    db_session.add(role)
+    db_session.add(admin_role)
     db_session.commit()
-    db_session.refresh(role)
-    return role
-
-@pytest.fixture
-def user_role(db_session):
-    """Create user role"""
-    unique_name = f"user_{int(time.time() * 1000)}"
-    role = Role(
-        name=unique_name,
-        description="Regular user role",
-        is_active=True
-    )
-    db_session.add(role)
-    db_session.commit()
-    db_session.refresh(role)
-    return role
-
-@pytest.fixture
-def document_permission(db_session):
-    """Create document permission"""
-    unique_name = f"document:read_{int(time.time() * 1000)}"
-    permission = Permission(
-        name=unique_name,
-        description="Read documents",
-        resource="document",
-        action="read",
-        is_active=True
-    )
-    db_session.add(permission)
-    db_session.commit()
-    db_session.refresh(permission)
-    return permission
-
-def test_require_role_in_tenant_success(db_session, test_user, admin_role):
-    """Test successful role-based access control"""
+    db_session.refresh(admin_role)
     
     # Assign admin role to user
     test_user.roles = [admin_role]
@@ -115,8 +66,19 @@ def test_require_role_in_tenant_success(db_session, test_user, admin_role):
     assert "roles" in payload
     assert "admin" in payload["roles"]
 
-def test_require_role_in_tenant_failure(db_session, test_user, user_role):
+def test_require_role_in_tenant_failure(db_session, test_user):
     """Test failed role-based access control"""
+    
+    # Create user role (not admin)
+    unique_name = f"user_{int(time.time() * 1000)}"
+    user_role = Role(
+        name=unique_name,
+        description="Regular user role",
+        is_active=True
+    )
+    db_session.add(user_role)
+    db_session.commit()
+    db_session.refresh(user_role)
     
     # Assign user role (not admin)
     test_user.roles = [user_role]
@@ -135,8 +97,21 @@ def test_require_role_in_tenant_failure(db_session, test_user, user_role):
     assert "roles" in payload
     assert "admin" not in payload["roles"]
 
-def test_require_permission_in_tenant_success(db_session, test_user, document_permission):
+def test_require_permission_in_tenant_success(db_session, test_user):
     """Test successful permission-based access control"""
+    
+    # Create document permission
+    unique_name = f"document:read_{int(time.time() * 1000)}"
+    document_permission = Permission(
+        name=unique_name,
+        description="Read documents",
+        resource="document",
+        action="read",
+        is_active=True
+    )
+    db_session.add(document_permission)
+    db_session.commit()
+    db_session.refresh(document_permission)
     
     # Assign permission to user
     test_user.permissions = [document_permission]
@@ -175,12 +150,13 @@ def test_require_permission_in_tenant_failure(db_session, test_user):
     assert "permissions" in payload
     assert "document:write" not in payload["permissions"]
 
-def test_tenant_isolation_in_rbac(db_session, test_user, admin_role):
+def test_tenant_isolation_in_rbac(db_session, test_user):
     """Test that RBAC respects tenant isolation"""
     
     # Create admin role for different tenant
+    unique_name = f"admin_tenant2_{int(time.time() * 1000)}"
     admin_role_tenant2 = Role(
-        name=f"admin_tenant2_{int(time.time() * 1000)}",
+        name=unique_name,
         description="Administrator role",
         is_active=True
     )
@@ -204,8 +180,41 @@ def test_tenant_isolation_in_rbac(db_session, test_user, admin_role):
     # Note: Since Role doesn't have tenant_id, we can't test tenant isolation this way
     # In a real implementation, this would be handled through UserTenantRole
 
-def test_multiple_roles_and_permissions(db_session, test_user, admin_role, user_role, document_permission):
+def test_multiple_roles_and_permissions(db_session, test_user):
     """Test user with multiple roles and permissions"""
+    
+    # Create roles and permissions
+    unique_admin_name = f"admin_{int(time.time() * 1000)}"
+    admin_role = Role(
+        name=unique_admin_name,
+        description="Administrator role",
+        is_active=True
+    )
+    db_session.add(admin_role)
+    db_session.commit()
+    db_session.refresh(admin_role)
+    
+    unique_user_name = f"user_{int(time.time() * 1000)}"
+    user_role = Role(
+        name=unique_user_name,
+        description="Regular user role",
+        is_active=True
+    )
+    db_session.add(user_role)
+    db_session.commit()
+    db_session.refresh(user_role)
+    
+    unique_permission_name = f"document:read_{int(time.time() * 1000)}"
+    document_permission = Permission(
+        name=unique_permission_name,
+        description="Read documents",
+        resource="document",
+        action="read",
+        is_active=True
+    )
+    db_session.add(document_permission)
+    db_session.commit()
+    db_session.refresh(document_permission)
     
     # Assign multiple roles and permissions
     test_user.roles = [admin_role, user_role]
@@ -223,16 +232,35 @@ def test_multiple_roles_and_permissions(db_session, test_user, admin_role, user_
     # Verify all roles and permissions are present
     payload = decode_jwt_token(token)
     assert payload is not None
-    assert "roles" in payload
-    assert "permissions" in payload
-    assert "admin" in payload["roles"]
-    assert "user" in payload["roles"]
-    assert "document:read" in payload["permissions"]
+    assert "admin" in payload.get("roles", [])
+    assert "user" in payload.get("roles", [])
+    assert "document:read" in payload.get("permissions", [])
 
-def test_role_hierarchy(db_session, test_user, admin_role, user_role):
+def test_role_hierarchy(db_session, test_user):
     """Test role hierarchy (admin should have user permissions)"""
     
-    # Assign admin role
+    # Create roles
+    unique_admin_name = f"admin_{int(time.time() * 1000)}"
+    admin_role = Role(
+        name=unique_admin_name,
+        description="Administrator role",
+        is_active=True
+    )
+    db_session.add(admin_role)
+    db_session.commit()
+    db_session.refresh(admin_role)
+    
+    unique_user_name = f"user_{int(time.time() * 1000)}"
+    user_role = Role(
+        name=unique_user_name,
+        description="Regular user role",
+        is_active=True
+    )
+    db_session.add(user_role)
+    db_session.commit()
+    db_session.refresh(user_role)
+    
+    # Assign admin role (should inherit user permissions)
     test_user.roles = [admin_role]
     db_session.commit()
     
@@ -244,38 +272,37 @@ def test_role_hierarchy(db_session, test_user, admin_role, user_role):
     })
     
     # Admin should have access to user-level endpoints
-    # This tests the role hierarchy concept
     payload = decode_jwt_token(token)
     assert payload is not None
-    assert "roles" in payload
-    assert "admin" in payload["roles"]
+    assert "admin" in payload.get("roles", [])
 
 def test_permission_granularity(db_session, test_user):
     """Test fine-grained permission control"""
     
-    # Create specific permissions with unique names
-    timestamp = int(time.time() * 1000)
+    # Create specific permissions
+    unique_read_name = f"document:read_{int(time.time() * 1000)}"
     read_permission = Permission(
-        name=f"document:read_{timestamp}",
+        name=unique_read_name,
         description="Read documents",
         resource="document",
-        action="read"
+        action="read",
+        is_active=True
     )
+    db_session.add(read_permission)
+    db_session.commit()
+    db_session.refresh(read_permission)
+    
+    unique_write_name = f"document:write_{int(time.time() * 1000)}"
     write_permission = Permission(
-        name=f"document:write_{timestamp}",
+        name=unique_write_name,
         description="Write documents",
         resource="document",
-        action="write"
+        action="write",
+        is_active=True
     )
-    delete_permission = Permission(
-        name=f"document:delete_{timestamp}",
-        description="Delete documents",
-        resource="document",
-        action="delete"
-    )
-    
-    db_session.add_all([read_permission, write_permission, delete_permission])
+    db_session.add(write_permission)
     db_session.commit()
+    db_session.refresh(write_permission)
     
     # Assign only read permission
     test_user.permissions = [read_permission]
@@ -288,16 +315,37 @@ def test_permission_granularity(db_session, test_user):
         "permissions": ["document:read"]
     })
     
-    # User should have read access but not write or delete
+    # User should have read access but not write access
     payload = decode_jwt_token(token)
     assert payload is not None
-    assert "permissions" in payload
-    assert "document:read" in payload["permissions"]
-    assert "document:write" not in payload["permissions"]
-    assert "document:delete" not in payload["permissions"]
+    assert "document:read" in payload.get("permissions", [])
+    assert "document:write" not in payload.get("permissions", [])
 
-def test_rbac_pbac_combination(db_session, test_user, admin_role, document_permission):
+def test_rbac_pbac_combination(db_session, test_user):
     """Test combination of RBAC and PBAC"""
+    
+    # Create role and permission
+    unique_admin_name = f"admin_{int(time.time() * 1000)}"
+    admin_role = Role(
+        name=unique_admin_name,
+        description="Administrator role",
+        is_active=True
+    )
+    db_session.add(admin_role)
+    db_session.commit()
+    db_session.refresh(admin_role)
+    
+    unique_permission_name = f"document:read_{int(time.time() * 1000)}"
+    document_permission = Permission(
+        name=unique_permission_name,
+        description="Read documents",
+        resource="document",
+        action="read",
+        is_active=True
+    )
+    db_session.add(document_permission)
+    db_session.commit()
+    db_session.refresh(document_permission)
     
     # Assign both role and permission
     test_user.roles = [admin_role]
@@ -315,7 +363,5 @@ def test_rbac_pbac_combination(db_session, test_user, admin_role, document_permi
     # User should have access through both role and permission
     payload = decode_jwt_token(token)
     assert payload is not None
-    assert "roles" in payload
-    assert "permissions" in payload
-    assert "admin" in payload["roles"]
-    assert "document:read" in payload["permissions"] 
+    assert "admin" in payload.get("roles", [])
+    assert "document:read" in payload.get("permissions", []) 

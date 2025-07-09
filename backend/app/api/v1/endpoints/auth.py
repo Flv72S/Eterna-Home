@@ -30,14 +30,13 @@ async def register_user(
     session: Session = Depends(get_session)
 ):
     """Register a new user."""
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(user_in.email)
+    user = UserService.get_user_by_email(session, user_in.email)
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email già registrata"
         )
-    user = user_service.create_user(user_in)
+    user = UserService.create_user(session, user_in)
     return user
 
 @router.post("/login", response_model=Token)
@@ -46,8 +45,7 @@ async def login(
     session: Session = Depends(get_session)
 ):
     """Login user and return access token."""
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(form_data.username)
+    user = UserService.get_user_by_email(session, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,8 +61,7 @@ async def get_token(
     session: Session = Depends(get_session)
 ):
     """Get access token."""
-    user_service = UserService(session)
-    user = user_service.get_user_by_email(form_data.username)
+    user = UserService.get_user_by_email(session, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

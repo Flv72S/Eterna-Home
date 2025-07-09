@@ -100,7 +100,6 @@ try:
         # Test metodi RBAC
         session.refresh(user)
         user = session.exec(select(User).where(User.id == user.id)).first()
-        _ = user.roles  # Forza caricamento
         
         print(f"\n🔎 Test metodi RBAC:")
         print(f"   - has_role('{test_role_name}'): {user.has_role(test_role_name)}")

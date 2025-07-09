@@ -30,27 +30,24 @@ USERS = [
     }
 ]
 
-@pytest.fixture(scope="module", autouse=True)
-def setup_test_users():
-    # Crea utenti di test se non esistono
-    with Session(engine) as session:
-        for u in USERS:
-            user = session.exec(
-                session.query(User).filter(User.email == u["email"]).statement
-            ).first()
-            if not user:
-                user = User(
-                    email=u["email"],
-                    username=u["username"],
-                    hashed_password=get_password_hash(u["password"]),
-                    is_active=True,
-                    role=u["role"]
-                )
-                session.add(user)
-        session.commit()
+def setup_test_users(db_session):
+    """Crea utenti di test se non esistono"""
+    for u in USERS:
+        user = db_session.exec(
+            db_session.query(User).filter(User.email == u["email"]).statement
+        ).first()
+        if not user:
+            user = User(
+                email=u["email"],
+                username=u["username"],
+                hashed_password=get_password_hash(u["password"]),
+                is_active=True,
+                role=u["role"]
+            )
+            db_session.add(user)
+    db_session.commit()
 
-
-def login(email, password):
+def login(client, email, password):
     response = client.post(
         "/api/v1/token",
         data={"username": email, "password": password},
@@ -59,9 +56,9 @@ def login(email, password):
     assert response.status_code == 200, f"Login failed for {email}"
     return response.json()["access_token"]
 
-
-def test_admin_access():
-    token = login("admin_rbac_test@example.com", "AdminTest123!")
+def test_admin_access(client, db_session):
+    setup_test_users(db_session)
+    token = login(client, "admin_rbac_test@example.com", "AdminTest123!")
     # Accesso consentito
     r = client.get("/api/v1/secure-area/admin-only", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
@@ -72,8 +69,9 @@ def test_admin_access():
     r3 = client.get("/api/v1/secure-area/super-admin-only", headers={"Authorization": f"Bearer {token}"})
     assert r3.status_code == 403
 
-def test_guest_access():
-    token = login("guest_rbac_test@example.com", "GuestTest123!")
+def test_guest_access(client, db_session):
+    setup_test_users(db_session)
+    token = login(client, "guest_rbac_test@example.com", "GuestTest123!")
     # Accesso negato
     r = client.get("/api/v1/secure-area/admin-only", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403
@@ -84,8 +82,9 @@ def test_guest_access():
     r3 = client.get("/api/v1/secure-area/technician-only", headers={"Authorization": f"Bearer {token}"})
     assert r3.status_code == 403
 
-def test_technician_access():
-    token = login("tech_rbac_test@example.com", "TechTest123!")
+def test_technician_access(client, db_session):
+    setup_test_users(db_session)
+    token = login(client, "tech_rbac_test@example.com", "TechTest123!")
     # Accesso consentito a technician-only
     r = client.get("/api/v1/secure-area/technician-only", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
