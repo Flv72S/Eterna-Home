@@ -41,13 +41,6 @@ class Role(SQLModel, table=True):
     #     back_populates="roles",
     #     link_model=UserRole
     # )
-    
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True,
-        protected_namespaces=()
-    )
 
 
 class RoleCreate(RoleBase):
@@ -66,10 +59,4 @@ class RoleRead(RoleBase):
     """Schema per la lettura di un ruolo"""
     id: int
     created_at: datetime
-    updated_at: datetime
-    
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    ) 
+    updated_at: datetime 

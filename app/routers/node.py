@@ -16,7 +16,6 @@ logger = get_logger(__name__)
 async def read_nodes(
     skip: int = 0,
     limit: int = 100,
-    house_id: Optional[int] = Query(None, description="Filtra per casa"),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -24,20 +23,16 @@ async def read_nodes(
     logger.info("Nodes list request",
                 user_id=current_user.id,
                 skip=skip,
-                limit=limit,
-                house_id=house_id)
+                limit=limit)
     
     query = select(Node)
-    if house_id:
-        query = query.where(Node.house_id == house_id)
     query = query.offset(skip).limit(limit)
     result = safe_exec(session, query)
     nodes = result.all()
     
     logger.info("Nodes list retrieved",
                 user_id=current_user.id,
-                count=len(nodes),
-                house_id=house_id)
+                count=len(nodes))
     
     return nodes
 
@@ -50,21 +45,8 @@ async def create_node(
     """Crea un nuovo nodo."""
     logger.info("Node creation attempt",
                 user_id=current_user.id,
-                nfc_id=node.nfc_id,
-                house_id=node.house_id)
-    
-    # Verifica se il nodo esiste già
-    query = select(Node).where(Node.nfc_id == node.nfc_id)
-    result = safe_exec(session, query)
-    existing_node = result.first()
-    if existing_node:
-        logger.warning("Node creation failed - NFC ID already exists",
-                       user_id=current_user.id,
-                       nfc_id=node.nfc_id)
-        raise HTTPException(
-            status_code=400,
-            detail="Node with this NFC ID already exists"
-        )
+                name=node.name,
+                node_type=node.node_type)
     
     # Crea il nuovo nodo
     db_node = Node(**node.model_dump())
@@ -75,8 +57,8 @@ async def create_node(
     logger.info("Node created successfully",
                 user_id=current_user.id,
                 node_id=db_node.id,
-                nfc_id=db_node.nfc_id,
-                house_id=db_node.house_id)
+                name=db_node.name,
+                node_type=db_node.node_type)
     
     return db_node
 
@@ -101,7 +83,7 @@ def read_node(
     logger.info("Node retrieved successfully",
                 user_id=current_user.id,
                 node_id=node_id,
-                nfc_id=node.nfc_id)
+                name=node.name)
     
     return node
 
@@ -116,7 +98,7 @@ def update_node(
     logger.info("Node update attempt",
                 user_id=current_user.id,
                 node_id=node_id,
-                nfc_id=node_update.nfc_id)
+                name=node_update.name)
     
     db_node = session.get(Node, node_id)
     if not db_node:
@@ -136,7 +118,7 @@ def update_node(
     logger.info("Node updated successfully",
                 user_id=current_user.id,
                 node_id=node_id,
-                nfc_id=db_node.nfc_id)
+                name=db_node.name)
     
     return db_node
 
@@ -158,8 +140,7 @@ def delete_node(
                        node_id=node_id)
         raise HTTPException(status_code=404, detail="Nodo non trovato")
     
-    nfc_id = db_node.nfc_id
-    house_id = db_node.house_id
+    name = db_node.name
     
     session.delete(db_node)
     session.commit()
@@ -167,7 +148,6 @@ def delete_node(
     logger.info("Node deleted successfully",
                 user_id=current_user.id,
                 node_id=node_id,
-                nfc_id=nfc_id,
-                house_id=house_id)
+                name=name)
     
     return {"message": "Nodo eliminato con successo"} 

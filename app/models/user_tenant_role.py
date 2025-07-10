@@ -19,12 +19,6 @@ class UserTenantRole(SQLModel, table=True):
     """
     __tablename__ = "user_tenant_roles"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
     id: Optional[int] = Field(default=None, primary_key=True)
     
     # Chiavi esterne

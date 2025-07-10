@@ -19,12 +19,6 @@ class House(SQLModel, table=True):
     
     __tablename__ = "houses"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     address: str

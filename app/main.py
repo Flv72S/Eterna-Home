@@ -20,7 +20,7 @@ from app.database import get_db, engine
 from app.routers import (
     auth, users, roles, house, node, 
     document, documents, 
-    bim, bim_public, manuals, node_areas, main_areas, area_reports, 
+    bim, bim_public, bim_semantic, manuals, node_areas, main_areas, area_reports, 
     voice, local_interface, secure_area, ai_assistant, activator,
     user_house, system
 )
@@ -161,6 +161,7 @@ app.include_router(document.router, tags=["documents"])
 app.include_router(documents.router, tags=["documents"])
 app.include_router(bim.router, tags=["BIM Models"])
 app.include_router(bim_public.router, tags=["BIM Public Import"])
+app.include_router(bim_semantic.router, tags=["BIM Semantic"])
 app.include_router(manuals.router, tags=["Manuals"])
 app.include_router(node_areas.router, prefix="/api/v1/node-areas", tags=["Node Areas"])
 app.include_router(main_areas.router, prefix="/api/v1/main-areas", tags=["Main Areas"])

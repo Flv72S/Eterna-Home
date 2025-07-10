@@ -38,12 +38,6 @@ class Permission(SQLModel, table=True):
     # )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True,
-        protected_namespaces=()
-    )
 
 class PermissionCreate(PermissionBase):
     pass

@@ -40,28 +40,24 @@ class AudioLogUpdate(SQLModel):
 class AudioLog(SQLModel, table=True):
     """Modello per la rappresentazione di un AudioLog nel database."""
     __tablename__ = "audio_logs"
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id", description="ID dell'utente che ha inviato il comando")
-    node_id: Optional[int] = Field(default=None, foreign_key="nodes.id", description="ID del nodo associato")
-    house_id: Optional[int] = Field(default=None, foreign_key="houses.id", description="ID della casa associata")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Timestamp del comando")
-    audio_url: Optional[str] = Field(default=None, max_length=500, description="URL del file audio in storage")
-    transcribed_text: Optional[str] = Field(default=None, max_length=1000, description="Testo trascritto dal comando vocale")
-    response_text: Optional[str] = Field(default=None, max_length=1000, description="Risposta generata dal sistema")
-    processing_status: str = Field(default="received", description="Stato di elaborazione del comando")
+    user_id: int = Field(foreign_key="users.id")
+    house_id: int = Field(foreign_key="houses.id")
+    file_url: str
+    file_size: int
+    duration: float
+    transcript: Optional[str] = None
+    status: str = Field(default="pending")
+    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Campo tenant_id per multi-tenancy
-    tenant_id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
-        index=True,
-        description="ID del tenant per isolamento logico multi-tenant"
-    )
+    # tenant_id: uuid.UUID = Field(
+    #     default_factory=uuid.uuid4,
+    #     index=True,
+    #     description="ID del tenant per isolamento logico multi-tenant"
+    # )
     
     # Relazioni
     # user: Optional["User"] = Relationship(back_populates="audio_logs")

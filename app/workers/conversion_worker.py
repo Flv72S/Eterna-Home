@@ -33,7 +33,7 @@ except ImportError:
     celery_app = MockCeleryApp()
 
 from app.database import get_db
-from app.models.bim_model import BIMModel, BIMFormat
+from app.models.bim_model import BIMModel
 
 try:
     from app.workers.bim_worker import convert_ifc_to_gltf, convert_rvt_to_ifc, validate_bim_model
@@ -68,13 +68,14 @@ def process_bim_model(self, model_id: int, conversion_type: str = "auto") -> Dic
         if not model:
             raise Exception(f"Modello BIM {model_id} non trovato")
         
-        logger.info(f"Avvio processamento modello {model_id} ({model.format})")
+        logger.info(f"Avvio processamento modello {model_id}")
         
-        # Determina tipo di conversione basato sul formato
+        # Determina tipo di conversione basato sul formato (usando stringhe)
         if conversion_type == "auto":
-            if model.format == BIMFormat.IFC:
+            # Usa il nome del file per determinare il formato
+            if model.name.lower().endswith('.ifc'):
                 conversion_type = "ifc_to_gltf"
-            elif model.format == BIMFormat.RVT:
+            elif model.name.lower().endswith('.rvt'):
                 conversion_type = "rvt_to_ifc"
             else:
                 conversion_type = "validate_only"

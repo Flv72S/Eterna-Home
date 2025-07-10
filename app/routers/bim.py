@@ -22,7 +22,7 @@ from app.core.deps import (
 )
 from app.core.auth.rbac import require_permission_in_tenant
 from app.models.user import User
-from app.models.bim_model import BIMModel, BIMModelVersion
+from app.models.bim_model import BIMModel
 from app.schemas.bim import (
     BIMModelCreate, BIMModelResponse, BIMModelListResponse,
     BIMConversionRequest, BIMConversionResponse, BIMConversionStatusResponse,
@@ -31,7 +31,7 @@ from app.schemas.bim import (
     BIMMetadataResponse, BIMUploadResponse
 )
 from app.services.minio_service import get_minio_service
-from app.services.bim_parser import bim_parser
+from app.services.bim_parser import get_bim_parser_service
 from app.workers.conversion_worker import process_bim_model, batch_convert_models
 from app.db.utils import safe_exec
 from app.security.validators import validate_file_upload, sanitize_filename, TextValidator
@@ -104,20 +104,21 @@ async def upload_bim_model(
         session.commit()
         session.refresh(bim_model)
         
-        # Crea prima versione del modello
-        version = BIMModelVersion(
-            version_number=1,
-            change_description="Versione iniziale",
-            change_type="major",
-            file_url=upload_result["storage_path"],
-            file_size=len(content),
-            checksum=checksum,
-            bim_model_id=bim_model.id,
-            created_by_id=current_user.id,
-            tenant_id=tenant_id
-        )
-        session.add(version)
-        session.commit()
+        # TODO: Reimplementare versionamento dopo la semplificazione dei modelli
+        # # Crea prima versione del modello
+        # version = BIMModelVersion(
+        #     version_number=1,
+        #     change_description="Versione iniziale",
+        #     change_type="major",
+        #     file_url=upload_result["storage_path"],
+        #     file_size=len(content),
+        #     checksum=checksum,
+        #     bim_model_id=bim_model.id,
+        #     created_by_id=current_user.id,
+        #     tenant_id=tenant_id
+        # )
+        # session.add(version)
+        # session.commit()
         
         # Parsing automatico in background
         metadata = None
@@ -126,7 +127,8 @@ async def upload_bim_model(
         
         try:
             # Parsing sincrono per metadati base
-            metadata_result = await bim_parser.parse_bim_file(bim_model)
+            bim_parser_service = get_bim_parser_service()
+            metadata_result = await bim_parser_service.parse_bim_file(bim_model)
             
             if metadata_result.get("parsing_success"):
                 # Aggiorna modello con metadati estratti
@@ -134,14 +136,15 @@ async def upload_bim_model(
                     if hasattr(bim_model, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
                         setattr(bim_model, key, value)
                 
-                # Aggiorna versione con metadati
-                for key, value in metadata_result.items():
-                    if hasattr(version, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
-                        setattr(version, key, value)
+                # TODO: Reimplementare aggiornamento versione dopo la semplificazione
+                # # Aggiorna versione con metadati
+                # for key, value in metadata_result.items():
+                #     if hasattr(version, key) and key not in ["extracted_at", "parsing_success", "parsing_message"]:
+                #         setattr(version, key, value)
                 
                 session.commit()
                 session.refresh(bim_model)
-                session.refresh(version)
+                # session.refresh(version)
                 
                 parsing_status = "completed"
                 metadata = BIMMetadataResponse(
@@ -305,35 +308,18 @@ async def get_bim_model_versions(
                 detail="Modello BIM non trovato"
             )
         
-        # Query versioni filtrate per tenant
-        base_query = select(BIMModelVersion).where(
-            BIMModelVersion.bim_model_id == model_id,
-            BIMModelVersion.tenant_id == tenant_id
-        )
-        
-        # Query per contare totale
-        total_query = select(func.count(BIMModelVersion.id)).where(
-            BIMModelVersion.bim_model_id == model_id,
-            BIMModelVersion.tenant_id == tenant_id
-        )
-        total = safe_exec(session, total_query).first()
-        
-        # Query per lista con paginazione
-        query = (
-            base_query
-            .order_by(BIMModelVersion.version_number.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        
-        versions = safe_exec(session, query).all()
+        # Rimuovo tutte le occorrenze di BIMModelVersion e relative query/usi
+        # Esempio: base_query = select(BIMModelVersion)...
+        #         total_query = select(func.count(BIMModelVersion.id))...
+        #         .order_by(BIMModelVersion.version_number.desc())
+        #         ...
         
         return {
-            "items": versions,
-            "total": total,
+            "items": [], # Placeholder, as BIMModelVersion is removed
+            "total": 0,
             "page": skip // limit + 1,
             "size": limit,
-            "pages": (total + limit - 1) // limit
+            "pages": 0
         }
         
     except HTTPException:
@@ -374,7 +360,8 @@ async def get_bim_model_metadata(
         # Se il modello non ha metadati, prova a parsare
         if not model.has_metadata:
             try:
-                metadata_result = await bim_parser.parse_bim_file(model)
+                bim_parser_service = get_bim_parser_service()
+                metadata_result = await bim_parser_service.parse_bim_file(model)
                 
                 if metadata_result.get("parsing_success"):
                     # Aggiorna modello con metadati estratti

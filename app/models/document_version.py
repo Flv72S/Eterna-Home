@@ -1,38 +1,25 @@
-from datetime import datetime, timezone
+from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, select, Field, Relationship
-from pydantic import ConfigDict
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
-    from app.models.document import Document
-    from app.models.user import User
-    from app.models.bim_model import BIMModel
+    from .bim_model import BIMModel
+    from .document import Document
 
 class DocumentVersion(SQLModel, table=True):
-    """Modello per il versionamento dei documenti."""
     __tablename__ = "document_versions"
-    __table_args__ = {'extend_existing': True}
-
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    version_number: int = Field(index=True)
-    file_path: str
+    version_number: int
+    file_path: str = Field(max_length=500)
     file_size: int
-    checksum: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    upload_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    description: Optional[str] = Field(default=None, max_length=1000)
+    bim_model_id: Optional[int] = Field(default=None, foreign_key="bim_models.id")
+    document_id: Optional[int] = Field(default=None, foreign_key="documents.id")
     
-    # Foreign keys
-    document_id: Optional[int] = Field(default=None, foreign_key="documents.id", index=True)
-    bim_model_id: Optional[int] = Field(default=None, foreign_key="bim_models.id", index=True)
-    created_by_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
-    
-    # Relationships
-    document: Optional["Document"] = Relationship(back_populates="versions")
+    # Relazioni
     bim_model: Optional["BIMModel"] = Relationship(back_populates="versions")
-    # created_by: Optional["User"] = Relationship(back_populates="document_versions") 
+    document: Optional["Document"] = Relationship(back_populates="versions")
+    
+    model_config = {"arbitrary_types_allowed": True} 

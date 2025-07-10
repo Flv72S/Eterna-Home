@@ -13,12 +13,6 @@ class Room(SQLModel, table=True):
     """Modello per la gestione delle stanze."""
     __tablename__ = "rooms"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: Optional[str] = None
@@ -43,8 +37,7 @@ class Room(SQLModel, table=True):
     # house: "House" = Relationship(back_populates="rooms")
     nodes: List["Node"] = Relationship(back_populates="room")
     bookings: List["Booking"] = Relationship(
-        back_populates="room",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="room"
     )
 
     # TODO: Aggiungere migrazione Alembic per il campo tenant_id

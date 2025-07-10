@@ -29,38 +29,16 @@ class PhysicalActivator(SQLModel, table=True):
     
     __tablename__ = "physical_activators"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
-    # Identificativo univoco dell'attivatore
-    id: str = Field(primary_key=True, description="ID univoco dell'attivatore (es. seriale NFC)")
-    type: ActivatorType = Field(description="Tipo di attivatore fisico")
-    description: Optional[str] = Field(default=None, description="Descrizione dell'attivatore")
-    
-    # Collegamento al nodo e tenant
-    linked_node_id: int = Field(foreign_key="nodes.id", description="ID del nodo collegato")
-    tenant_id: uuid.UUID = Field(
-        index=True,
-        description="ID del tenant per isolamento logico multi-tenant"
-    )
-    
-    # Stato dell'attivatore
-    enabled: bool = Field(default=True, description="Indica se l'attivatore è attivo")
-    
-    # Metadati opzionali
-    location: Optional[str] = Field(default=None, description="Posizione fisica dell'attivatore")
-    installation_date: Optional[datetime] = Field(default=None, description="Data di installazione")
-    last_maintenance: Optional[datetime] = Field(default=None, description="Data ultima manutenzione")
-    
-    # Timestamps
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    type: str = Field(index=True)
+    linked_node_id: Optional[int] = Field(default=None, foreign_key="nodes.id")
+    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relazioni
-    linked_node: Optional["Node"] = Relationship(back_populates="physical_activators")
+    node: Optional["Node"] = Relationship(back_populates="physical_activators")
     
     def __repr__(self) -> str:
         return f"<PhysicalActivator {self.id} ({self.type}) -> Node {self.linked_node_id}>"

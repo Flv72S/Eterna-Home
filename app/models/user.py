@@ -38,28 +38,6 @@ class User(SQLModel, table=True):
     """
     __tablename__ = "users"
     __table_args__ = {'extend_existing': True}
-    
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True,
-        arbitrary_types_allowed=True,
-        populate_by_name=True,
-        extra='allow',
-        json_schema_extra={
-            "example": {
-                "id": 1,
-                "email": "user@example.com",
-                "username": "johndoe",
-                "full_name": "John Doe",
-                "is_active": True,
-                "is_superuser": False,
-                "created_at": "2024-01-01T00:00:00",
-                "updated_at": "2024-01-01T00:00:00"
-            }
-        },
-        protected_namespaces=()
-    )
 
     # Campi primari e indici
     id: Optional[int] = Field(default=None, primary_key=True)

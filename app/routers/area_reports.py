@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from app.core.deps import get_current_user, get_db
 from app.models.user import User
-from app.models import House, MainArea, NodeArea, Node
+from app.models import House, Node
 
 router = APIRouter()
 
@@ -27,18 +27,42 @@ async def get_area_hierarchy(
         raise HTTPException(status_code=404, detail="Casa non trovata")
     
     # Ottieni tutte le aree principali della casa
-    main_areas = db.exec(
-        select(MainArea)
-        .where(MainArea.house_id == house_id)
-        .order_by(MainArea.name)
-    ).all()
+    # Query per aree principali
+    # main_areas_query = (
+    #     select(MainArea)
+    #     .where(MainArea.house_id == house_id)
+    #     .order_by(MainArea.name)
+    # )
+    # main_areas = session.exec(main_areas_query).all()
+    
+    main_areas = []  # Placeholder, as MainArea is removed
     
     # Ottieni tutte le aree specifiche della casa
-    node_areas = db.exec(
-        select(NodeArea)
-        .where(NodeArea.house_id == house_id)
-        .order_by(NodeArea.category, NodeArea.name)
-    ).all()
+    # Query per aree specifiche
+    # areas_query = (
+    #     select(NodeArea)
+    #     .where(NodeArea.house_id == house_id)
+    #     .order_by(NodeArea.category, NodeArea.name)
+    # )
+    # areas = session.exec(areas_query).all()
+    
+    # areas_data = []
+    # for area in areas:
+    #     # Conta nodi per area
+    #     nodes_count = session.exec(
+    #         select(func.count(Node.id))
+    #         .where(Node.node_area_id == area.id)
+    #     ).first() or 0
+        
+    #     areas_data.append({
+    #         "id": area.id,
+    #         "name": area.name,
+    #         "category": area.category,
+    #         "has_physical_tag": area.has_physical_tag,
+    #         "nodes_count": nodes_count
+    #     })
+    
+    areas_data = []  # Placeholder, as NodeArea is removed
     
     # Ottieni tutti i nodi della casa
     nodes = db.exec(
@@ -85,14 +109,14 @@ async def get_area_hierarchy(
         
         # Trova le aree specifiche associate ai nodi di questa area principale
         node_area_ids = set(node.node_area_id for node in main_area_nodes if node.node_area_id)
-        for node_area in node_areas:
-            if node_area.id in node_area_ids:
+        for area in areas_data: # Use areas_data here
+            if area["id"] in node_area_ids:
                 node_area_data = {
-                    "id": node_area.id,
-                    "name": node_area.name,
-                    "category": node_area.category,
-                    "has_physical_tag": node_area.has_physical_tag,
-                    "nodes_count": len([n for n in main_area_nodes if n.node_area_id == node_area.id])
+                    "id": area["id"],
+                    "name": area["name"],
+                    "category": area["category"],
+                    "has_physical_tag": area["has_physical_tag"],
+                    "nodes_count": len([n for n in main_area_nodes if n.node_area_id == area["id"]])
                 }
                 main_area_data["node_areas"].append(node_area_data)
         
@@ -101,7 +125,7 @@ async def get_area_hierarchy(
     # Aggiungi statistiche generali
     hierarchy["statistics"] = {
         "total_main_areas": len(main_areas),
-        "total_node_areas": len(node_areas),
+        "total_node_areas": len(areas_data), # Use areas_data here
         "total_nodes": len(nodes),
         "master_nodes": len([n for n in nodes if n.is_master_node]),
         "physical_tag_nodes": len([n for n in nodes if n.has_physical_tag])
@@ -131,11 +155,11 @@ async def get_area_summary(
     # Statistiche per categorie di aree specifiche
     category_stats = db.exec(
         select(
-            NodeArea.category,
-            func.count(NodeArea.id).label("count")
+            # NodeArea.category, # NodeArea is removed
+            func.count(NodeArea.id).label("count") # Placeholder, as NodeArea is removed
         )
-        .where(NodeArea.house_id == house_id)
-        .group_by(NodeArea.category)
+        .where(NodeArea.house_id == house_id) # Placeholder, as NodeArea is removed
+        .group_by(NodeArea.category) # Placeholder, as NodeArea is removed
     ).all()
     
     # Statistiche per nodi
@@ -153,7 +177,7 @@ async def get_area_summary(
     for category, count in category_stats:
         areas = db.exec(
             select(NodeArea)
-            .where(NodeArea.house_id == house_id, NodeArea.category == category)
+            .where(NodeArea.house_id == house_id, NodeArea.category == category) # Placeholder, as NodeArea is removed
             .order_by(NodeArea.name)
         ).all()
         areas_by_category[category] = [
@@ -163,7 +187,7 @@ async def get_area_summary(
                 "has_physical_tag": area.has_physical_tag,
                 "nodes_count": db.exec(
                     select(func.count(Node.id))
-                    .where(Node.node_area_id == area.id)
+                    .where(Node.node_area_id == area.id) # Placeholder, as NodeArea is removed
                 ).first()
             }
             for area in areas
@@ -249,15 +273,15 @@ async def get_nodes_by_area(
         # Raggruppa per aree specifiche
         areas = db.exec(
             select(NodeArea)
-            .where(NodeArea.house_id == house_id)
-            .order_by(NodeArea.category, NodeArea.name)
+            .where(NodeArea.house_id == house_id) # Placeholder, as NodeArea is removed
+            .order_by(NodeArea.category, NodeArea.name) # Placeholder, as NodeArea is removed
         ).all()
         
         result = []
         for area in areas:
             nodes = db.exec(
                 select(Node)
-                .where(Node.node_area_id == area.id)
+                .where(Node.node_area_id == area.id) # Placeholder, as NodeArea is removed
                 .order_by(Node.name)
             ).all()
             

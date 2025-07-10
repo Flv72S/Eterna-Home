@@ -3,7 +3,7 @@ from .document import Document
 from .document_version import DocumentVersion
 from .house import House
 from .user_house import UserHouse
-from .node import Node, NodeArea, MainArea
+from .node import Node
 from .room import Room
 from .booking import Booking
 from .maintenance import MaintenanceRecord
@@ -13,7 +13,8 @@ from .permission import Permission
 from .role_permission import RolePermission
 from .user_permission import UserPermission
 from .user_tenant_role import UserTenantRole
-from .bim_model import BIMModel, BIMFormat, BIMSoftware, BIMLevelOfDetail
+from .bim_model import BIMModel
+from .bim_fragment import BIMFragment
 from .audio_log import AudioLog, AudioLogCreate, AudioLogUpdate
 from .ai_interaction import (
     AIAssistantInteraction, 
@@ -38,8 +39,6 @@ __all__ = [
     'House',
     'UserHouse',
     'Node',
-    'NodeArea',
-    'MainArea',
     'Room',
     'Booking',
     'MaintenanceRecord',
@@ -50,9 +49,7 @@ __all__ = [
     'UserPermission',
     'UserTenantRole',
     'BIMModel',
-    'BIMFormat',
-    'BIMSoftware',
-    'BIMLevelOfDetail',
+    'BIMFragment',
     'AudioLog',
     'AudioLogCreate',
     'AudioLogUpdate',

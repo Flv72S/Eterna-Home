@@ -14,12 +14,6 @@ class Document(SQLModel, table=True):
     """Modello per la gestione dei documenti."""
     __tablename__ = "documents"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(index=True)
     description: Optional[str] = None
@@ -61,8 +55,7 @@ class Document(SQLModel, table=True):
     # Relazioni
     # node: Optional["Node"] = Relationship(back_populates="documents")
     versions: List["DocumentVersion"] = Relationship(
-        back_populates="document",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="document"
     )
 
     # Metodi multi-tenant (simulazione del mixin)

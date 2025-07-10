@@ -25,12 +25,12 @@ from app.core.deps import (
 )
 from app.core.auth.rbac import require_permission_in_tenant
 from app.models.user import User
-from app.models.bim_model import BIMModel, BIMModelVersion
+from app.models.bim_model import BIMModel
 from app.models.house import House
 from app.schemas.bim import BIMModelCreate, BIMModelResponse
 from app.services.minio_service import get_minio_service
 from app.services.bim_public_import import BIMPublicImportService
-from app.services.bim_parser import bim_parser
+from app.services.bim_parser import get_bim_parser_service
 from app.db.utils import safe_exec
 from app.security.validators import sanitize_filename, TextValidator
 from app.utils.security import log_security_event
@@ -172,24 +172,10 @@ async def download_bim_from_public_repository(
         session.commit()
         session.refresh(bim_model)
         
-        # Crea prima versione del modello
-        version = BIMModelVersion(
-            version_number=1,
-            change_description=f"Importazione da {source_repository}",
-            change_type="major",
-            file_url=upload_result["storage_path"],
-            file_size=len(file_content),
-            checksum=checksum,
-            bim_model_id=bim_model.id,
-            created_by_id=current_user.id,
-            tenant_id=tenant_id
-        )
-        session.add(version)
-        session.commit()
-        
         # Parsing automatico dei metadati
         try:
-            metadata_result = await bim_parser.parse_bim_file(bim_model)
+            bim_parser_service = get_bim_parser_service()
+            metadata_result = await bim_parser_service.parse_bim_file(bim_model)
             
             if metadata_result.get("parsing_success"):
                 # Aggiorna modello con metadati estratti

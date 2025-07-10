@@ -1,67 +1,68 @@
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 
 class MainAreaBase(BaseModel):
-    """Schema base per MainArea."""
-    model_config = ConfigDict(from_attributes=True)
-    
-    name: str = Field(..., min_length=1, max_length=100, description="Nome dell'area principale")
-    description: Optional[str] = Field(None, max_length=500, description="Descrizione dell'area")
-    
+    name: str = Field(..., max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    floor_level: int = Field(default=0)
+    total_area_sqm: Optional[float] = Field(None, ge=0)
+
     @field_validator('name')
     @classmethod
     def validate_name(cls, v):
-        if not v.strip():
-            raise ValueError('Il nome non può essere vuoto')
+        if not v or not v.strip():
+            raise ValueError('Name cannot be empty')
         return v.strip()
-    
+
     @field_validator('description')
     @classmethod
     def validate_description(cls, v):
-        if v is not None and not v.strip():
-            return None
-        return v.strip() if v else v
+        if v is not None and len(v) > 1000:
+            raise ValueError('Description cannot exceed 1000 characters')
+        return v
 
 class MainAreaCreate(MainAreaBase):
-    """Schema per la creazione di un MainArea."""
-    house_id: int = Field(..., description="ID della casa associata")
+    house_id: int
+    tenant_id: str
 
 class MainAreaUpdate(BaseModel):
-    """Schema per l'aggiornamento di un MainArea."""
-    model_config = ConfigDict(from_attributes=True)
-    
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    
+    name: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    floor_level: Optional[int] = None
+    total_area_sqm: Optional[float] = Field(None, ge=0)
+
     @field_validator('name')
     @classmethod
     def validate_name(cls, v):
-        if v is not None and not v.strip():
-            raise ValueError('Il nome non può essere vuoto')
+        if v is not None and (not v or not v.strip()):
+            raise ValueError('Name cannot be empty')
         return v.strip() if v else v
-    
+
     @field_validator('description')
     @classmethod
     def validate_description(cls, v):
-        if v is not None and not v.strip():
-            return None
-        return v.strip() if v else v
+        if v is not None and len(v) > 1000:
+            raise ValueError('Description cannot exceed 1000 characters')
+        return v
+
+class MainArea(MainAreaBase):
+    id: int
+    house_id: int
+    tenant_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 class MainAreaResponse(MainAreaBase):
-    """Schema per la risposta di un MainArea."""
     id: int
     house_id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
-    # Relazioni
-    nodes_count: Optional[int] = Field(None, description="Numero di nodi associati")
 
 class MainAreaListResponse(BaseModel):
-    """Schema per la lista di MainArea."""
     model_config = ConfigDict(from_attributes=True)
-    
     items: List[MainAreaResponse]
     total: int
     page: int

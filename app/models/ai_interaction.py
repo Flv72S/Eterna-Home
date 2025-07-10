@@ -15,39 +15,14 @@ class AIAssistantInteraction(SQLModel, table=True):
     Ogni interazione è isolata per tenant e utente.
     """
     
-    __tablename__ = "ai_interactions"
+    __tablename__ = "ai_assistant_interactions"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True,
-        arbitrary_types_allowed=True
-    )
-    
-    id: int = Field(default=None, primary_key=True)
-    tenant_id: uuid.UUID = Field(index=True, nullable=False)
-    user_id: int = Field(index=True, nullable=False)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    message: str
+    response: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Contenuto dell'interazione
-    prompt: str = Field(nullable=False)
-    response: str = Field(nullable=False)
-    
-    # Metadati opzionali
-    context: Optional[str] = Field(default=None, description="Contesto JSON dell'interazione")
-    session_id: Optional[str] = Field(default=None, index=True)
-    interaction_type: Optional[str] = Field(default="chat")  # chat, query, analysis, etc.
-    
-    # Statistiche
-    prompt_tokens: Optional[int] = Field(default=None)
-    response_tokens: Optional[int] = Field(default=None)
-    total_tokens: Optional[int] = Field(default=None)
-    
-    # Stato dell'interazione
-    status: str = Field(default="completed")  # pending, completed, failed, cancelled
-    error_message: Optional[str] = Field(default=None)
-    
-    # Audit fields
+    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

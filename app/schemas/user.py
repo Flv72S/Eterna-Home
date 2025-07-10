@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, ValidationError
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, validator, ValidationError, field_validator
 from app.models.enums import UserRole
 import re
 
@@ -96,6 +96,13 @@ class UserUpdate(UserBase):
     is_superuser: Optional[bool] = Field(None, description="Whether the user has superuser privileges")
     phone_number: Optional[str] = Field(None, description="User's new phone number")
     role: Optional[str] = Field(None, description="Ruolo principale dell'utente")
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        if v is not None and len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return v
 
 class UserInDBBase(UserBase):
     id: int = Field(..., description="User's unique identifier")

@@ -17,12 +17,6 @@ class UserHouse(SQLModel, table=True):
     
     __tablename__ = "user_houses"
     
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_by_name=True,
-        str_strip_whitespace=True
-    )
-    
     # Chiavi primarie composite
     user_id: int = Field(foreign_key="users.id", primary_key=True)
     house_id: int = Field(foreign_key="houses.id", primary_key=True)
