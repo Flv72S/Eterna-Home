@@ -49,7 +49,7 @@ class BIMFragmentBase(BaseModel):
 
 class BIMFragmentCreate(BIMFragmentBase):
     """Schema per la creazione di un BIMFragment."""
-    tenant_id: uuid.UUID = Field(
+    tenant_id: str = Field(
         description="ID del tenant per isolamento multi-tenant"
     )
     house_id: int = Field(
@@ -57,10 +57,6 @@ class BIMFragmentCreate(BIMFragmentBase):
     )
     bim_model_id: int = Field(
         description="ID del modello BIM di origine"
-    )
-    node_id: Optional[int] = Field(
-        default=None,
-        description="ID del nodo Eterna associato"
     )
 
 class BIMFragmentUpdate(BaseModel):
@@ -106,20 +102,14 @@ class BIMFragmentUpdate(BaseModel):
         default=None,
         description="Metadati aggiuntivi dell'entità BIM"
     )
-    node_id: Optional[int] = Field(
-        default=None,
-        description="ID del nodo Eterna associato"
-    )
 
 class BIMFragmentRead(BIMFragmentBase):
     """Schema per la lettura di un BIMFragment."""
     id: int = Field(description="ID del frammento")
-    tenant_id: uuid.UUID = Field(description="ID del tenant")
+    tenant_id: str = Field(description="ID del tenant")
     house_id: int = Field(description="ID della casa")
     bim_model_id: int = Field(description="ID del modello BIM")
-    node_id: Optional[int] = Field(description="ID del nodo Eterna associato")
     created_at: datetime = Field(description="Data di creazione")
-    updated_at: datetime = Field(description="Data di ultimo aggiornamento")
 
     # Campi calcolati per il frontend
     display_name: str = Field(description="Nome di visualizzazione")

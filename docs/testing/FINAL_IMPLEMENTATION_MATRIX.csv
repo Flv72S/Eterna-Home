@@ -1,0 +1,26 @@
+Micro-Step,Test,Status,Description
+A,UI vocale fallback,FAILED,Test UI vocale con fallback per utenti ciechi
+A,Input manuale feedback,FAILED,Test input manuale e feedback visivo per utenti sordi
+A,Screen reader ARIA,FAILED,Test screen reader e markup ARIA sulle pagine
+A,Riduzione movimenti,FAILED,Test riduzione movimenti per utenti con epilessia
+A,Accesso vocale protetto,FAILED,Test accesso vocale protetto per utenti cognitivamente fragili
+B,CRUD aree,PASSED,Test CRUD aree (nodi ambientali)
+B,Associazione nodo-house,PASSED,Test associazione nodo → house
+B,Protezione RBAC/PBAC,PASSED,Test protezione RBAC/PBAC tra case
+B,Cambio casa attiva,PASSED,"Test cambio ""casa attiva"" → filtra nodi corretti"
+C,Associazione attivatori,FAILED,Test associazione attivatori NFC/BLE → nodo
+C,Trigger attivatore,FAILED,Test trigger da attivatore → verifica mappatura
+C,Eventi sensori,FAILED,Test ricezione evento da sensore (mock IoT)
+C,Logging attivazioni,FAILED,Test logging attivazioni
+D,Voice commands,FAILED,Test POST /voice/commands con prompt e response
+D,Logging AI tenant,FAILED,Verifica logging AI per tenant_id e house_id
+D,Isolamento prompt,FAILED,Test isolamento prompt AI tra tenant
+D,Blocco prompt sospetto,FAILED,Test blocco prompt sospetto/injection
+E,Route protette,FAILED,Test accesso a route protette da permessi elevati
+E,Logging security,FAILED,Test logging eventi security.json
+E,Blocco accesso,FAILED,Test blocco accesso non autorizzato (403)
+E,Eventi critici,FAILED,"Test trigger eventi critici (upload, AI, configurazioni)"
+F,UI utenti,FAILED,"Test UI utenti → modifica ruoli, MFA"
+F,Visualizzazione permessi,FAILED,Test visualizzazione utenti/case/permessi
+F,Assegnazione ruoli,FAILED,Test assegnazione ruolo multi-house
+F,Visualizzazione log,FAILED,Test visualizzazione log su admin

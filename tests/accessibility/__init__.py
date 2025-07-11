@@ -1,0 +1,1 @@
+# Test di accessibilità per utenti con disabilità 

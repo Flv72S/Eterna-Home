@@ -25,10 +25,10 @@ class House(SQLModel, table=True):
     owner_id: int = Field(foreign_key="users.id")
     
     # Campo tenant_id per multi-tenancy
-    tenant_id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
         index=True,
-        description="ID del tenant per isolamento logico multi-tenant"
+        description="ID del tenant"
     )
     
     # Timestamps

@@ -26,7 +26,8 @@ router = APIRouter(prefix="/api/v1/bim", tags=["BIM Semantic"])
 async def upload_bim_semantic(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    parser_service = Depends(get_bim_parser_service)
 ) -> BIMUploadResponse:
     """
     Carica un file BIM e ne estrae i frammenti semantici.
@@ -54,9 +55,7 @@ async def upload_bim_semantic(
             )
 
         # Ottieni servizio parser
-        parser_service = get_bim_parser_service()
-        
-        # Parsa il file BIM
+        # parser_service ora è una dependency FastAPI
         bim_model, fragments = parser_service.parse_bim_file(
             file=file,
             tenant_id=current_user.tenant_id,
@@ -65,7 +64,7 @@ async def upload_bim_semantic(
         )
         
         # Calcola statistiche
-        nodes_created = sum(1 for f in fragments if f.node_id is not None)
+        nodes_created = sum(1 for f in fragments if f.nodes and len(f.nodes) > 0)
         processing_time = time.time() - start_time
         
         logger.info(
@@ -79,11 +78,10 @@ async def upload_bim_semantic(
 
         # Log evento di sicurezza
         log_security_event(
-            event="bim_semantic_upload",
-            status="success",
+            event_type="bim_semantic_upload",
             user_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            metadata={
+            tenant_id=str(current_user.tenant_id),
+            details={
                 "bim_model_id": bim_model.id,
                 "fragments_count": len(fragments),
                 "nodes_created": nodes_created,
@@ -110,11 +108,10 @@ async def upload_bim_semantic(
         )
         
         log_security_event(
-            event="bim_semantic_upload",
-            status="failed",
+            event_type="bim_semantic_upload",
             user_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            metadata={
+            tenant_id=str(current_user.tenant_id),
+            details={
                 "error": str(e),
                 "filename": file.filename
             }
@@ -181,11 +178,12 @@ async def get_bim_fragments(
         if max_area is not None:
             query = query.where(BIMFragment.area <= max_area)
         
-        if has_node is not None:
-            if has_node:
-                query = query.where(BIMFragment.node_id.is_not(None))
-            else:
-                query = query.where(BIMFragment.node_id.is_(None))
+        # Adesso il filtro has_node va gestito a livello di post-query, filtrando i risultati in Python:
+        # if has_node is not None:
+        #     if has_node:
+        #         query = query.where(BIMFragment.node_id.is_not(None))
+        #     else:
+        #         query = query.where(BIMFragment.node_id.is_(None))
         
         if search:
             query = query.where(BIMFragment.entity_name.ilike(f"%{search}%"))
@@ -195,7 +193,32 @@ async def get_bim_fragments(
             BIMFragment.tenant_id == current_user.tenant_id,
             BIMFragment.house_id == house_id
         )
-        total = len(session.exec(total_query).all())
+        
+        # Applica gli stessi filtri al conteggio totale
+        if entity_type:
+            total_query = total_query.where(BIMFragment.entity_type == entity_type)
+        
+        if level is not None:
+            total_query = total_query.where(BIMFragment.level == level)
+        
+        if min_area is not None:
+            total_query = total_query.where(BIMFragment.area >= min_area)
+        
+        if max_area is not None:
+            total_query = total_query.where(BIMFragment.area <= max_area)
+        
+        if search:
+            total_query = total_query.where(BIMFragment.entity_name.ilike(f"%{search}%"))
+        
+        total_fragments = session.exec(total_query).all()
+        total = len(total_fragments)
+        
+        # Se c'è il filtro has_node, applicalo anche al totale
+        if has_node is not None:
+            if has_node:
+                total = len([f for f in total_fragments if f.nodes and len(f.nodes) > 0])
+            else:
+                total = len([f for f in total_fragments if not f.nodes or len(f.nodes) == 0])
 
         # Applica paginazione
         offset = (page - 1) * size
@@ -203,6 +226,11 @@ async def get_bim_fragments(
 
         # Esegui query
         fragments = session.exec(query).all()
+        if has_node is not None:
+            if has_node:
+                fragments = [f for f in fragments if f.nodes and len(f.nodes) > 0]
+            else:
+                fragments = [f for f in fragments if not f.nodes or len(f.nodes) == 0]
 
         # Converti in schema di risposta
         fragment_reads = []
@@ -212,17 +240,15 @@ async def get_bim_fragments(
                 tenant_id=fragment.tenant_id,
                 house_id=fragment.house_id,
                 bim_model_id=fragment.bim_model_id,
-                node_id=fragment.node_id,
                 entity_type=fragment.entity_type,
                 entity_name=fragment.entity_name,
                 area=fragment.area,
                 volume=fragment.volume,
                 level=fragment.level,
                 ifc_guid=fragment.ifc_guid,
-                bounding_box=fragment.bounding_box,
-                metadata=fragment.metadata,
+                bounding_box=fragment.bounding_box_dict,
+                metadata=fragment.metadata_dict,
                 created_at=fragment.created_at,
-                updated_at=fragment.updated_at,
                 display_name=fragment.display_name,
                 has_geometry=fragment.has_geometry,
                 dimensions=fragment.dimensions
@@ -383,17 +409,15 @@ async def get_bim_fragment(
             tenant_id=fragment.tenant_id,
             house_id=fragment.house_id,
             bim_model_id=fragment.bim_model_id,
-            node_id=fragment.node_id,
             entity_type=fragment.entity_type,
             entity_name=fragment.entity_name,
             area=fragment.area,
             volume=fragment.volume,
             level=fragment.level,
             ifc_guid=fragment.ifc_guid,
-            bounding_box=fragment.bounding_box,
-            metadata=fragment.metadata,
+            bounding_box=fragment.bounding_box_dict,
+            metadata=fragment.metadata_dict,
             created_at=fragment.created_at,
-            updated_at=fragment.updated_at,
             display_name=fragment.display_name,
             has_geometry=fragment.has_geometry,
             dimensions=fragment.dimensions
@@ -463,11 +487,10 @@ async def delete_bim_fragment(
         )
 
         log_security_event(
-            event="bim_fragment_delete",
-            status="success",
+            event_type="bim_fragment_delete",
             user_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            metadata={
+            tenant_id=str(current_user.tenant_id),
+            details={
                 "fragment_id": fragment_id,
                 "house_id": house_id,
                 "entity_name": fragment.entity_name

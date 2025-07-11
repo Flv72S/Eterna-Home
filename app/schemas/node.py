@@ -16,6 +16,6 @@ class NodeResponse(BaseModel):
     main_area_id: Optional[int] = None
     is_master_node: bool = False
     has_physical_tag: bool = True
-    tenant_id: uuid.UUID
+    tenant_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None 

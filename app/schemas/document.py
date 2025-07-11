@@ -77,7 +77,7 @@ class DocumentRead(DocumentBase):
     """Schema for reading a document"""
     id: int
     owner_id: int
-    tenant_id: UUID
+    tenant_id: str
     is_encrypted: bool
     created_at: datetime
     updated_at: datetime

@@ -23,7 +23,7 @@ class UserTenantRole(SQLModel, table=True):
     
     # Chiavi esterne
     user_id: int = Field(foreign_key="users.id", index=True, description="ID dell'utente")
-    tenant_id: uuid.UUID = Field(index=True, description="ID del tenant")
+    tenant_id: str = Field(index=True, description="ID del tenant")
     
     # Ruolo dell'utente nel tenant specifico
     role: str = Field(..., description="Ruolo dell'utente all'interno del tenant")
@@ -49,7 +49,7 @@ class UserTenantRole(SQLModel, table=True):
     
     # Metodi di classe per query comuni
     @classmethod
-    def get_user_roles_in_tenant(cls, session, user_id: int, tenant_id: uuid.UUID):
+    def get_user_roles_in_tenant(cls, session, user_id: int, tenant_id: str):
         """Ottiene tutti i ruoli di un utente in un tenant specifico."""
         from sqlmodel import select
         query = select(cls).where(
@@ -72,7 +72,7 @@ class UserTenantRole(SQLModel, table=True):
         return [row.tenant_id for row in result.all()]
     
     @classmethod
-    def get_tenant_users(cls, session, tenant_id: uuid.UUID):
+    def get_tenant_users(cls, session, tenant_id: str):
         """Ottiene tutti gli utenti associati a un tenant."""
         from sqlmodel import select
         query = select(cls).where(
@@ -83,7 +83,7 @@ class UserTenantRole(SQLModel, table=True):
         return list(result.all())
     
     @classmethod
-    def has_role_in_tenant(cls, session, user_id: int, tenant_id: uuid.UUID, role: str) -> bool:
+    def has_role_in_tenant(cls, session, user_id: int, tenant_id: str, role: str) -> bool:
         """Verifica se un utente ha un ruolo specifico in un tenant."""
         from sqlmodel import select
         query = select(cls).where(
@@ -96,7 +96,7 @@ class UserTenantRole(SQLModel, table=True):
         return result.first() is not None
     
     @classmethod
-    def has_any_role_in_tenant(cls, session, user_id: int, tenant_id: uuid.UUID, roles: list) -> bool:
+    def has_any_role_in_tenant(cls, session, user_id: int, tenant_id: str, roles: list) -> bool:
         """Verifica se un utente ha almeno uno dei ruoli specificati in un tenant."""
         from sqlmodel import select
         query = select(cls).where(
@@ -109,7 +109,7 @@ class UserTenantRole(SQLModel, table=True):
         return result.first() is not None
     
     @classmethod
-    def add_user_to_tenant(cls, session, user_id: int, tenant_id: uuid.UUID, role: str):
+    def add_user_to_tenant(cls, session, user_id: int, tenant_id: str, role: str):
         """Aggiunge un utente a un tenant con un ruolo specifico."""
         from sqlmodel import select
         # Verifica se l'associazione esiste già
@@ -139,7 +139,7 @@ class UserTenantRole(SQLModel, table=True):
         return existing or new_association
     
     @classmethod
-    def remove_user_from_tenant(cls, session, user_id: int, tenant_id: uuid.UUID):
+    def remove_user_from_tenant(cls, session, user_id: int, tenant_id: str):
         """Rimuove un utente da un tenant (disattiva l'associazione)."""
         from sqlmodel import select
         association = session.exec(

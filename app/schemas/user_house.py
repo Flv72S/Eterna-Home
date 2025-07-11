@@ -24,7 +24,7 @@ class UserHouseCreate(UserHouseBase):
     """Schema per la creazione di una associazione UserHouse."""
     user_id: int = Field(description="ID dell'utente")
     house_id: int = Field(description="ID della casa")
-    tenant_id: uuid.UUID = Field(description="ID del tenant")
+    tenant_id: str = Field(description="ID del tenant")
 
 class UserHouseUpdate(BaseModel):
     """Schema per l'aggiornamento di una associazione UserHouse."""

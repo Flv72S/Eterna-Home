@@ -19,7 +19,11 @@ class Booking(SQLModel, table=True):
     start_time: datetime
     end_time: datetime
     status: str = Field(default="pending")
-    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        index=True,
+        description="ID del tenant"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     

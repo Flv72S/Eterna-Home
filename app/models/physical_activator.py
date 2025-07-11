@@ -33,7 +33,11 @@ class PhysicalActivator(SQLModel, table=True):
     name: str = Field(index=True)
     type: str = Field(index=True)
     linked_node_id: Optional[int] = Field(default=None, foreign_key="nodes.id")
-    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        index=True,
+        description="ID del tenant"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
@@ -55,7 +59,7 @@ class PhysicalActivator(SQLModel, table=True):
             return "Disabilitato"
         return "Attivo"
     
-    def can_be_activated_by_user(self, user_tenant_id: uuid.UUID) -> bool:
+    def can_be_activated_by_user(self, user_tenant_id: str) -> bool:
         """
         Verifica se l'attivatore può essere attivato da un utente del tenant specificato.
         

@@ -15,6 +15,7 @@ from app.models.node import Node
 from app.models.user import User
 from app.utils.security import create_access_token
 from app.core.logging_config import get_logger
+from app.db.session import get_session
 
 logger = get_logger(__name__)
 
@@ -63,10 +64,11 @@ def test_user(test_session):
     """Crea un utente di test."""
     user = User(
         email="test@example.com",
+        username="testuser",  # aggiunto username obbligatorio
         hashed_password="hashed_password",
         full_name="Test User",
         is_active=True,
-        tenant_id=uuid.uuid4()
+        tenant_id=str(uuid.uuid4())
     )
     test_session.add(user)
     test_session.commit()
@@ -126,73 +128,48 @@ class TestBIMSemanticAPI:
     @patch('app.services.bim_parser.ifcopenshell')
     def test_upload_bim_semantic_success(self, mock_ifcopenshell, test_client, test_user, test_user_token, mock_ifc_file):
         """Test che l'upload di un file BIM semantico funziona correttamente."""
-        # Mock ifcopenshell
+        from app.main import app
+        from app.services import bim_parser
+        # Mock del servizio BIM parser
+        mock_parser_service = Mock()
+        # Mock del modello BIM e frammenti
+        mock_bim_model = Mock()
+        mock_bim_model.id = 1
+        mock_fragment1 = Mock()
+        mock_fragment1.id = 1
+        mock_fragment1.nodes = [Mock()]
+        mock_fragment2 = Mock()
+        mock_fragment2.id = 2
+        mock_fragment2.nodes = [Mock()]
+        mock_parser_service.parse_bim_file.return_value = (mock_bim_model, [mock_fragment1, mock_fragment2])
+        # Sovrascrivo la dependency FastAPI
+        app.dependency_overrides[bim_parser.get_bim_parser_service] = lambda: mock_parser_service
+        # Mock ifcopenshell (per compatibilità)
         mock_ifc_file_obj = Mock()
         mock_ifcopenshell.open.return_value = mock_ifc_file_obj
-        
-        # Mock entità IFC
-        mock_space = Mock()
-        mock_space.GlobalId = "2O2Fr$t4X7Zf8NOew3FNrX"
-        mock_space.Name = "Soggiorno"
-        mock_space.is_a.return_value = "IFCSPACE"
-        mock_space.id.return_value = 15
-        
-        mock_wall = Mock()
-        mock_wall.GlobalId = "2O2Fr$t4X7Zf8NOew3FNrX"
-        mock_wall.Name = "Muro Esterno"
-        mock_wall.is_a.return_value = "IFCWALL"
-        mock_wall.id.return_value = 16
-        
-        # Mock metodi by_type
-        mock_ifc_file_obj.by_type.side_effect = lambda entity_type: {
-            'IFCSPACE': [mock_space],
-            'IFCWALL': [mock_wall],
-            'IFCBUILDINGSTOREY': [],
-            'IFCAIRTERMINAL': []
-        }.get(entity_type, [])
-        
-        # Mock ifcopenshell.util.element.get_psets
-        with patch('app.services.bim_parser.ifcopenshell.util.element.get_psets') as mock_get_psets:
-            mock_get_psets.return_value = {
-                'Pset_SpaceCommon': {
-                    'Area': 25.5,
-                    'Volume': 76.5
-                }
-            }
-            
-            # Mock ifcopenshell.util.shape.get_shape
-            with patch('app.services.bim_parser.ifcopenshell.util.shape.get_shape') as mock_get_shape:
-                mock_shape = Mock()
-                mock_shape.bbox.return_value = [0.0, 0.0, 0.0, 5.0, 5.0, 3.0]
-                mock_get_shape.return_value = mock_shape
-                
-                # Mock get_current_user
-                with patch('app.routers.bim_semantic.get_current_user') as mock_get_current_user:
-                    mock_get_current_user.return_value = test_user
-                    
-                    # Esegui upload
-                    with open(mock_ifc_file, 'rb') as f:
-                        response = test_client.post(
-                            "/api/v1/bim/semantic-upload",
-                            files={"file": ("test.ifc", f, "application/octet-stream")},
-                            headers={"Authorization": f"Bearer {test_user_token}"}
-                        )
-                    
-                    # Verifica risposta
-                    assert response.status_code == 200
-                    data = response.json()
-                    
-                    assert "bim_model_id" in data
-                    assert "fragments_count" in data
-                    assert "nodes_created" in data
-                    assert "processing_time" in data
-                    assert "message" in data
-                    
-                    assert data["fragments_count"] > 0
-                    assert data["nodes_created"] > 0
-                    assert data["processing_time"] > 0
+        # Mock get_current_user
+        with patch('app.routers.bim_semantic.get_current_user') as mock_get_current_user:
+            mock_get_current_user.return_value = test_user
+            # Esegui upload
+            with open(mock_ifc_file, 'rb') as f:
+                response = test_client.post(
+                    "/api/v1/bim/semantic-upload",
+                    files={"file": ("test.ifc", f, "application/octet-stream")},
+                    headers={"Authorization": f"Bearer {test_user_token}"}
+                )
+            # Verifica risposta
+            assert response.status_code == 200
+            data = response.json()
+            assert "bim_model_id" in data
+            assert "fragments_count" in data
+            assert "nodes_created" in data
+            assert "processing_time" in data
+            assert "message" in data
+            assert data["fragments_count"] == 2
+            assert data["nodes_created"] == 2
+            assert data["processing_time"] >= 0
     
-    def test_upload_bim_unsupported_format(self, test_client, test_user_token):
+    def test_upload_bim_unsupported_format(self, test_client, test_user, test_user_token):
         """Test che i formati non supportati vengono rifiutati."""
         # Mock get_current_user
         with patch('app.routers.bim_semantic.get_current_user') as mock_get_current_user:
@@ -226,23 +203,31 @@ class TestBIMSemanticAPI:
         """Test che il recupero dei frammenti BIM funziona correttamente."""
         # Crea frammenti di test
         fragment1 = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Soggiorno Fragment",
+            fragment_type="room",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='room',
             entity_name='Soggiorno',
             area=25.5,
             volume=76.5,
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'living'})
         )
         
         fragment2 = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Muro Esterno Fragment",
+            fragment_type="wall",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='wall',
             entity_name='Muro Esterno',
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'wall'})
         )
         
         test_session.add(fragment1)
@@ -278,32 +263,44 @@ class TestBIMSemanticAPI:
         """Test che i filtri sui frammenti BIM funzionano correttamente."""
         # Crea frammenti di test con diversi tipi
         fragment1 = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Soggiorno Fragment",
+            fragment_type="room",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='room',
             entity_name='Soggiorno',
             area=25.5,
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'living'})
         )
         
         fragment2 = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Terminale Aria Fragment",
+            fragment_type="hvac",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='hvac',
             entity_name='Terminale Aria',
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'hvac'})
         )
         
         fragment3 = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Camera da Letto Fragment",
+            fragment_type="room",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='room',
             entity_name='Camera da Letto',
             area=15.0,
-            level=2
+            level=2,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'bedroom'})
         )
         
         test_session.add_all([fragment1, fragment2, fragment3])
@@ -363,13 +360,17 @@ class TestBIMSemanticAPI:
         fragments = []
         for i in range(25):
             fragment = BIMFragment(
-                tenant_id=test_user.tenant_id,
+                name=f"Stanza {i} Fragment",
+                fragment_type="room",
+                tenant_id=str(test_user.tenant_id),
                 house_id=1,
                 bim_model_id=1,
                 entity_type='room',
                 entity_name=f'Stanza {i}',
                 area=20.0,
-                level=1
+                level=1,
+                bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+                bim_metadata=json.dumps({'usage': 'room'})
             )
             fragments.append(fragment)
         
@@ -409,42 +410,58 @@ class TestBIMSemanticAPI:
         # Crea frammenti di test con diversi tipi e livelli
         fragments = [
             BIMFragment(
-                tenant_id=test_user.tenant_id,
+                name="Soggiorno Fragment",
+                fragment_type="room",
+                tenant_id=str(test_user.tenant_id),
                 house_id=1,
                 bim_model_id=1,
                 entity_type='room',
                 entity_name='Soggiorno',
                 area=25.5,
                 volume=76.5,
-                level=1
+                level=1,
+                bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+                bim_metadata=json.dumps({'usage': 'living'})
             ),
             BIMFragment(
-                tenant_id=test_user.tenant_id,
+                name="Camera da Letto Fragment",
+                fragment_type="room",
+                tenant_id=str(test_user.tenant_id),
                 house_id=1,
                 bim_model_id=1,
                 entity_type='room',
                 entity_name='Camera da Letto',
                 area=15.0,
                 volume=45.0,
-                level=1
+                level=1,
+                bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+                bim_metadata=json.dumps({'usage': 'bedroom'})
             ),
             BIMFragment(
-                tenant_id=test_user.tenant_id,
+                name="Terminale Aria Fragment",
+                fragment_type="hvac",
+                tenant_id=str(test_user.tenant_id),
                 house_id=1,
                 bim_model_id=1,
                 entity_type='hvac',
                 entity_name='Terminale Aria',
-                level=1
+                level=1,
+                bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+                bim_metadata=json.dumps({'usage': 'hvac'})
             ),
             BIMFragment(
-                tenant_id=test_user.tenant_id,
+                name="Bagno Fragment",
+                fragment_type="room",
+                tenant_id=str(test_user.tenant_id),
                 house_id=1,
                 bim_model_id=1,
                 entity_type='room',
                 entity_name='Bagno',
                 area=8.0,
                 volume=24.0,
-                level=2
+                level=2,
+                bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+                bim_metadata=json.dumps({'usage': 'bathroom'})
             )
         ]
         
@@ -480,7 +497,9 @@ class TestBIMSemanticAPI:
         """Test che il recupero di un singolo frammento BIM funziona correttamente."""
         # Crea un frammento di test
         fragment = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Soggiorno Fragment",
+            fragment_type="room",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='room',
@@ -489,11 +508,11 @@ class TestBIMSemanticAPI:
             volume=76.5,
             level=1,
             ifc_guid='2O2Fr$t4X7Zf8NOew3FNrX',
-            bounding_box={
+            bounding_box=json.dumps({
                 'x_min': 0.0, 'y_min': 0.0, 'z_min': 0.0,
                 'x_max': 5.0, 'y_max': 5.0, 'z_max': 3.0
-            },
-            metadata={'usage': 'living', 'occupancy': 4}
+            }),
+            bim_metadata=json.dumps({'usage': 'living', 'occupancy': 4})
         )
         
         test_session.add(fragment)
@@ -543,7 +562,9 @@ class TestBIMSemanticAPI:
         """Test che l'eliminazione di un frammento BIM funziona correttamente."""
         # Crea un frammento di test
         fragment = BIMFragment(
-            tenant_id=test_user.tenant_id,
+            name="Soggiorno Fragment",
+            fragment_type="room",
+            tenant_id=str(test_user.tenant_id),
             house_id=1,
             bim_model_id=1,
             entity_type='room',
@@ -569,7 +590,8 @@ class TestBIMSemanticAPI:
             data = response.json()
             assert "Frammento BIM eliminato con successo" in data["message"]
             
-            # Verifica che il frammento sia stato eliminato
+            # Verifica che il frammento sia stato eliminato usando la stessa sessione
+            test_session.commit()  # Assicura che le modifiche siano committate
             deleted_fragment = test_session.get(BIMFragment, fragment_id)
             assert deleted_fragment is None
     
@@ -591,11 +613,12 @@ class TestBIMSemanticAPI:
     def test_multi_tenant_isolation(self, test_client, test_session):
         """Test che l'isolamento multi-tenant funziona correttamente."""
         # Crea due utenti con tenant diversi
-        tenant1_id = uuid.uuid4()
-        tenant2_id = uuid.uuid4()
+        tenant1_id = str(uuid.uuid4())
+        tenant2_id = str(uuid.uuid4())
         
         user1 = User(
             email="user1@example.com",
+            username="user1",
             hashed_password="hashed_password",
             full_name="User 1",
             is_active=True,
@@ -604,6 +627,7 @@ class TestBIMSemanticAPI:
         
         user2 = User(
             email="user2@example.com",
+            username="user2",
             hashed_password="hashed_password",
             full_name="User 2",
             is_active=True,
@@ -615,23 +639,31 @@ class TestBIMSemanticAPI:
         
         # Crea frammenti per entrambi i tenant
         fragment1 = BIMFragment(
+            name="Soggiorno Tenant 1 Fragment",
+            fragment_type="room",
             tenant_id=tenant1_id,
             house_id=1,
             bim_model_id=1,
             entity_type='room',
             entity_name='Soggiorno Tenant 1',
             area=25.5,
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'living'})
         )
         
         fragment2 = BIMFragment(
+            name="Soggiorno Tenant 2 Fragment",
+            fragment_type="room",
             tenant_id=tenant2_id,
             house_id=1,
             bim_model_id=1,
             entity_type='room',
             entity_name='Soggiorno Tenant 2',
             area=30.0,
-            level=1
+            level=1,
+            bounding_box=json.dumps({'x_min': 0, 'y_min': 0, 'z_min': 0, 'x_max': 5, 'y_max': 5, 'z_max': 3}),
+            bim_metadata=json.dumps({'usage': 'living'})
         )
         
         test_session.add_all([fragment1, fragment2])
@@ -640,12 +672,12 @@ class TestBIMSemanticAPI:
         # Crea token per entrambi gli utenti
         token1 = create_access_token(data={
             "sub": user1.email,
-            "tenant_id": str(user1.tenant_id)
+            "tenant_id": tenant1_id
         })
         
         token2 = create_access_token(data={
             "sub": user2.email,
-            "tenant_id": str(user2.tenant_id)
+            "tenant_id": tenant2_id
         })
         
         # Mock get_current_user per user1

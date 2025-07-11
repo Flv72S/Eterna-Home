@@ -139,6 +139,8 @@ class BIMParserService:
 
             return bim_model, fragments
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(
                 f"Errore durante parsing BIM: {e}",

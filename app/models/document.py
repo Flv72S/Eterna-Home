@@ -24,10 +24,10 @@ class Document(SQLModel, table=True):
     checksum: str = Field(description="Checksum SHA-256 del file")
     
     # Campo tenant_id per multi-tenancy
-    tenant_id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
         index=True,
-        description="ID del tenant per isolamento logico multi-tenant"
+        description="ID del tenant"
     )
     
     # Campo per tracciare il proprietario del documento
@@ -60,7 +60,7 @@ class Document(SQLModel, table=True):
 
     # Metodi multi-tenant (simulazione del mixin)
     @classmethod
-    def filter_by_tenant(cls, session, tenant_id: uuid.UUID, **filters):
+    def filter_by_tenant(cls, session, tenant_id: str, **filters):
         """Filtra i documenti per tenant_id e altri filtri opzionali."""
         from sqlmodel import select
         query = select(cls).where(cls.tenant_id == tenant_id)
@@ -74,7 +74,7 @@ class Document(SQLModel, table=True):
         return list(result.all())
     
     @classmethod
-    def get_by_id_and_tenant(cls, session, item_id: int, tenant_id: uuid.UUID):
+    def get_by_id_and_tenant(cls, session, item_id: int, tenant_id: str):
         """Ottiene un documento specifico verificando che appartenga al tenant."""
         from sqlmodel import select
         query = select(cls).where(
@@ -85,7 +85,7 @@ class Document(SQLModel, table=True):
         return result.first()
     
     @classmethod
-    def update_with_tenant_check(cls, session, item_id: int, tenant_id: uuid.UUID, **update_data):
+    def update_with_tenant_check(cls, session, item_id: int, tenant_id: str, **update_data):
         """Aggiorna un documento verificando che appartenga al tenant."""
         item = cls.get_by_id_and_tenant(session, item_id, tenant_id)
         if not item:
@@ -101,7 +101,7 @@ class Document(SQLModel, table=True):
         return item
     
     @classmethod
-    def delete_with_tenant_check(cls, session, item_id: int, tenant_id: uuid.UUID):
+    def delete_with_tenant_check(cls, session, item_id: int, tenant_id: str):
         """Elimina un documento verificando che appartenga al tenant."""
         item = cls.get_by_id_and_tenant(session, item_id, tenant_id)
         if not item:

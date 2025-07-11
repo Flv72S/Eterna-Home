@@ -22,7 +22,11 @@ class AIAssistantInteraction(SQLModel, table=True):
     message: str
     response: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    tenant_id: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        index=True,
+        description="ID del tenant"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

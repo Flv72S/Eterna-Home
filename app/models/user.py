@@ -48,10 +48,10 @@ class User(SQLModel, table=True):
     is_superuser: bool = Field(default=False)
 
     # Campo tenant_id per multi-tenancy (tenant principale)
-    tenant_id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
+    tenant_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
         index=True,
-        description="ID del tenant principale per isolamento logico multi-tenant"
+        description="ID del tenant principale"
     )
 
     # Campo ruolo principale
@@ -155,7 +155,7 @@ class User(SQLModel, table=True):
         
         return role_names
     
-    def has_role_in_tenant(self, role_name: str, tenant_id: uuid.UUID) -> bool:
+    def has_role_in_tenant(self, role_name: str, tenant_id: str) -> bool:
         """Verifica se l'utente ha un ruolo specifico in un tenant."""
         # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
         from app.models.user_tenant_role import UserTenantRole
@@ -164,7 +164,7 @@ class User(SQLModel, table=True):
         with next(get_session()) as session:
             return UserTenantRole.has_role_in_tenant(session, self.id, tenant_id, role_name)
     
-    def has_any_role_in_tenant(self, role_names: List[str], tenant_id: uuid.UUID) -> bool:
+    def has_any_role_in_tenant(self, role_names: List[str], tenant_id: str) -> bool:
         """Verifica se l'utente ha almeno uno dei ruoli specificati in un tenant."""
         # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
         from app.models.user_tenant_role import UserTenantRole
@@ -173,7 +173,7 @@ class User(SQLModel, table=True):
         with next(get_session()) as session:
             return UserTenantRole.has_any_role_in_tenant(session, self.id, tenant_id, role_names)
     
-    def get_roles_in_tenant(self, tenant_id: uuid.UUID) -> List[str]:
+    def get_roles_in_tenant(self, tenant_id: str) -> List[str]:
         """Restituisce la lista dei ruoli dell'utente in un tenant specifico."""
         # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
         from app.models.user_tenant_role import UserTenantRole
@@ -183,7 +183,7 @@ class User(SQLModel, table=True):
             roles = UserTenantRole.get_user_roles_in_tenant(session, self.id, tenant_id)
             return [role.role for role in roles]
     
-    def get_tenant_ids(self) -> List[uuid.UUID]:
+    def get_tenant_ids(self) -> List[str]:
         """Restituisce la lista degli ID dei tenant a cui l'utente appartiene."""
         # Usa il metodo di classe di UserTenantRole per evitare problemi di relazioni
         from app.models.user_tenant_role import UserTenantRole
@@ -196,7 +196,7 @@ class User(SQLModel, table=True):
                 tenant_ids.append(self.tenant_id)
             return list(set(tenant_ids))
     
-    def get_house_ids(self, tenant_id: Optional[uuid.UUID] = None) -> List[int]:
+    def get_house_ids(self, tenant_id: Optional[str] = None) -> List[int]:
         """
         Restituisce la lista degli ID delle case a cui l'utente ha accesso.
         Se tenant_id è specificato, filtra solo per quel tenant.
@@ -230,7 +230,7 @@ class User(SQLModel, table=True):
             
             return list(set(house_ids))
     
-    def has_house_access(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> bool:
+    def has_house_access(self, house_id: int, tenant_id: Optional[str] = None) -> bool:
         """
         Verifica se l'utente ha accesso a una casa specifica.
         Se tenant_id è specificato, verifica anche l'appartenenza al tenant.
@@ -268,7 +268,7 @@ class User(SQLModel, table=True):
             
             return False
     
-    def get_role_in_house(self, house_id: int, tenant_id: Optional[uuid.UUID] = None) -> Optional[str]:
+    def get_role_in_house(self, house_id: int, tenant_id: Optional[str] = None) -> Optional[str]:
         """
         Restituisce il ruolo dell'utente in una casa specifica.
         Se tenant_id è specificato, verifica anche l'appartenenza al tenant.

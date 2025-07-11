@@ -1,0 +1,17 @@
+Categoria,Test,Status,Description
+AI Contestuale,Persistenza stato AI,FAILED,Test persistenza stato AI per nodo (memoria contestuale simulata)
+AI Contestuale,Adattamento categorie fragili,FAILED,"Test AI + categoria fragile (cieco → output vocale testuale, sordo → output visivo)"
+AI Contestuale,Simultaneità tenant,FAILED,Test simultaneità: 2 tenant lanciano AI → isolamento risposta
+AI Contestuale,Blocco prompt injection,FAILED,Test trigger AI con prompt manipolati/injection → blocco
+Scalabilità,Failover database,FAILED,Simula fail DB → verifica fallback o errore gestito
+Scalabilità,Failover MinIO,FAILED,Simula fail MinIO → verifica fallback o errore gestito
+Scalabilità,Upload concorrenti,FAILED,Simula 50 richieste upload contemporanee → validazione queue/limit
+Scalabilità,Stress test metrics,FAILED,Stress test endpoint /metrics → verifica caching e latenza
+Localizzazione,UI multilingua,FAILED,"Forza lingua ""fr"", ""en"", ""de"" → verifica UI adattiva"
+Localizzazione,Comandi vocali AI,FAILED,Test comando vocale AI in lingua diversa → risposta coerente
+Localizzazione,Fallback lingua,FAILED,Test fallback automatico a lingua di default
+Localizzazione,Consistenza formati,FAILED,Test consistenza localizzazione completa
+Crittografia,Upload cifrato,FAILED,Upload documento cifrato → verifica presenza file cifrato
+Crittografia,Accesso chiave errata,FAILED,Simula accesso con chiave errata → errore gestito + log
+Crittografia,Logging MFA,FAILED,MFA disattivato/attivato → verifica log MFA
+Crittografia,Logging avanzato,FAILED,Test logging avanzato in security.json e app.json

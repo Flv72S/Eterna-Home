@@ -1,0 +1,10 @@
+Test,Status,Description
+BIM Mapping,PASS,Parsing automatico file BIM
+Activator Association,PASS,Associazione attivatori ai nodi
+Trigger Simulation,PASS,Simulazione eventi da NFC/BLE
+AI Tracking,PASS,Tracciamento interazioni AI da stanza
+Security Logging,PASS,Logging sicurezza e audit trail
+End-to-End,PASS,Test workflow completo
+Multi-tenant Isolation,PASS,Isolamento tra tenant
+RBAC Protection,PASS,Controllo permessi utente
+Edge Cases,PASS,Gestione attivatori non registrati

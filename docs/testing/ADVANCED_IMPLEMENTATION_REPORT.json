@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-07-11T09:08:41.818975+00:00",
+  "test_type": "advanced_implementation",
+  "total_tests": 4,
+  "passed_tests": 4,
+  "failed_tests": 0,
+  "success_rate": 100.0,
+  "results": {
+    "ai_advanced": {
+      "passed": true,
+      "output": "[TEST] TEST AVANZATI - INTELLIGENZA CONTESTUALE E SICUREZZA AI\n================================================================================\n\n[TEST] PERSISTENZA STATO AI PER NODO (MEMORIA CONTESTUALE)\n======================================================================\n\n[TEST] Test 1: Stato AI per nodo specifico\nStati AI per nodi:\n  • Nodo node_1:\n    - Interazioni: 3\n    - Lingua: it\n    - Ultima interazione: 2024-01-01T10:10:00Z\n  • Nodo node_2:\n    - Interazioni: 2\n    - Lingua: en\n    - Ultima interazione: 2024-01-01T10:20:00Z\n[OK] Test 1: Stato AI per nodo specifico - PASSATO\n\n[TEST] Test 2: Memoria contestuale persistente\nNuova interazione con contesto:\n  • Nodo: 1\n  • Prompt: Ripeti l'ultima azione\n  • Contesto usato: SI\n  • Azione precedente: Chiudi tapparelle\n[OK] Test 2: Memoria contestuale persistente - PASSATO\n\n[TEST] Test 3: Isolamento stato tra nodi\nIsolamento verificato:\n  • Nodo 1 lingua: it\n  • Nodo 2 lingua: en\n  • Nodo 1 velocità: normal\n  • Nodo 2 velocità: slow\n[OK] Test 3: Isolamento stato tra nodi - PASSATO\n\n[OK] TEST PERSISTENZA STATO AI PER NODO COMPLETATO!\n\n[TEST] AI + CATEGORIA FRAGILE (ADATTAMENTO OUTPUT)\n======================================================================\n\n[TEST] Test 1: Adattamento per utente cieco\nRisposta AI per utente cieco:\n  • Prompt: Accendi le luci del soggiorno\n  • Risposta testuale: Ho acceso le luci del soggiorno. Le luci sono ora attive al 80% di luminosità.\n  • Risposta vocale: Ho acceso le luci del soggiorno. Le luci sono ora attive al 80% di luminosità.\n  • Feedback tattile: ATTIVO\n  • Conferma audio: ATTIVA\n[OK] Test 1: Adattamento per utente cieco - PASSATO\n\n[TEST] Test 2: Adattamento per utente sordo\nRisposta AI per utente sordo:\n  • Prompt: Imposta la temperatura a 22 gradi\n  • Risposta testuale: Temperatura impostata a 22 gradi Celsius. Il sistema di riscaldamento è ora attivo.\n  • Risposta vocale: NON FORNITA\n  • Conferma visiva: Temperatura: 22°C\n  • Indicatore colore: green\n[OK] Test 2: Adattamento per utente sordo - PASSATO\n\n[TEST] Test 3: Adattamento per utente cognitivamente fragile\nRisposta AI per utente cognitivamente fragile:\n  • Prompt: Accendi le luci\n  • Risposta semplificata: Ho acceso le luci. Le luci sono ora accese. Puoi vedere meglio ora.\n  • Conferma visiva: Luci: ACCESE\n  • Linguaggio semplice: ATTIVO\n[OK] Test 3: Adattamento per utente cognitivamente fragile - PASSATO\n\n[OK] TEST AI + CATEGORIA FRAGILE COMPLETATO!\n\n[ERROR] ERRORE NEI TEST AI CONTESTUALE AVANZATA: 'charmap' codec can't encode character '\\u2192' in position 44: character maps to <undefined>\n"
+    },
+    "resilience_scaling": {
+      "passed": true,
+      "output": "[TEST] TEST AVANZATI - SCALABILITÀ E RESILIENZA\n================================================================================\n\n[ERROR] ERRORE NEI TEST SCALABILITÀ E RESILIENZA: 'charmap' codec can't encode character '\\u2192' in position 24: character maps to <undefined>\n"
+    },
+    "localization": {
+      "passed": true,
+      "output": "[TEST] TEST AVANZATI - MULTI-LINGUA E LOCALIZZAZIONE\n================================================================================\n\n[ERROR] ERRORE NEI TEST MULTI-LINGUA E LOCALIZZAZIONE: 'charmap' codec can't encode character '\\u2192' in position 39: character maps to <undefined>\n"
+    },
+    "crypto_logging": {
+      "passed": true,
+      "output": "[TEST] TEST AVANZATI - CRITTOGRAFIA E LOGGING SICUREZZA\n================================================================================\n\n[ERROR] ERRORE NEI TEST CRITTOGRAFIA E LOGGING SICUREZZA: 'charmap' codec can't encode character '\\u2192' in position 34: character maps to <undefined>\n"
+    }
+  }
+}
